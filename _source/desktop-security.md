@@ -1,8 +1,8 @@
 # Security model
 
-Status: **security contract for `0.2.0`.** The Rust bridge and screens are implemented in this
+Status: **security contract for `0.2.1`.** The Rust bridge and screens are implemented in this
 repository. This page states the controls the implementation must enforce and the residual risks
-accepted for the preview; where a control is future work, the text says so. `0.2.0` adds signed
+accepted for the preview; where a control is future work, the text says so. `0.2.1` adds signed
 auto-update for Windows NSIS, macOS `.app` and Linux AppImage. See [`SECURITY.md`](../SECURITY.md)
 for reporting a vulnerability.
 
@@ -61,6 +61,12 @@ engine via `LV24_SEO_BIN`, and provider-side breaches.
   needs (`DBUS_SESSION_BUS_ADDRESS`, `XDG_RUNTIME_DIR`, `TMPDIR` and related paths) while still
   filtering unrelated host variables. This makes the OS keychain reachable from the desktop process;
   the secret value itself still travels only over stdin.
+- The desktop and the CLI share one OS keychain entry per secret: service `lv24-seo`, username
+  `gsc_token`, `psi_api_key`, and so on. A token entered in a terminal is visible in the desktop's
+  `auth status` and a token entered in the desktop is visible to the CLI, without a copy in the
+  webview or the app data directory. `LV24_SEO_*` environment variables are inherited by the CLI
+  runner. The opt-in `<data-dir>/secrets.json` fallback is shared only when both surfaces use the
+  same workspace/data directory.
 - `seo.toml` never contains tokens, passwords or bot tokens. `config show` is redacted by the
   engine; the desktop must not “unredact” it.
 - MCP client installation may return the full merged host configuration, which can contain other
@@ -87,7 +93,7 @@ opt-in file. The desktop must show which source is active.
   command and require an explicit confirmation dialog naming the target.
 - A timeout or dropped child handle kills the exact child process handle/PID. It never uses a
   wildcard process name; several LV24 applications can run concurrently. There is no user-facing
-  cancel button in `0.2.0`.
+  cancel button in `0.2.1`.
 
 ## 5. Configuration files
 
@@ -110,6 +116,7 @@ default-src 'self';
 base-uri 'self';
 object-src 'none';
 frame-ancestors 'none';
+form-action 'none';
 img-src 'self' asset: http://asset.localhost data:;
 style-src 'self' 'unsafe-inline';
 font-src 'self';
@@ -148,7 +155,8 @@ connect-src ipc: http://ipc.localhost
   package that contains the sidecar; users who install manually must verify the downloaded asset
   against `SHA256SUMS.txt`.
 - `LV24_SEO_BIN` is a deliberate escape hatch for development and advanced users. Release builds do
-  not use it unless the user sets it explicitly, and the UI labels the engine as external.
+  not use it unless the user sets it explicitly; the shell records the source as `env`. The current
+  UI shows the engine version, not a separate path/source panel.
 
 ## 8. Updates
 
@@ -170,7 +178,7 @@ connect-src ipc: http://ipc.localhost
 - Windows NSIS, macOS `.app` and Linux AppImage update in place. deb, rpm, MSI and the portable ZIP
   are manual-only: the UI disables the in-app installer for those bundle types and links to the
   release page.
-- `0.1.0` has no updater, endpoint or public key. Its users must install `0.2.0` manually once;
+- `0.1.0` has no updater, endpoint or public key. Its users must install `0.2.1` manually once;
   auto-update works from `0.2.0` onward.
 - OS code signing/notarization is separate. The default build is unsigned; see section 11.
 
@@ -179,7 +187,7 @@ connect-src ipc: http://ipc.localhost
 - The desktop has no analytics, crash-reporting endpoint or “phone home” call.
 - Provider calls are made by the engine, only when the user runs a command.
 - The diagnostics bundle is user-triggered and contains versions, paths, doctor checks, redacted
-  effective config, environment variable **names**, and recent non-secret job errors. It is never
+  effective config, environment variable **names**, and recent non-secret command errors. It is never
   uploaded automatically.
 - Logs redact secret-looking keys and bounded stderr. Users are told to review a bundle before
   sharing it.
@@ -237,7 +245,8 @@ paid certificate, notarization or paid runner without explicit owner approval.
 - HTTP rate limiting in the engine is process-local and cannot guarantee account-wide quotas.
 - Delivery is at-least-once, not exactly-once; a crash after remote acceptance can duplicate a
   message.
-- A user-supplied `LV24_SEO_BIN` is trusted by definition. The UI labels it, but cannot sandbox it.
+- A user-supplied `LV24_SEO_BIN` is trusted by definition. The shell records it as source `env`, but
+  cannot sandbox it; the current UI shows the version, not the source label.
 - Unsigned OS packages can be tampered with between download and execution; `SHA256SUMS.txt`
   reduces but does not eliminate that risk. The updater signature authenticates updates, not the
   first manual download.

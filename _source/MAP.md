@@ -21,7 +21,8 @@ to site routes.
 | `desktop-release.md` | `/release/` | Release pipeline, signing, assets, rollback. |
 | `desktop-security.md` | `/security/`, `/desktop/` | Shell boundary, secrets, updater trust. |
 | `desktop-architecture.md` | `/architecture/`, `/desktop/` | FSD layout, commands, stores, resources. |
-| `desktop-releases-0.2.0.md` | `/release/` | Desktop 0.2.0 release notes. |
+| `desktop-releases-0.2.1.md` | `/release/` | Desktop 0.2.1 patch notes: Metrika token and shared CLI keychain. |
+| `desktop-releases-0.2.0.md` | `/release/` | Desktop 0.2.0 release notes, kept for the first multi-platform release. |
 
 ## Known source tensions
 

@@ -7,9 +7,9 @@ scraping.
 
 [![License: Apache-2.0](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](LICENSE)
 [![Status: pre-release](https://img.shields.io/badge/status-pre--release-orange.svg)](#public-status)
-[![Engine: lv24-seo 0.5.1](https://img.shields.io/badge/engine-lv24--seo%200.5.1-informational.svg)](contracts/README.md)
+[![Engine: lv24-seo 0.5.1](https://img.shields.io/badge/engine-lv24--seo%200.5.1-informational.svg)](docs/releases/0.2.1.md)
 
-> **0.2.0 multi-platform preview.** Windows, Linux and macOS installers are published. Windows NSIS,
+> **0.2.1 patch release.** Windows, Linux and macOS installers are published. Windows NSIS,
 > macOS `.app` and Linux AppImage can auto-update from `0.2.0` onward; deb, rpm, MSI and the portable
 > ZIP are manual-only. `0.1.0` has no updater and must be upgraded manually once. The pinned engine
 > is `lv24-seo 0.5.1`, which ships the `stats` command described by
@@ -45,6 +45,29 @@ not want to remember flags:
 - **Signed in-app updates** for the bundle types that can replace themselves, with a manual release
   page for the rest.
 
+### Surfaces and tools
+
+The desktop is one surface over the same engine. These are the tools the engine exposes today:
+
+| Surface | What you get |
+|---|---|
+| Desktop | Dashboard, weekly report view, config editor/diff/validation, recommendations, agent task queue, signed updates |
+| CLI | `init`, `doctor`, `auth`, `gsc`, `yandex`, `crawl`, `report`, `stats`, `schedule`, `export`, `mcp serve` |
+| MCP | 11 tools, 3 resources, 3 prompts; read-only by default |
+| Skills | `seo-weekly`, `seo-indexing-triage`, `seo-technical-audit` |
+| Automation | cron, systemd timer and Windows Task Scheduler generators; SMTP/Telegram delivery |
+
+MCP tools by access level:
+
+| Access | Tools |
+|---|---|
+| Read-only | `seo_properties`, `gsc_search_analytics`, `yandex_query_stats`, `yandex_indexing_state`, `seo_report_diff`, `seo_indexing_triage`, `seo_opportunities` |
+| Read + local state (`readOnlyHint: false`, not destructive) | `seo_crawl_site`, `seo_weekly_report` |
+| Gated provider write (`allow_write=true`, `destructiveHint: true`) | `seo_recrawl_request`, `seo_sitemap_submit` |
+
+The full inputs, outputs and limits are in the engine's
+[`docs/mcp.md`](https://github.com/LevapVeeskela/lv24-seo-optimizer/blob/main/docs/mcp.md).
+
 ## What it is not
 
 - Not a reimplementation of SEO logic, provider clients, crawling or report builders. Those live in
@@ -59,15 +82,15 @@ not want to remember flags:
 ## Install
 
 Download from [Releases](https://github.com/LevapVeeskela/lv24-seo-optimizer-desktop/releases).
-Full notes, install steps and limitations: [`docs/releases/0.2.0.md`](docs/releases/0.2.0.md).
+Full notes, install steps and limitations: [`docs/releases/0.2.1.md`](docs/releases/0.2.1.md).
 
 | Platform | Assets | Auto-update |
 |---|---|---|
-| Windows 10/11 x64 | `LV24.SEO.Optimizer_0.2.0_x64-setup.exe` (+ `.exe.sig`), `LV24-SEO-Optimizer_0.2.0_x64-portable.zip` | NSIS only; portable ZIP is manual |
+| Windows 10/11 x64 | `LV24.SEO.Optimizer_0.2.1_x64-setup.exe` (+ `.exe.sig`), `LV24-SEO-Optimizer_0.2.1_x64-portable.zip` | NSIS only; portable ZIP is manual |
 | Linux x64 | AppImage (+ `.AppImage.sig`), deb, rpm | AppImage only; deb/rpm are manual |
 | macOS 13+ arm64/x64 | DMG, `.app.tar.gz` (+ `.sig`) | `.app` only; DMG is the first install |
 
-The `0.2.0` release also publishes `latest.json` and `SHA256SUMS.txt`. Verify the checksum before
+The `0.2.x` releases also publish `latest.json` and `SHA256SUMS.txt`. Verify the checksum before
 running an installer. `SHA256SUMS.txt` covers every published asset, including updater signatures
 and `latest.json`.
 
@@ -143,7 +166,7 @@ assets.
 
 ### Upgrading from 0.1.0
 
-`0.1.0` has no updater, endpoint or public key. Install `0.2.0` manually once (NSIS installer or
+`0.1.0` has no updater, endpoint or public key. Install `0.2.1` manually once (NSIS installer or
 portable ZIP). Auto-update works from `0.2.0` onward when the installed bundle is Windows NSIS,
 macOS `.app` or Linux AppImage.
 
@@ -290,8 +313,9 @@ The dashboard renders the stats envelope; it is not a new metric engine. The con
 
 The pinned engine provides `lv24-seo stats --days 7 --lag-days 2 --json`. The desktop adds no
 metrics of its own. If the installed engine is older than the shell's minimum version, the engine is
-marked offline and the affected screens show a notice with the desktop and engine versions; the
-desktop does not silently run an older engine or fake a compatibility dialog.
+marked offline and the affected screens show the standard offline notice; the footer still shows the
+detected engine version when one was reported. The desktop does not silently run an older engine or
+fake a compatibility dialog.
 
 ## Reports
 
@@ -355,6 +379,12 @@ action. The desktop does not apply site edits itself.
   pipes it to `lv24-seo auth set --stdin`. Values are not stored in MobX, logs or diagnostics. On
   Linux the CLI runner inherits the session-bus/XDG variables Secret Service needs; the value itself
   still travels only over stdin.
+- **One shared secret store with the CLI.** The desktop runs the same engine under the same OS user,
+  so a token stored by `lv24-seo auth set` in a terminal is visible in the desktop's `auth status`
+  and vice versa. The OS keychain entry uses service `lv24-seo` and the same secret name on every
+  surface; `LV24_SEO_*` environment variables are inherited by the CLI runner. The opt-in
+  `<data-dir>/secrets.json` fallback is shared only when the desktop opens the same workspace/data
+  directory; it is never copied into the webview.
 - **No local HTTP API.** The desktop talks to the engine through a fixed, allow-listed process
   bridge. There is no loopback server to authenticate, proxy or expose.
 - **No telemetry.** Nothing is uploaded automatically except the updater's request for
@@ -399,11 +429,11 @@ build from source and sign it with your own certificate. See [`docs/release.md`]
 | Tauri command bridge (config read/validate/write/patch, CLI runner, secrets, diagnostics) | implemented |
 | React screens (dashboard, settings, configuration, reports, recommendations) | implemented |
 | Bundled onedir sidecar | all four targets built in CI; Windows x64 has a reviewed local pin, Linux/macOS pins are pending, CI records rebuild-aware hashes |
-| Published installers | `0.2.0`: Windows x64, Linux x64, macOS arm64/x64 |
+| Published installers | `0.2.1`: Windows x64, Linux x64, macOS arm64/x64 |
 | Auto-update | Windows NSIS, macOS `.app`, Linux AppImage; deb/rpm/MSI/portable ZIP are manual |
 | `lv24-seo stats --json` engine command | shipped in `lv24-seo 0.5.1`; fixture committed |
 
-`0.1.0` remains available as a Windows-only preview. It has no updater; install `0.2.0` manually
+`0.1.0` remains available as a Windows-only preview. It has no updater; install `0.2.1` manually
 once. Follow the [issues](https://github.com/LevapVeeskela/lv24-seo-optimizer-desktop/issues) for
 progress, or read the implementation plan in the engine repository:
 [`docs/plans/2026-11-14-seo-desktop.md`](https://github.com/LevapVeeskela/lv24-seo-optimizer/blob/main/docs/plans/2026-11-14-seo-desktop.md).

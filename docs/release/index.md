@@ -1,6 +1,6 @@
 ---
 title: Releases and updates
-description: Engine 0.5.1 changes, desktop 0.2.0 assets, signed auto-update matrix, release pipeline, version pinning and rollback.
+description: Engine 0.5.1 changes, desktop 0.2.1 assets, signed auto-update matrix, release pipeline, version pinning and rollback.
 ---
 
 # Releases and updates
@@ -10,7 +10,7 @@ The current releases are:
 | Product | Version | Notes |
 |---|---|---|
 | Engine | `lv24-seo 0.5.1` | Bugfix release; no schema migration, no new CLI command or MCP tool |
-| Desktop | `0.2.0` | First multi-platform build; bundles engine 0.5.1 |
+| Desktop | `0.2.1` | Patch: Metrika token, shared CLI keychain; bundles engine 0.5.1 |
 
 The desktop version and the engine version are independent, but the desktop pins an exact engine and refuses one below its minimum.
 
@@ -70,20 +70,24 @@ Known limits in 0.5.1:
 - MCP clients that branch on `readOnlyHint` may now ask for confirmation before
   `seo_crawl_site` or `seo_weekly_report`.
 
-## Desktop 0.2.0 assets
+## Desktop 0.2.1 assets
 
-`0.2.0` is the first multi-platform release. GitHub replaces spaces in asset names with dots; the release page is authoritative for the exact Linux file names.
+`0.2.0` was the first multi-platform release; `0.2.1` is the current patch. It fixes the
+Yandex Metrika token in Settings and the secret modal, and makes the shared OS keychain
+explicit: a token entered with `lv24-seo auth set` in the CLI is visible in the desktop
+and vice versa. GitHub replaces spaces in asset names with dots; the release page is
+authoritative for the exact Linux file names.
 
 | Asset | Platform | Purpose |
 |---|---|---|
-| `LV24.SEO.Optimizer_0.2.0_x64-setup.exe` + `.exe.sig` | Windows x64 | NSIS per-user installer; signed updater package |
-| `LV24-SEO-Optimizer_0.2.0_x64-portable.zip` | Windows x64 | Portable build; manual-only |
-| `LV24.SEO.Optimizer_0.2.0_aarch64.dmg` | macOS Apple silicon | First install |
-| `LV24.SEO.Optimizer_0.2.0_x64.dmg` | macOS Intel | First install |
-| `LV24.SEO.Optimizer_0.2.0_aarch64.app.tar.gz` + `.sig` | macOS Apple silicon | Signed updater package |
-| `LV24.SEO.Optimizer_0.2.0_x64.app.tar.gz` + `.sig` | macOS Intel | Signed updater package |
+| `LV24.SEO.Optimizer_0.2.1_x64-setup.exe` + `.exe.sig` | Windows x64 | NSIS per-user installer; signed updater package |
+| `LV24-SEO-Optimizer_0.2.1_x64-portable.zip` | Windows x64 | Portable build; manual-only |
+| `LV24.SEO.Optimizer_0.2.1_aarch64.dmg` | macOS Apple silicon | First install |
+| `LV24.SEO.Optimizer_0.2.1_x64.dmg` | macOS Intel | First install |
+| `LV24.SEO.Optimizer_0.2.1_aarch64.app.tar.gz` + `.sig` | macOS Apple silicon | Signed updater package |
+| `LV24.SEO.Optimizer_0.2.1_x64.app.tar.gz` + `.sig` | macOS Intel | Signed updater package |
 | `*_amd64.AppImage` + `.AppImage.sig` | Linux x64 | AppImage; signed updater package |
-| `*_amd64.deb`, `LV24.SEO.Optimizer-0.2.0-1.x86_64.rpm` | Linux x64 | Package-manager installs; manual-only |
+| `*_amd64.deb`, `LV24.SEO.Optimizer-0.2.1-1.x86_64.rpm` | Linux x64 | Package-manager installs; manual-only |
 | `latest.json` | All | Signed updater manifest |
 | `SHA256SUMS.txt` | All | SHA-256 for every published asset |
 
@@ -119,7 +123,7 @@ approves the `desktop-release` environment; a non-owner run is skipped.
 | `publish` | `false` | Create a GitHub release after every matrix build passes |
 | `tag` | Empty | `vX.Y.Z` release tag; required when `publish=true` |
 
-The default matches the `0.2.0` pin. The release gate rejects a manifest mismatch if a different version is passed.
+The default matches the `0.2.1` pin. The release gate rejects a manifest mismatch if a different version is passed.
 
 | Runner | Target | Bundles |
 |---|---|---|
@@ -134,7 +138,7 @@ days; the GitHub release is the durable distribution channel.
 ## Sidecar pin and checksums
 
 The release sidecar is a PyInstaller **onedir** tree, built on the matching host; PyInstaller does not cross-compile. The engine, Python, Pydantic, Typer and
-PyInstaller versions are pinned in `scripts/cli-checksums.json`. `0.2.0` pins engine `0.5.1`, Python `3.12`, Pydantic `2.14.3`, Typer `0.29.0` and PyInstaller
+PyInstaller versions are pinned in `scripts/cli-checksums.json`. `0.2.1` pins engine `0.5.1`, Python `3.12`, Pydantic `2.14.3`, Typer `0.29.0` and PyInstaller
 `6.22.3`.
 
 PyInstaller onedir output is not byte-reproducible. The checksum policy is therefore split:
@@ -193,8 +197,8 @@ labels it external and still checks the minimum. A `PATH` engine is used only wh
 
 ## One-time 0.1.0 upgrade
 
-`0.1.0` has no updater, endpoint or public key. It cannot discover or install `0.2.0`. Download and install `0.2.0` manually once (NSIS installer or portable
-ZIP on Windows). After that, the `0.2.0` installation can auto-update to later releases when it uses an auto-update-capable bundle.
+`0.1.0` has no updater, endpoint or public key. It cannot discover or install `0.2.1`. Download and install `0.2.1` manually once (NSIS installer or portable
+ZIP on Windows). After that, the `0.2.1` installation can auto-update to later releases when it uses an auto-update-capable bundle.
 
 ## Rollback
 
@@ -228,4 +232,4 @@ those protections system-wide.
 
 See [Security and privacy](/security/) for updater trust and [Architecture](/architecture/) for the sidecar layout.
 
-Source: `_source/engine-releases-0.5.1.md`, `_source/desktop-releases-0.2.0.md`, `_source/desktop-release.md`, `_source/desktop-security.md`.
+Source: `_source/engine-releases-0.5.1.md`, `_source/desktop-releases-0.2.1.md`, `_source/desktop-releases-0.2.0.md`, `_source/desktop-release.md`, `_source/desktop-security.md`.

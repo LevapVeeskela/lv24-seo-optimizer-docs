@@ -1,13 +1,13 @@
 ---
 title: Desktop app
-description: What the LV24 SEO Optimizer desktop shell adds, how signed updates work, and the limitations of the 0.2.0 preview.
+description: What the LV24 SEO Optimizer desktop shell adds, how signed updates work, and the limitations of the 0.2.1 patch release.
 ---
 
 # Desktop app
 
 LV24 SEO Optimizer Desktop is a local, offline-first Tauri v2 shell around the `lv24-seo` engine. The Python CLI remains the engine of record: it owns provider clients, crawl rules, analysis, report builders and delivery. The desktop adds a React UI and a Rust process bridge, not a second SEO implementation.
 
-The `0.2.0` release is a multi-platform preview. It bundles `lv24-seo 0.5.1` as a PyInstaller onedir sidecar. There is no cloud account, no telemetry, no local HTTP API and no SERP scraping. The desktop talks to the engine through a fixed, allow-listed child-process bridge.
+The `0.2.1` patch release bundles `lv24-seo 0.5.1` as a PyInstaller onedir sidecar. There is no cloud account, no telemetry, no local HTTP API and no SERP scraping. The desktop talks to the engine through a fixed, allow-listed child-process bridge.
 
 ## What it adds
 
@@ -17,6 +17,7 @@ The `0.2.0` release is a multi-platform preview. It bundles `lv24-seo 0.5.1` as 
 - **Reports.** Runs the weekly report locally, writes `report.json` and `report.html` under the app data directory, and opens the HTML in your default browser. The report HTML is never embedded in the app webview.
 - **Recommendations and an agent queue.** Turns report and stats findings into bounded Markdown prompts. You can copy a prompt, export it as `.md`, or keep it in a local agent queue with a status. The queue is stored in the webview's local storage; nothing is submitted automatically.
 - **Secrets over stdin.** Token input is a password field sent once over IPC. The Rust layer pipes it to `lv24-seo auth set --provider <p> --stdin`, zeroizes its buffer and never writes the value to a log, MobX store, localStorage, clipboard or diagnostics bundle. After saving, the UI shows only presence and source.
+- **One secret store with the CLI.** The desktop runs the same engine under the same OS user, so a token stored by `lv24-seo auth set` in a terminal is visible in the desktop and a token stored in the desktop is visible to the CLI. The OS keychain entry uses service `lv24-seo` and the same secret name; `LV24_SEO_*` environment variables are inherited. The opt-in `<data-dir>/secrets.json` fallback is shared only when both surfaces open the same workspace/data directory.
 - **Update panel.** Checks a signed `latest.json` at startup and on demand, shows release notes, and installs only after you confirm.
 
 The dashboard and Reports screen are built on the same engine commands a terminal uses:
@@ -32,7 +33,7 @@ Download desktop assets from the project's Releases page. The desktop is separat
 
 | Bundle | How it is installed | In-app update |
 |---|---|---|
-| Windows NSIS | `LV24.SEO.Optimizer_0.2.0_x64-setup.exe` | Yes |
+| Windows NSIS | `LV24.SEO.Optimizer_0.2.1_x64-setup.exe` | Yes |
 | Windows portable ZIP | Extract the whole folder and run `lv24-seo-desktop.exe` | No |
 | Linux AppImage | `chmod +x` and run | Yes |
 | Linux deb | `sudo apt install ./*_amd64.deb` | No |
@@ -75,9 +76,9 @@ The active `seo.toml` path is the workspace identity. When you switch to a diffe
 
 On Linux the CLI runner inherits the session-bus and XDG runtime variables that Secret Service needs (`DBUS_SESSION_BUS_ADDRESS`, `XDG_RUNTIME_DIR`, `TMPDIR` and related paths) while filtering unrelated host variables. This makes the OS keychain reachable from the desktop process. The secret value still travels only over stdin. If the keychain is unavailable, use `LV24_SEO_*` environment variables or the engine's explicitly opted-in file fallback.
 
-## Crawl in 0.2.0
+## Crawl in 0.2.1
 
-The desktop exposes crawl settings in the Settings form and surfaces crawl findings in reports and recommendations. The `0.2.0` UI has no separate Crawl screen, and long engine calls have no job progress or cancel button. Run `lv24-seo crawl` in a terminal when you need the full crawl output and sitemap coverage diff.
+The desktop exposes crawl settings in the Settings form and surfaces crawl findings in reports and recommendations. The `0.2.1` UI has no separate Crawl screen, and long engine calls have no job progress or cancel button. Run `lv24-seo crawl` in a terminal when you need the full crawl output and sitemap coverage diff.
 
 ## Troubleshooting basics
 
@@ -92,7 +93,7 @@ The desktop exposes crawl settings in the Settings form and surfaces crawl findi
 | Update signature failure | Package does not match the embedded key | The artifact is blocked; download again from the release page and verify the checksum |
 | `missing_token` on a card | Provider token is absent | Run `lv24-seo auth set --provider <p> --stdin` |
 | `no_data` on a card | Provider reachable, no rows for the window | Widen the window or check the property and data lag |
-| Long call seems stuck | No progress or cancel in 0.2.0 | Wait for the command timeout; the UI shows an indeterminate busy state |
+| Long call seems stuck | No progress or cancel in 0.2.1 | Wait for the command timeout; the UI shows an indeterminate busy state |
 
 ## Known limitations
 
@@ -105,4 +106,4 @@ The desktop exposes crawl settings in the Settings form and surfaces crawl findi
 - Recommendation titles, actions and verification steps come from the engine and stay in English; the surrounding UI is translated (en/ru/zh).
 - This is a `0.x` preview: configuration output, updater behavior and UI details may change before 1.0.
 
-Source: `_source/desktop-README.md`, `_source/desktop-releases-0.2.0.md`, `_source/desktop-security.md`, `_source/desktop-architecture.md`.
+Source: `_source/desktop-README.md`, `_source/desktop-releases-0.2.1.md`, `_source/desktop-releases-0.2.0.md`, `_source/desktop-security.md`, `_source/desktop-architecture.md`.

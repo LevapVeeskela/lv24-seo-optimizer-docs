@@ -80,11 +80,11 @@ Supported provider names are `gsc`, `yandex`, `metrika`, `bing`, `crux`, `psi`, 
 
 ## Desktop install matrix
 
-Desktop `0.2.0` is a multi-platform preview and bundles `lv24-seo 0.5.1`. Download the assets from the project's Releases page; `SHA256SUMS.txt` covers every published asset. The exact Linux file names are the ones on the release page.
+Desktop `0.2.1` is the current patch release and bundles `lv24-seo 0.5.1`. Download the assets from the project's Releases page; `SHA256SUMS.txt` covers every published asset. The exact Linux file names are the ones on the release page.
 
 | Platform | Assets | Auto-update |
 |---|---|---|
-| Windows 10/11 x64 | NSIS `LV24.SEO.Optimizer_0.2.0_x64-setup.exe` (+ `.sig`), portable `LV24-SEO-Optimizer_0.2.0_x64-portable.zip` | NSIS only; portable is manual |
+| Windows 10/11 x64 | NSIS `LV24.SEO.Optimizer_0.2.1_x64-setup.exe` (+ `.sig`), portable `LV24-SEO-Optimizer_0.2.1_x64-portable.zip` | NSIS only; portable is manual |
 | Linux x64 | AppImage (+ `.AppImage.sig`), deb, rpm | AppImage only; deb/rpm are manual |
 | macOS 13+ arm64/x64 | DMG for first install, `.app.tar.gz` (+ `.sig`) for updates | `.app` only; DMG is the first install |
 
@@ -111,7 +111,7 @@ Use the `aarch64` DMG on Apple silicon and the `x64` DMG on Intel. Open the DMG,
 
 ### Upgrading from desktop 0.1.0
 
-`0.1.0` was a Windows-only preview with no updater, endpoint or public key. Install `0.2.0` manually once (NSIS installer or portable ZIP). Auto-update works from `0.2.0` onward only for Windows NSIS, macOS `.app` and Linux AppImage.
+`0.1.0` was a Windows-only preview with no updater, endpoint or public key. Install `0.2.1` manually once (NSIS installer or portable ZIP). Auto-update works from `0.2.0` onward only for Windows NSIS, macOS `.app` and Linux AppImage.
 
 ## Unsigned builds
 
@@ -142,4 +142,4 @@ Uninstalling the tool does not delete your project. `seo.toml`, `data/`, SQLite 
 - [Config reference](/reference/config/) — every `seo.toml` key.
 - [Security and privacy](/security/) — token storage and write gates.
 
-Source: `_source/engine-README.md`, `_source/engine-cli.md`, `_source/engine-config.md`, `_source/desktop-README.md`, `_source/desktop-releases-0.2.0.md`.
+Source: `_source/engine-README.md`, `_source/engine-cli.md`, `_source/engine-config.md`, `_source/desktop-README.md`, `_source/desktop-releases-0.2.1.md`, `_source/desktop-releases-0.2.0.md`.

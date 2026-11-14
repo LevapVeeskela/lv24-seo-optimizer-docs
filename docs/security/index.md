@@ -54,6 +54,13 @@ printf '%s' "$TOKEN" | lv24-seo auth set --provider gsc --stdin
 environment token is read-only: `auth set` and `auth logout` return `WRITE_DISABLED` while it is set. The desktop shows the same source and
 explains that removing a file secret does not remove an environment variable.
 
+The desktop and CLI share the same OS keychain entry per provider: service `lv24-seo`, username
+`gsc_token`, `psi_api_key`, and so on. A token entered in a terminal is already available in the
+desktop's `auth status`, and a token entered in the desktop is visible to the CLI; there is no
+second copy in the webview or the app data directory. `LV24_SEO_*` environment variables are
+inherited by the desktop's CLI runner. The opt-in `<data-dir>/secrets.json` fallback is shared only
+when both surfaces use the same workspace/data directory.
+
 Secrets never belong in `seo.toml`, source control, reports or test fixtures. Logging redacts at the formatter level, not at each call site:
 sensitive keys, known token prefixes and opaque 32+ character runs are masked. Redaction is defence in depth; callers must still avoid
 logging raw credentials. `config show` masks secret-looking keys as `***`, and the desktop must not “unredact” it.

@@ -80,11 +80,11 @@ lv24-seo auth status --json
 
 ## 桌面安装矩阵
 
-桌面端 `0.2.0` 是多平台预览，内置 `lv24-seo 0.5.1`。从项目的 Releases 页面下载资源文件；`SHA256SUMS.txt` 覆盖所有已发布资源。Linux 的确切文件名以发行页面为准。
+桌面端 `0.2.1` 是当前补丁版本，内置 `lv24-seo 0.5.1`。从项目的 Releases 页面下载资源文件；`SHA256SUMS.txt` 覆盖所有已发布资源。Linux 的确切文件名以发行页面为准。
 
 | 平台 | 文件 | 自动更新 |
 |---|---|---|
-| Windows 10/11 x64 | NSIS `LV24.SEO.Optimizer_0.2.0_x64-setup.exe`（+ `.sig`）、便携包 `LV24-SEO-Optimizer_0.2.0_x64-portable.zip` | 仅 NSIS；便携包手动更新 |
+| Windows 10/11 x64 | NSIS `LV24.SEO.Optimizer_0.2.1_x64-setup.exe`（+ `.sig`）、便携包 `LV24-SEO-Optimizer_0.2.1_x64-portable.zip` | 仅 NSIS；便携包手动更新 |
 | Linux x64 | AppImage（+ `.AppImage.sig`）、deb、rpm | 仅 AppImage；deb/rpm 手动更新 |
 | macOS 13+ arm64/x64 | 首次安装用 DMG，更新用 `.app.tar.gz`（+ `.sig`） | 仅 `.app`；DMG 用于首次安装 |
 
@@ -111,7 +111,7 @@ Apple 芯片使用 `aarch64` DMG，Intel 使用 `x64` DMG。打开 DMG，将 **L
 
 ### 从桌面 0.1.0 升级
 
-`0.1.0` 是仅限 Windows 的预览，没有更新器、端点或公钥。请手动安装一次 `0.2.0`（NSIS 安装程序或便携 ZIP）。从 `0.2.0` 起，只有 Windows NSIS、macOS `.app` 和 Linux AppImage 可以自动更新。
+`0.1.0` 是仅限 Windows 的预览，没有更新器、端点或公钥。请手动安装一次 `0.2.1`（NSIS 安装程序或便携 ZIP）。从 `0.2.0` 起，只有 Windows NSIS、macOS `.app` 和 Linux AppImage 可以自动更新。
 
 ## 未签名构建
 

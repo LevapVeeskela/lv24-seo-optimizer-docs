@@ -1,6 +1,6 @@
 # Architecture
 
-Status: **implementation contract for `0.2.0`.** The Rust command bridge and product screens are
+Status: **implementation contract for `0.2.1`.** The Rust command bridge and product screens are
 implemented in this repository. Where this document describes a control, it is the requirement that
 implementation must satisfy. The pinned engine is `lv24-seo 0.5.1`.
 
@@ -123,9 +123,9 @@ Resolution order:
 
 Nothing is downloaded automatically. The shell runs `lv24-seo version --json`, records the path,
 source and version, and compares the version with `MIN_ENGINE_VERSION`. An older engine is marked
-`compatible: false`; the UI treats the engine as offline and shows a notice with the desktop and
-engine versions. It does not silently downgrade or run the command. A newer engine passes the gate
-but is not the release-tested pin.
+`compatible: false`; the UI treats the engine as offline and shows the standard offline notice. It
+does not silently downgrade or run the command. A newer engine passes the gate but is not the
+release-tested pin.
 
 The `source` labels are `env`, `bundled`, `bundled-flat`, `sibling` and `PATH`. The portable ZIP uses
 a sibling or flat resource layout, which is how the updater recognizes that the build cannot replace

@@ -1,6 +1,6 @@
 ---
 title: 发布与更新
-description: 引擎 0.5.1 变更、桌面 0.2.0 产物、签名自动更新矩阵、发布流水线、版本固定与回滚。
+description: 引擎 0.5.1 变更、桌面 0.2.1 产物、签名自动更新矩阵、发布流水线、版本固定与回滚。
 ---
 
 # 发布与更新
@@ -10,7 +10,7 @@ description: 引擎 0.5.1 变更、桌面 0.2.0 产物、签名自动更新矩�
 | 产品 | 版本 | 说明 |
 |---|---|---|
 | 引擎 | `lv24-seo 0.5.1` | 缺陷修复版本；无模式迁移、无新 CLI 命令或 MCP 工具 |
-| 桌面 | `0.2.0` | 首个多平台构建；捆绑引擎 0.5.1 |
+| 桌面 | `0.2.1` | 补丁：Metrika 令牌、与 CLI 共享钥匙串；捆绑引擎 0.5.1 |
 
 桌面版本与引擎版本相互独立，但桌面固定确切引擎，并拒绝低于最低版本的引擎。
 
@@ -66,21 +66,23 @@ description: 引擎 0.5.1 变更、桌面 0.2.0 产物、签名自动更新矩�
 - 依赖 `readOnlyHint` 的 MCP 客户端现在可能在 `seo_crawl_site` 或
   `seo_weekly_report` 前请求确认。
 
-## 桌面 0.2.0 产物
+## 桌面 0.2.1 产物
 
-`0.2.0` 是首个多平台版本。GitHub 会把产物名称中的空格替换为点；Linux 文件的确切名称
+`0.2.0` 是首个多平台版本；`0.2.1` 是当前补丁。它修复设置和密钥对话框中的 Yandex
+Metrika 令牌，并明确共享系统钥匙串：在终端通过 `lv24-seo auth set` 输入的令牌在桌面
+应用中可见，反之亦然。GitHub 会把产物名称中的空格替换为点；Linux 文件的确切名称
 以发布页为准。
 
 | 产物 | 平台 | 用途 |
 |---|---|---|
-| `LV24.SEO.Optimizer_0.2.0_x64-setup.exe` + `.exe.sig` | Windows x64 | 当前用户 NSIS 安装器；已签名更新包 |
-| `LV24-SEO-Optimizer_0.2.0_x64-portable.zip` | Windows x64 | 便携构建；仅手动 |
-| `LV24.SEO.Optimizer_0.2.0_aarch64.dmg` | macOS Apple silicon | 首次安装 |
-| `LV24.SEO.Optimizer_0.2.0_x64.dmg` | macOS Intel | 首次安装 |
-| `LV24.SEO.Optimizer_0.2.0_aarch64.app.tar.gz` + `.sig` | macOS Apple silicon | 已签名更新包 |
-| `LV24.SEO.Optimizer_0.2.0_x64.app.tar.gz` + `.sig` | macOS Intel | 已签名更新包 |
+| `LV24.SEO.Optimizer_0.2.1_x64-setup.exe` + `.exe.sig` | Windows x64 | 当前用户 NSIS 安装器；已签名更新包 |
+| `LV24-SEO-Optimizer_0.2.1_x64-portable.zip` | Windows x64 | 便携构建；仅手动 |
+| `LV24.SEO.Optimizer_0.2.1_aarch64.dmg` | macOS Apple silicon | 首次安装 |
+| `LV24.SEO.Optimizer_0.2.1_x64.dmg` | macOS Intel | 首次安装 |
+| `LV24.SEO.Optimizer_0.2.1_aarch64.app.tar.gz` + `.sig` | macOS Apple silicon | 已签名更新包 |
+| `LV24.SEO.Optimizer_0.2.1_x64.app.tar.gz` + `.sig` | macOS Intel | 已签名更新包 |
 | `*_amd64.AppImage` + `.AppImage.sig` | Linux x64 | AppImage；已签名更新包 |
-| `*_amd64.deb`, `LV24.SEO.Optimizer-0.2.0-1.x86_64.rpm` | Linux x64 | 包管理器安装；仅手动 |
+| `*_amd64.deb`, `LV24.SEO.Optimizer-0.2.1-1.x86_64.rpm` | Linux x64 | 包管理器安装；仅手动 |
 | `latest.json` | 全部 | 已签名更新清单 |
 | `SHA256SUMS.txt` | 全部 | 每个已发布产物的 SHA-256 |
 
@@ -118,7 +120,7 @@ portable ZIP 不能。Linux 包在 Ubuntu 22.04 上构建，glibc 2.35 基线，
 | `publish` | `false` | 矩阵构建全部通过后创建 GitHub release |
 | `tag` | 空 | `vX.Y.Z` 发布标签；`publish=true` 时必填 |
 
-默认值与 `0.2.0` 的固定版本一致。如果传入其他版本，发布门禁会拒绝清单不匹配。
+默认值与 `0.2.1` 的固定版本一致。如果传入其他版本，发布门禁会拒绝清单不匹配。
 
 | Runner | Target | 包 |
 |---|---|---|
@@ -134,7 +136,7 @@ portable ZIP 不能。Linux 包在 Ubuntu 22.04 上构建，glibc 2.35 基线，
 
 发布 sidecar 是 PyInstaller **onedir** 树，在匹配的宿主上构建；PyInstaller 不交叉
 编译。引擎、Python、Pydantic、Typer 和 PyInstaller 版本固定在
-`scripts/cli-checksums.json`。`0.2.0` 固定引擎 `0.5.1`、Python `3.12`、Pydantic
+`scripts/cli-checksums.json`。`0.2.1` 固定引擎 `0.5.1`、Python `3.12`、Pydantic
 `2.14.3`、Typer `0.29.0` 和 PyInstaller `6.22.3`。
 
 PyInstaller onedir 输出不是字节可复现的。因此校验和策略分为三层：
@@ -195,9 +197,9 @@ node scripts/verify-sidecar.mjs \
 
 ## 从 0.1.0 一次性升级
 
-`0.1.0` 没有更新器、端点和公钥。它无法发现或安装 `0.2.0`。请手动下载并安装一次
-`0.2.0`（Windows 上使用 NSIS 安装器或 portable ZIP）。之后，使用支持自动更新的包类型
-时，`0.2.0` 安装可以自动更新到后续版本。
+`0.1.0` 没有更新器、端点和公钥。它无法发现或安装 `0.2.1`。请手动下载并安装一次
+`0.2.1`（Windows 上使用 NSIS 安装器或 portable ZIP）。之后，使用支持自动更新的包类型
+时，`0.2.1` 安装可以自动更新到后续版本。
 
 ## 回滚
 
@@ -231,4 +233,4 @@ macOS 自带 `shasum -a 256 -c SHA256SUMS.txt`。Windows 上用
 
 更新器信任见[安全与隐私](/zh/security/)，sidecar 布局见[架构](/zh/architecture/)。
 
-Source: `_source/engine-releases-0.5.1.md`, `_source/desktop-releases-0.2.0.md`, `_source/desktop-release.md`, `_source/desktop-security.md`.
+Source: `_source/engine-releases-0.5.1.md`, `_source/desktop-releases-0.2.1.md`, `_source/desktop-releases-0.2.0.md`, `_source/desktop-release.md`, `_source/desktop-security.md`.

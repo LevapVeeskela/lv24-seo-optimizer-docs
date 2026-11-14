@@ -10,28 +10,29 @@ its checksums, its updater signatures or its engine version does not ship.
 
 ## 1. Release state
 
-`0.2.0` is the first multi-platform release:
+`0.2.0` was the first multi-platform release; `0.2.1` is the current patch release:
 
 - **Windows x64:** unsigned NSIS installer, signed updater `.exe`, portable ZIP.
 - **Linux x64:** AppImage (signed updater), deb and rpm (manual-only).
 - **macOS arm64/x64:** DMG plus signed `.app.tar.gz` updater archives.
 - **Common:** `latest.json` and `SHA256SUMS.txt`.
 
+Release notes: [`docs/releases/0.2.1.md`](releases/0.2.1.md).
+
 Auto-update is enabled for Windows NSIS, macOS `.app` and Linux AppImage. deb, rpm, MSI and the
 portable ZIP are manual-only; the UI disables in-app installation for those bundle types and links
-to the release page. `0.1.0` has no updater, so `0.1.0` users must install `0.2.0` manually once.
+to the release page. `0.1.0` has no updater, so `0.1.0` users must install `0.2.1` manually once.
 
-Before the `0.2.0` publish run these must be true:
+Before the `0.2.1` publish run these must be true:
 
-- `package.json`, `src-tauri/tauri.conf.json` and `src-tauri/Cargo.toml` all say `0.2.0`.
+- `package.json`, `src-tauri/tauri.conf.json` and `src-tauri/Cargo.toml` all say `0.2.1`.
 - `scripts/cli-checksums.json` says `0.5.1` and the workflow runs with `engine_version=0.5.1`.
-  The release gate rejects a mismatch. If the manifest still says `0.5.0`, update it in a reviewed
-  PR before publishing.
-- `MIN_ENGINE_VERSION` in `src-tauri/src/commands.rs` is the minimum this release supports. The
-  `0.2.0` bundle is `0.5.1`; the current source still gates at `0.5.0`, so a separately installed
-  `0.5.0` engine can pass the gate even though it is not the release-tested pin. Raise the gate in
-  the same PR if the release must reject `0.5.0`.
-- CI (web, Rust matrix, contract drift) is green on the exact release commit.
+  The release gate rejects a mismatch.
+- `MIN_ENGINE_VERSION` in `src-tauri/src/commands.rs` is `0.5.1`. The `0.2.1` bundle is `0.5.1`;
+  an older engine is rejected. Verify the gate and the pin agree before publishing.
+- CI (web, Rust matrix, contract drift) is green on the exact release commit. The contracts were
+  regenerated from `0.5.1`; `contracts/config.schema.json` and `contracts/cli-v1/*.json` no longer
+  say `0.5.0`.
 - The `desktop-release` environment exists with the owner as required reviewer.
 - The `TAURI_SIGNING_PRIVATE_KEY` repository secret exists. `publish=true` fails without it.
 - README, `docs/*`, release notes and the unsigned warning are current.
@@ -58,13 +59,13 @@ match the pin before uploading.
 
 ### Engine compatibility
 
-- A release build bundles the exact pinned engine version. `0.2.0` bundles `lv24-seo 0.5.1`.
+- A release build bundles the exact pinned engine version. `0.2.1` bundles `lv24-seo 0.5.1`.
 - The shell accepts an engine whose version is at least `MIN_ENGINE_VERSION` and marks an older one
   offline with a notice. It does not run an older engine or silently downgrade. The current source
-  gates at `0.5.0`; see §1 for the release decision.
-- A development build may use `LV24_SEO_BIN` with another version; the UI labels it as external and
-  checks the minimum version. A `PATH` engine is used only when `LV24_SEO_ALLOW_PATH_ENGINE=1` is
-  set.
+  gates at `0.5.1`.
+- A development build may use `LV24_SEO_BIN` with another version; the shell records it as source
+  `env` and checks the minimum version. The current UI shows the engine version, not a separate
+  path/source panel. A `PATH` engine is used only when `LV24_SEO_ALLOW_PATH_ENGINE=1` is set.
 
 ## 3. Manual desktop workflow
 
@@ -74,13 +75,14 @@ Trigger: **Actions → Desktop build → Run workflow**. It has no push, pull-re
 
 | Input | Type | Default | Meaning |
 |---|---|---|---|
-| `engine_version` | string | `0.5.0` | exact `lv24-seo` version bundled in the sidecar; run `0.2.0` with `0.5.1` |
+| `engine_version` | string | `0.5.1` | exact `lv24-seo` version bundled in the sidecar |
 | `signed` | boolean | `false` | request OS signing/notarization; requires paid certificates that this project does not buy |
 | `publish` | boolean | `false` | create a GitHub release after every matrix build passes |
 | `tag` | string | empty | `vX.Y.Z` release tag; required when `publish=true` |
 
-The workflow default is `0.5.0` for historical reasons. The `0.2.0` release must be started with
-`engine_version=0.5.1`; otherwise the release gate rejects the manifest mismatch.
+The workflow default is `0.5.1`, matching the desktop `0.2.1` pin. A different value is allowed for
+a rebuild only when `scripts/cli-checksums.json` is updated in the same commit; otherwise the
+release gate rejects the manifest mismatch.
 
 ### Matrix
 
@@ -88,8 +90,8 @@ The workflow default is `0.5.0` for historical reasons. The `0.2.0` release must
 |---|---|---|---|
 | `windows-latest` | `x86_64-pc-windows-msvc` | NSIS | signed setup `.exe` |
 | `ubuntu-22.04` | `x86_64-unknown-linux-gnu` | AppImage, deb, rpm | signed AppImage |
-| `macos-15` | `aarch64-apple-darwin` | DMG | signed `.app.tar.gz` |
-| `macos-15-intel` | `x86_64-apple-darwin` | DMG | signed `.app.tar.gz` |
+| `macos-15` | `aarch64-apple-darwin` | DMG + app | signed `.app.tar.gz` |
+| `macos-15-intel` | `x86_64-apple-darwin` | DMG + app | signed `.app.tar.gz` |
 
 `ubuntu-22.04` sets a glibc 2.35 baseline. It is deprecated in September 2026 and unsupported in
 April 2027; when it retires, move to `ubuntu-24.04` (glibc 2.39) or a pinned 22.04 container and
@@ -186,8 +188,8 @@ release build**:
   "targets": {
     "x86_64-pc-windows-msvc": {
       "path": "lv24-seo/lv24-seo.exe",
-      "sha256": "216f7aa627bceb00d421c64d23a12e4ac889887ff9150e4269f0589582f6499b",
-      "size": 14133493
+      "sha256": "7379a187531600d02fe6ea99c851c34d744f3a6a31b14d2fa7092796a1bb0270",
+      "size": 14138954
     },
     "x86_64-unknown-linux-gnu": {
       "path": "lv24-seo/lv24-seo",
@@ -207,9 +209,9 @@ commit the 64-hex value plus size in a focused PR
 ### Why CI does not compare against the pin
 
 PyInstaller onedir output is not byte-reproducible. The same engine, Python and PyInstaller versions
-produce a different executable SHA-256 on the next build (embedded timestamps and paths). A local
-Windows build pinned `216f7aa6…`; an immediate rebuild produced `72e7e260…`. Comparing a CI rebuild
-with the pin would fail every run without indicating a real problem.
+produce a different executable SHA-256 on the next build (embedded timestamps and paths). An earlier
+local Windows build pinned `216f7aa6…`; an immediate rebuild produced `72e7e260…`. Comparing a CI
+rebuild with the pin would fail every run without indicating a real problem.
 
 The policy is therefore:
 
@@ -244,7 +246,7 @@ listed separately.
 
 Asset names are normalized before checksums: GitHub replaces spaces with dots. The staging and
 release scripts reject characters GitHub may rewrite and refuse duplicate basenames. The published
-Windows asset is therefore `LV24.SEO.Optimizer_0.2.0_x64-setup.exe`, not the spaced build output.
+Windows asset is therefore `LV24.SEO.Optimizer_0.2.1_x64-setup.exe`, not the spaced build output.
 
 ## 6. Updater signing and `latest.json`
 
@@ -410,14 +412,15 @@ The release job:
 ### Preflight (before running the workflow)
 
 - [ ] CI is green on the pull request that contains the release commit.
-- [ ] `package.json`, `tauri.conf.json`, `Cargo.toml` and the intended tag agree (`0.2.0`).
+- [ ] `package.json`, `tauri.conf.json`, `Cargo.toml` and the intended tag agree (`0.2.1`).
 - [ ] `scripts/cli-checksums.json` says `0.5.1` and `engine_version=0.5.1` will be supplied.
-- [ ] `MIN_ENGINE_VERSION` matches the intended minimum (raise it to `0.5.1` if `0.5.0` must be
-      rejected).
+- [ ] Contracts were regenerated from `0.5.1`; `contracts/config.schema.json` no longer says
+      `0.5.0`.
+- [ ] `MIN_ENGINE_VERSION` is `0.5.1` and matches the pin.
 - [ ] The local release build you reviewed matches the pinned SHA-256 and size in
       `scripts/cli-checksums.json` (strict `verify-sidecar.mjs`). CI rebuilds are recorded, not
       compared.
-- [ ] README, `docs/*`, `docs/releases/0.2.0.md`, changelog/release notes and the unsigned warning
+- [ ] README, `docs/*`, `docs/releases/0.2.1.md`, changelog/release notes and the unsigned warning
       are current.
 - [ ] No secrets, private keys or customer data are in the diff or fixtures.
 - [ ] The GitHub environment `desktop-release` exists with the owner as required reviewer.
@@ -445,16 +448,17 @@ The release job:
 
 1. Update `scripts/cli-checksums.json` in a PR if the reviewed local build or engine pin changed;
    merge it.
-2. Run **Desktop build** with `publish=true`, the final `tag` (`v0.2.0`), `engine_version=0.5.1`
+2. Run **Desktop build** with `publish=true`, the final `tag` (`v0.2.1`), `engine_version=0.5.1`
    and `signed=false` (unless certificates are actually configured).
 3. Approve the `desktop-release` environment as the repository owner. The release job also requires
    the actor to be the repository owner; a non-owner run is skipped.
 4. The workflow creates the draft release, uploads the assets, verifies `latest.json` and
    `SHA256SUMS.txt`, then undrafts it.
 5. Verify the release page: asset names, checksums, all four platforms, `latest.json` and notes.
-6. Verify the updater path on a machine with the previous `0.2.0`-capable build: it should see the
-   new version, show notes, download, verify the signature and install after confirmation. Do not
-   advertise auto-update for deb/rpm/MSI/portable.
+6. For the first updater-enabled release, verify the panel reports the current version and that a
+   tampered manifest or package is rejected; the first real in-app update was `0.2.0 → 0.2.1`. From
+   the next release on, verify on a machine with the previous release installed. Do not advertise
+   auto-update for deb/rpm/MSI/portable.
 7. Announce with the unsigned-build instructions, the manual-only cases and the checksum file.
 
 ### Post-release
@@ -512,7 +516,7 @@ are unsigned. SmartScreen/Gatekeeper may warn. Verify SHA256SUMS.txt.
 
 ### Auto-update
 Windows NSIS, macOS .app and Linux AppImage update in place after confirmation.
-deb/rpm/MSI/portable ZIP are manual-only. 0.1.0 must install 0.2.0 manually once.
+deb/rpm/MSI/portable ZIP are manual-only. 0.1.0 must install 0.2.1 manually once.
 Updater manifest: https://github.com/LevapVeeskela/lv24-seo-optimizer-desktop/releases/latest/download/latest.json
 
 ### Verification

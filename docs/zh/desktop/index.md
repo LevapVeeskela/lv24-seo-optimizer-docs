@@ -7,7 +7,7 @@ description: LV24 SEO Optimizer 桌面外壳增加了什么、签名更新如何
 
 LV24 SEO Optimizer Desktop 是围绕 `lv24-seo` 引擎的本地、离线优先 Tauri v2 外壳。Python CLI 仍是核心引擎：它负责提供商客户端、抓取规则、分析、报告构建和投递。桌面端增加的是 React 界面和 Rust 进程桥，而不是第二套 SEO 实现。
 
-`0.2.0` 版本是多平台预览。它以内置 PyInstaller onedir 边车的形式捆绑 `lv24-seo 0.5.1`。没有云账号、遥测、本地 HTTP API 或搜索结果页抓取。桌面端通过固定且带允许列表的子进程桥与引擎通信。
+`0.2.1` 是当前补丁版本。它以内置 PyInstaller onedir 边车的形式捆绑 `lv24-seo 0.5.1`。没有云账号、遥测、本地 HTTP API 或搜索结果页抓取。桌面端通过固定且带允许列表的子进程桥与引擎通信。
 
 ## 增加了什么
 
@@ -17,6 +17,7 @@ LV24 SEO Optimizer Desktop 是围绕 `lv24-seo` 引擎的本地、离线优先 T
 - **报告。** 在本地运行周报，将 `report.json` 和 `report.html` 写入应用数据目录，并在默认浏览器中打开 HTML。报告 HTML 从不嵌入应用 webview。
 - **建议与智能体队列。** 将报告和统计发现转换为有边界的 Markdown 提示词。你可以复制提示词、导出为 `.md`，或将其保存在带状态的本地智能体队列中。队列存储在 webview 的本地存储中；不会自动提交任何内容。
 - **通过 stdin 传递密钥。** token 输入是密码字段，只通过 IPC 发送一次。Rust 层将其传给 `lv24-seo auth set --provider <p> --stdin`，清零缓冲区，并且从不把值写入日志、MobX 存储、localStorage、剪贴板或诊断包。保存后，界面只显示是否存在及来源。
+- **与 CLI 共享密钥存储。** 桌面应用在同一操作系统用户下运行同一引擎，因此在终端通过 `lv24-seo auth set` 保存的 token 在桌面应用中可见，反之亦然。系统钥匙串条目使用服务名 `lv24-seo` 和相同的密钥名；`LV24_SEO_*` 环境变量会被继承。只有两个界面使用同一 workspace/data 目录时，才共享显式启用的 `<data-dir>/secrets.json` 回退文件。
 - **更新面板。** 在启动时和按需检查已签名的 `latest.json`，显示发行说明，并且只有在你确认后才安装。
 
 仪表板和报告屏幕基于与终端相同的引擎命令：
@@ -32,7 +33,7 @@ lv24-seo report weekly --days 7 --lag-days 2 --json
 
 | 构建类型 | 安装方式 | 应用内更新 |
 |---|---|---|
-| Windows NSIS | `LV24.SEO.Optimizer_0.2.0_x64-setup.exe` | 是 |
+| Windows NSIS | `LV24.SEO.Optimizer_0.2.1_x64-setup.exe` | 是 |
 | Windows 便携 ZIP | 解压整个文件夹并运行 `lv24-seo-desktop.exe` | 否 |
 | Linux AppImage | `chmod +x` 并运行 | 是 |
 | Linux deb | `sudo apt install ./*_amd64.deb` | 否 |
@@ -75,7 +76,7 @@ Windows 需要 Windows 10/11 x64 和 WebView2。Linux 仅提供 x64，基于 Ubu
 
 在 Linux 上，CLI 运行器继承 Secret Service 所需的会话总线和 XDG 运行时变量（`DBUS_SESSION_BUS_ADDRESS`、`XDG_RUNTIME_DIR`、`TMPDIR` 及相关路径），同时过滤无关的主机变量。这使桌面进程可以访问操作系统钥匙串。密钥值仍然只通过 stdin 传递。如果钥匙串不可用，请使用 `LV24_SEO_*` 环境变量或引擎显式启用的文件回退。
 
-## 0.2.0 中的抓取
+## 0.2.1 中的抓取
 
 桌面端在 Settings 表单中提供抓取设置，并在报告和建议中呈现抓取发现。`0.2.0` 界面没有单独的 Crawl 屏幕，长时间引擎调用没有任务进度或取消按钮。需要完整抓取输出和 sitemap 覆盖差异时，请在终端运行 `lv24-seo crawl`。
 
@@ -92,7 +93,7 @@ Windows 需要 Windows 10/11 x64 和 WebView2。Linux 仅提供 x64，基于 Ubu
 | 更新签名失败 | 软件包与内嵌密钥不匹配 | 产物被阻止；从发行页面重新下载并校验校验和 |
 | 卡片显示 `missing_token` | 缺少提供商 token | 运行 `lv24-seo auth set --provider <p> --stdin` |
 | 卡片显示 `no_data` | 提供商可访问，但该窗口没有数据行 | 扩大窗口，或检查资源和数据延迟 |
-| 长时间调用看起来卡住 | 0.2.0 没有进度或取消 | 等待命令超时；界面显示不确定的忙碌状态 |
+| 长时间调用看起来卡住 | 0.2.1 没有进度或取消 | 等待命令超时；界面显示不确定的忙碌状态 |
 
 ## 已知限制
 

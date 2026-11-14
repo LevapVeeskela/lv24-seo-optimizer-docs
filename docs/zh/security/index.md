@@ -56,6 +56,12 @@ printf '%s' "$TOKEN" | lv24-seo auth set --provider gsc --stdin
 `auth logout` 就返回 `WRITE_DISABLED`。桌面应用显示同一来源，并说明删除文件密钥不会
 删除环境变量。
 
+桌面应用和 CLI 为每个数据源使用同一条系统钥匙串记录：服务名 `lv24-seo`，用户名为
+`gsc_token`、`psi_api_key` 等。终端中输入的 token 会立即出现在桌面应用的 `auth status`，
+桌面应用中输入的 token 也对 CLI 可见；webview 或应用数据目录中没有第二份副本。
+`LV24_SEO_*` 环境变量由桌面应用的 CLI 运行器继承。只有使用同一 workspace/data 目录时，
+显式启用的 `<data-dir>/secrets.json` 回退文件才共享。
+
 密钥不得出现在 `seo.toml`、版本控制、报告或测试夹具中。日志在格式化器层面脱敏，而
 不是在每个调用点：敏感键、已知令牌前缀和 32 字符以上的不透明串都会被掩码。脱敏是
 纵深防御，调用方仍不得记录原始凭据。`config show` 把看起来像密钥的键掩码为 `***`，
