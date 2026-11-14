@@ -29,8 +29,8 @@ providers/crawl  provider adapters · fetcher · sitemap · log ingest
 core             config · http · errors · time · write gate
 ```
 
-Dependencies point downward only. `providers` and `crawl` never import `report` or `cli`. Analysis depends on store models, not on provider
-client classes. Adapters never mutate the database; the caller persists.
+Dependencies point downward only. `providers` and `crawl` never import `report` or `cli`. Analysis depends on store models, not on provider client classes.
+Adapters never mutate the database; the caller persists.
 
 ## Engine package layout
 
@@ -46,16 +46,16 @@ client classes. Adapters never mutate the database; the caller persists.
 | `cli/` | Typer commands and human renderers |
 | `automation/` | Scheduler generators, delivery recipes, GitHub Actions recipes |
 
-`src/lv24_seo/mcp/registry.py` is the single source of truth for tool metadata. It drives the MCP JSON schemas, CLI help,
-`schemas/tools.json` and the documentation tables. Never hand-edit a generated file; regenerate it with:
+`src/lv24_seo/mcp/registry.py` is the single source of truth for tool metadata. It drives the MCP JSON schemas, CLI help, `schemas/tools.json` and the
+documentation tables. Never hand-edit a generated file; regenerate it with:
 
 ```bash
 python -m lv24_seo.mcp.registry --write
 python -m lv24_seo.mcp.registry --check
 ```
 
-There are 11 tools: nine read tools and two gated write tools. `seo_crawl_site` and `seo_weekly_report` are read tools that persist local
-snapshots, so the generated schema adds `writes_local_state` and marks them `readOnlyHint: false`.
+There are 11 tools: nine read tools and two gated write tools. `seo_crawl_site` and `seo_weekly_report` are read tools that persist local snapshots, so the
+generated schema adds `writes_local_state` and marks them `readOnlyHint: false`.
 
 ## Provider contract
 
@@ -98,11 +98,11 @@ CLI `--json` and MCP structured output use one envelope:
 | `meta` | At least `version`; may add `truncated`, `data_age_days`, `limitations`, `sources` |
 | `warnings` | Missing tokens, missing properties, degraded hosts |
 
-Branch on `error.code`, not the exit code: several different failures share exit `2`. `PROPERTY_NOT_FOUND` has no dedicated exit code. Exit
-`5` is reserved for a successful payload with `meta.truncated` and `meta.strict`; no current command sets `strict`.
+Branch on `error.code`, not the exit code: several different failures share exit `2`. `PROPERTY_NOT_FOUND` has no dedicated exit code. Exit `5` is reserved for
+a successful payload with `meta.truncated` and `meta.strict`; no current command sets `strict`.
 
-Partial failure is normal. A weekly report with failing sources still returns the available sections plus `sources_failed` and `complete:
-false`. It never cancels the whole run for one engine's 401/403/429/timeout. A total outage yields an explicit no-data report.
+Partial failure is normal. A weekly report with failing sources still returns the available sections plus `sources_failed` and `complete: false`. It never
+cancels the whole run for one engine's 401/403/429/timeout. A total outage yields an explicit no-data report.
 
 ## Storage and migrations
 
@@ -120,30 +120,28 @@ SQLite runs in WAL mode. `data/seo.sqlite3` is git-ignored. The main tables are:
 | `runs` | Every executed crawl, report or provider operation |
 | `schema_migrations` | Append-only migration ledger |
 
-Daily rows and window aggregates live in different tables by construction, so overlapping windows never overwrite each other. A
-single-dimension key is stored raw; multi-dimension keys are JSON-encoded, so a value containing `|` cannot collide.
+Daily rows and window aggregates live in different tables by construction, so overlapping windows never overwrite each other. A single-dimension key is stored
+raw; multi-dimension keys are JSON-encoded, so a value containing `|` cannot collide.
 
-Schema changes are numbered migrations in `store/db.py`, recorded in `schema_migrations`. User rows are never deleted by an upgrade.
-Migration 2 labels pre-migration GSC daily rows with `accuracy=legacy_unknown_granularity`; their original window cannot be recovered.
-Normal daily reads exclude them, and callers may inspect them explicitly with `include_legacy=True`.
+Schema changes are numbered migrations in `store/db.py`, recorded in `schema_migrations`. User rows are never deleted by an upgrade. Migration 2 labels
+pre-migration GSC daily rows with `accuracy=legacy_unknown_granularity`; their original window cannot be recovered. Normal daily reads exclude them, and callers
+may inspect them explicitly with `include_legacy=True`.
 
-There are no on-disk raw provider archives. Snapshots are gzipped canonical JSON inside the `snapshots` table. `raw_retention_days` is a
-reserved setting; pruning logs that it has no effect.
+There are no on-disk raw provider archives. Snapshots are gzipped canonical JSON inside the `snapshots` table. `raw_retention_days` is a reserved setting;
+pruning logs that it has no effect.
 
 ## Report snapshots and delivery
 
-`report/builders.py` produces a `Report` dataclass that is JSON-serialisable and canonical English. `Report.to_dict()` has no locale field,
-so snapshots, report diff and MCP payloads do not change with the display language. `report/i18n.py` is presentation-only: locale catalogs
-(`en`, `ru`, `zh`), plural rules and number, percent, position and date formatting. An unknown locale falls back to English; an invalid
-numeric or date value renders as empty text, never as `0`.
+`report/builders.py` produces a `Report` dataclass that is JSON-serialisable and canonical English. `Report.to_dict()` has no locale field, so snapshots, report
+diff and MCP payloads do not change with the display language. `report/i18n.py` is presentation-only: locale catalogs (`en`, `ru`, `zh`), plural rules and
+number, percent, position and date formatting. An unknown locale falls back to English; an invalid numeric or date value renders as empty text, never as `0`.
 
-The weekly email is a 600px inline-CSS template with KPI cards, top opportunities, issue severities, merged sources, data notes and a
-footer. It has no external images, stylesheets, scripts or tracking pixels. Delivery uses a verifying TLS context, a normalized transport
-result and a semantic content hash that includes the render locale. A locale change re-sends the same period once; rebuilding it in the same
-language does not.
+The weekly email is a 600px inline-CSS template with KPI cards, top opportunities, issue severities, merged sources, data notes and a footer. It has no external
+images, stylesheets, scripts or tracking pixels. Delivery uses a verifying TLS context, a normalized transport result and a semantic content hash that includes
+the render locale. A locale change re-sends the same period once; rebuilding it in the same language does not.
 
-Report diff reads two stored weekly snapshots, by default the second newest and the newest. Metrics present in only one snapshot are
-unknown, not zero. `report diff` is read-only and makes no provider calls.
+Report diff reads two stored weekly snapshots, by default the second newest and the newest. Metrics present in only one snapshot are unknown, not zero.
+`report diff` is read-only and makes no provider calls.
 
 ## Desktop frontend
 
@@ -157,16 +155,15 @@ entities/   config, engine, report, stats, recommendation, update
 shared/     CLI transport, desktop settings/files, i18n, UI primitives, formatting
 ```
 
-There is no `widgets/` layer in `0.2.0`. The header, navigation and update badge live in `app/layout` and `features/update`; a widget layer
-is added only when a slice is genuinely reused across pages.
+There is no `widgets/` layer in `0.2.0`. The header, navigation and update badge live in `app/layout` and `features/update`; a widget layer is added only when a
+slice is genuinely reused across pages.
 
-Each slice exposes one public API and never imports another slice's internals. The envelope parser and error mapping live in `shared`;
-screens never parse raw process output. The UI locale (`en`, `ru`, `zh`) is independent from `report.locale`. Machine codes are never
-translated; unknown codes are shown raw.
+Each slice exposes one public API and never imports another slice's internals. The envelope parser and error mapping live in `shared`; screens never parse raw
+process output. The UI locale (`en`, `ru`, `zh`) is independent from `report.locale`. Machine codes are never translated; unknown codes are shown raw.
 
-MobX stores hold the root state, engine status, configuration draft, report data, recommendations and updater state. `UpdateStore` performs
-a silent startup check with a 30-second timeout, a manual check from Settings, and an install only after an explicit click. It disables
-in-app installation for portable, deb, rpm, MSI and unknown bundle types.
+MobX stores hold the root state, engine status, configuration draft, report data, recommendations and updater state. `UpdateStore` performs a silent startup
+check with a 30-second timeout, a manual check from Settings, and an install only after an explicit click. It disables in-app installation for portable, deb,
+rpm, MSI and unknown bundle types.
 
 ## Rust shell and sidecar
 
@@ -179,8 +176,8 @@ in-app installation for portable, deb, rpm, MSI and unknown bundle types.
 | `settings.rs` | UI locale, window bounds, selected config path |
 | `error.rs` | Typed errors crossing the IPC boundary |
 
-The release sidecar is a PyInstaller **onedir** tree. Onefile is rejected because it extracts on every call, starts slowly and is unsuitable
-for macOS signing. The tree is mapped into Tauri resources as `engine/lv24-seo/`; the shell resolves, in order:
+The release sidecar is a PyInstaller **onedir** tree. Onefile is rejected because it extracts on every call, starts slowly and is unsuitable for macOS signing.
+The tree is mapped into Tauri resources as `engine/lv24-seo/`; the shell resolves, in order:
 
 1. `LV24_SEO_BIN` (absolute only);
 2. `<resource_dir>/engine/lv24-seo/lv24-seo[.exe]` (`bundled`);
@@ -188,9 +185,9 @@ for macOS signing. The tree is mapped into Tauri resources as `engine/lv24-seo/`
 4. a sibling `lv24-seo/` next to the app (`sibling`);
 5. `PATH`, only when `LV24_SEO_ALLOW_PATH_ENGINE=1`.
 
-Nothing is downloaded automatically. The shell runs `lv24-seo version --json`, records the path, source and version, and compares it with
-`MIN_ENGINE_VERSION` (`0.5.1` in the current source). An older engine is marked `compatible: false`; the UI treats it as offline and shows a
-notice. A newer engine passes the gate but is not the release-tested pin.
+Nothing is downloaded automatically. The shell runs `lv24-seo version --json`, records the path, source and version, and compares it with `MIN_ENGINE_VERSION`
+(`0.5.1` in the current source). An older engine is marked `compatible: false`; the UI treats it as offline and shows a notice. A newer engine passes the gate
+but is not the release-tested pin.
 
 ## Data flow
 
@@ -204,8 +201,8 @@ notice. A newer engine passes the gate but is not the release-tested pin.
   launches the sidecar with an argv array and `--json`, parses one envelope and returns
   a typed result. One workspace is active at a time. There is no local HTTP API.
 
-Without `init`, CLI and MCP run store-less with an explicit warning. The desktop still needs a selected `seo.toml`; it does not invent a
-data directory or silently override `LV24_SEO_DATA_DIR`.
+Without `init`, CLI and MCP run store-less with an explicit warning. The desktop still needs a selected `seo.toml`; it does not invent a data directory or
+silently override `LV24_SEO_DATA_DIR`.
 
 ## Portability
 

@@ -12,7 +12,7 @@ This page separates the two products and the two kinds of signing:
 
 - the **engine** is read-only by default and gates every provider write;
 - the **desktop shell** enforces an argv, path and environment boundary;
-- **OS packages** are unsigned (Windows, Linux) or ad-hoc signed (macOS);
+- **OS packages** are, by default, unsigned (Windows, Linux) or ad-hoc signed (macOS);
 - **updater packages** are minisign-signed, which is a different trust anchor.
 
 ## Trust model at a glance
@@ -58,8 +58,8 @@ Secrets never belong in `seo.toml`, source control, reports or test fixtures. Lo
 sensitive keys, known token prefixes and opaque 32+ character runs are masked. Redaction is defence in depth; callers must still avoid
 logging raw credentials. `config show` masks secret-looking keys as `***`, and the desktop must not “unredact” it.
 
-The desktop does not retain secrets in the webview. Token input is a password field, sent once over IPC and immediately piped to `lv24-seo auth
-set --provider <p> --stdin`. The Rust layer zeroizes its buffer after the child exits. The value is not written to a log, a MobX store,
+The desktop does not retain secrets in the webview. Token input is a password field, sent once over IPC and immediately piped to
+`lv24-seo auth set --provider <p> --stdin`. The Rust layer zeroizes its buffer after the child exits. The value is not written to a log, a MobX store,
 localStorage, the clipboard, a crash report or a support bundle. On Linux the CLI runner inherits the session-bus and XDG variables that
 Secret Service needs, while unrelated host variables stay filtered; the value itself still travels only over stdin.
 
@@ -146,8 +146,8 @@ The child environment is filtered. Inherited names include the platform basics (
 variables), the Linux Secret Service variables (`DBUS_SESSION_BUS_ADDRESS`, `XDG_RUNTIME_DIR`, `XDG_CONFIG_HOME`, `XDG_DATA_HOME`,
 `XDG_CACHE_HOME`, `TMPDIR`) and every `LV24_SEO_*` name. Unrelated host variables are dropped.
 
-Configuration writes are atomic: build a `toml_edit` patch, write a temporary file next to the target, validate it with `lv24-seo config
-show`, create a timestamped backup (keeping the last five), rename, then re-read the redacted effective config. A failed validation leaves
+Configuration writes are atomic: build a `toml_edit` patch, write a temporary file next to the target, validate it with
+`lv24-seo config show`, create a timestamped backup (keeping the last five), rename, then re-read the redacted effective config. A failed validation leaves
 the original contents and mtime unchanged. There is no raw editor; edits go through validated Settings forms and field-level patches.
 
 The production webview CSP has no remote scripts, styles, fonts, images or connect targets; it allows self-hosted assets, inline styles, app-asset/data images and IPC. `withGlobalTauri` is false, and the UI uses typed API imports. There is no local HTTP API in `0.2.0`; a future one would need its own authentication and loopback binding.
@@ -166,7 +166,7 @@ Auto-update works only for Windows NSIS, macOS `.app` and Linux AppImage. deb, r
 disables the in-app installer and links to the release page. `0.1.0` has no updater, endpoint or public key, so its users install `0.2.0`
 manually once.
 
-OS package signing is separate. Windows builds have no Authenticode signature, macOS builds are ad-hoc signed only, and Linux packages are
+OS package signing is separate. By default, Windows builds have no Authenticode signature, macOS builds are ad-hoc signed only, and Linux packages are
 unsigned. The updater signature does not make an OS package trusted to SmartScreen, Gatekeeper or a distribution policy.
 
 ## Supply chain

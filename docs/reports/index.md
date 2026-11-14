@@ -36,7 +36,7 @@ lv24-seo report weekly --days 7 --lag-days 2 --send --json
 - `--lag-days` shifts both windows back and accepts 0 or more. The previous window is the equally long window immediately before the current one.
 - GSC data lags 2–3 days, so a Monday morning report is stable. The default is 7 days with a 2-day lag.
 - Windows use `report.timezone`. Provider dates are not converted.
-- MCP `seo_weekly_report` clamps `days` to 1–90 and `lag_days` to 0–14 with a warning; the CLI accepts the full 1–3660 range. Use the CLI for a longer lookback.
+- MCP `seo_weekly_report` caps `days` at 90 and `lag_days` at 14 with a warning; values below the minimum are rejected. The CLI accepts the full 1–3660 range. Use the CLI for a longer lookback.
 
 ## What the weekly report contains
 

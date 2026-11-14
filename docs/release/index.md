@@ -16,9 +16,9 @@ The desktop version and the engine version are independent, but the desktop pins
 
 ## Engine 0.5.1
 
-This is a bugfix release for the 0.5.x line. It closes release blockers found after 0.5.0: a provider failure could permanently mark a write
-as a duplicate, crawl text was retained without a bound, MCP annotations claimed two local-state tools were read-only, and several
-documented limits were not actually reachable.
+This is a bugfix release for the 0.5.x line. It closes release blockers found after 0.5.0: a provider failure could permanently mark a write as a duplicate,
+crawl text was retained without a bound, MCP annotations claimed two local-state tools were read-only, and several documented limits were not actually
+reachable.
 
 What changed:
 
@@ -55,9 +55,9 @@ Verification recorded for this release:
 | `ruff format --check` | Clean |
 | `mypy src` | Clean |
 
-New regression tests cover write-gate release and retry, the 20k text cap with exact `word_count`, MCP annotations, the 50 MB sitemap
-budget, `--days` rejection, builder signature mismatch versus an internal `TypeError`, GSC exact-cap truncation, the Windows `.cmd` launcher
-case, configured-timezone windows, metric-key collisions, negative limits, stderr warnings, scheduler block repair and Metrika auth.
+New regression tests cover write-gate release and retry, the 20k text cap with exact `word_count`, MCP annotations, the 50 MB sitemap budget, `--days`
+rejection, builder signature mismatch versus an internal `TypeError`, GSC exact-cap truncation, the Windows `.cmd` launcher case, configured-timezone windows,
+metric-key collisions, negative limits, stderr warnings, scheduler block repair and Metrika auth.
 
 Known limits in 0.5.1:
 
@@ -72,8 +72,7 @@ Known limits in 0.5.1:
 
 ## Desktop 0.2.0 assets
 
-`0.2.0` is the first multi-platform release. GitHub replaces spaces in asset names with dots; the release page is authoritative for the
-exact Linux file names.
+`0.2.0` is the first multi-platform release. GitHub replaces spaces in asset names with dots; the release page is authoritative for the exact Linux file names.
 
 | Asset | Platform | Purpose |
 |---|---|---|
@@ -88,9 +87,8 @@ exact Linux file names.
 | `latest.json` | All | Signed updater manifest |
 | `SHA256SUMS.txt` | All | SHA-256 for every published asset |
 
-The Windows installer requires Windows 10/11 x64 and the WebView2 runtime; the NSIS installer can fetch it, the portable ZIP cannot. Linux
-bundles are built on Ubuntu 22.04 with a glibc 2.35 baseline and are x64 only. macOS requires macOS 13 or later; use the `aarch64` DMG on
-Apple silicon and the `x64` DMG on Intel.
+The Windows installer requires Windows 10/11 x64 and the WebView2 runtime; the NSIS installer can fetch it, the portable ZIP cannot. Linux bundles are built on
+Ubuntu 22.04 with a glibc 2.35 baseline and are x64 only. macOS requires macOS 13 or later; use the `aarch64` DMG on Apple silicon and the `x64` DMG on Intel.
 
 ## Auto-update matrix
 
@@ -105,14 +103,14 @@ Apple silicon and the `x64` DMG on Intel.
 | MSI | No | No MSI is produced; an MSI install is treated as manual |
 | Unknown bundle | No | Settings points to the release page |
 
-Manual-only is deliberate. A deb or rpm install is owned by the package database; an MSI is not produced by this project, and the NSIS
-updater package cannot replace it; a portable ZIP has no installer to replace and may live on removable media. The desktop reports the
-installed bundle type and disables the in-app installer for those cases. It does not pretend that a manual package was updated.
+Manual-only is deliberate. A deb or rpm install is owned by the package database; an MSI is not produced by this project, and the NSIS updater package cannot
+replace it; a portable ZIP has no installer to replace and may live on removable media. The desktop reports the installed bundle type and disables the in-app
+installer for those cases. It does not pretend that a manual package was updated.
 
 ## Release pipeline
 
-The desktop workflow is manual and owner-gated. It has no push, pull-request or tag triggers. The owner starts **Actions → Desktop build →
-Run workflow** and approves the `desktop-release` environment; a non-owner run is skipped.
+The desktop workflow is manual and owner-gated. It has no push, pull-request or tag triggers. The owner starts **Actions → Desktop build → Run workflow** and
+approves the `desktop-release` environment; a non-owner run is skipped.
 
 | Input | Default | Meaning |
 |---|---|---|
@@ -130,14 +128,14 @@ The workflow default is historical. A `0.2.0` publish run must pass `engine_vers
 | `macos-15` | `aarch64-apple-darwin` | DMG |
 | `macos-15-intel` | `x86_64-apple-darwin` | DMG |
 
-All runners are standard GitHub-hosted runners. No larger runner, paid minute, paid storage or paid signing service is used. Build artifacts
-are retained for 7 days; the GitHub release is the durable distribution channel.
+All runners are standard GitHub-hosted runners. No larger runner, paid minute, paid storage or paid signing service is used. Build artifacts are retained for 7
+days; the GitHub release is the durable distribution channel.
 
 ## Sidecar pin and checksums
 
-The release sidecar is a PyInstaller **onedir** tree, built on the matching host; PyInstaller does not cross-compile. The engine, Python,
-Pydantic, Typer and PyInstaller versions are pinned in `scripts/cli-checksums.json`. `0.2.0` pins engine `0.5.1`, Python `3.12`, Pydantic
-`2.14.3`, Typer `0.29.0` and PyInstaller `6.22.3`.
+The release sidecar is a PyInstaller **onedir** tree, built on the matching host; PyInstaller does not cross-compile. The engine, Python, Pydantic, Typer and
+PyInstaller versions are pinned in `scripts/cli-checksums.json`. `0.2.0` pins engine `0.5.1`, Python `3.12`, Pydantic `2.14.3`, Typer `0.29.0` and PyInstaller
+`6.22.3`.
 
 PyInstaller onedir output is not byte-reproducible. The checksum policy is therefore split:
 
@@ -150,9 +148,8 @@ PyInstaller onedir output is not byte-reproducible. The checksum policy is there
   shipped target: matching target name, `hashPolicy: "rebuild"`, `ok: true`, a 64-hex
   hash, a positive size and the exact engine version.
 
-The checksum reports are CI evidence, not release assets. `SHA256SUMS.txt` covers the installers, updater packages, signatures and
-`latest.json`; the sidecar executable is inside those packages and is not listed separately. Users who install manually verify the
-downloaded asset against `SHA256SUMS.txt`.
+The checksum reports are CI evidence, not release assets. `SHA256SUMS.txt` covers the installers, updater packages, signatures and `latest.json`; the sidecar
+executable is inside those packages and is not listed separately. Users who install manually verify the downloaded asset against `SHA256SUMS.txt`.
 
 ```bash
 node scripts/verify-sidecar.mjs \
@@ -163,9 +160,9 @@ node scripts/verify-sidecar.mjs \
 
 ## `latest.json`, signing and publishing
 
-Updater signatures use a free Ed25519/minisign key, separate from OS code signing. The public key is embedded in the app; the private key is
-a repository secret passed only to the build step. `requireSignedVersion` is enabled, so the announced version is bound to the signed
-package. The updater accepts only a version greater than the running one, so it cannot downgrade.
+Updater signatures use a free Ed25519/minisign key, separate from OS code signing. The public key is embedded in the app; the private key is a repository secret
+passed only to the build step. `requireSignedVersion` is enabled, so the announced version is bound to the signed package. The updater accepts only a version
+greater than the running one, so it cannot downgrade.
 
 `scripts/stage-release-assets.mjs` flattens and normalizes bundle names and writes per-platform `updater-<platform>.json` metadata.
 `scripts/merge-latest-json.mjs` merges them into `latest.json`:
@@ -182,26 +179,22 @@ package. The updater accepts only a version greater than the running one, so it 
 - notes come from `docs/releases/<version>.md` when present.
 
 The release is created as a **draft** first. Assets are uploaded while it is a draft, with `latest.json` last, then the job publishes with
-`gh release edit --draft=false` and verifies the remote asset names. `releases/latest/download/latest.json` only resolves to a published
-release, so users never see a partially uploaded manifest. A rerun reuses an existing draft, clears its assets and refuses to overwrite a
-published release.
+`gh release edit --draft=false` and verifies the remote asset names. `releases/latest/download/latest.json` only resolves to a published release, so users never see a partially
+uploaded manifest. A rerun reuses an existing draft, clears its assets and refuses to overwrite a published release.
 
 ## Version pinning
 
-The desktop version must agree in `package.json`, `src-tauri/tauri.conf.json`, `src-tauri/Cargo.toml`, the Git tag and the release title.
-The engine pin lives in `scripts/cli-checksums.json`; the workflow passes `engine_version` explicitly and the release gate requires it to
-match the manifest.
+The desktop version must agree in `package.json`, `src-tauri/tauri.conf.json`, `src-tauri/Cargo.toml`, the Git tag and the release title. The engine pin lives
+in `scripts/cli-checksums.json`; the workflow passes `engine_version` explicitly and the release gate requires it to match the manifest.
 
-`MIN_ENGINE_VERSION` in `src-tauri/src/commands.rs` is `0.5.1` in the current source. The shell accepts an engine at least that new and
-marks an older one offline with a notice. A newer engine passes the gate but is not the release-tested pin. A development build may use
-`LV24_SEO_BIN` with another version; the UI labels it external and still checks the minimum. A `PATH` engine is used only when
-`LV24_SEO_ALLOW_PATH_ENGINE=1`.
+`MIN_ENGINE_VERSION` in `src-tauri/src/commands.rs` is `0.5.1` in the current source. The shell accepts an engine at least that new and marks an older one
+offline with a notice. A newer engine passes the gate but is not the release-tested pin. A development build may use `LV24_SEO_BIN` with another version; the UI
+labels it external and still checks the minimum. A `PATH` engine is used only when `LV24_SEO_ALLOW_PATH_ENGINE=1`.
 
 ## One-time 0.1.0 upgrade
 
-`0.1.0` has no updater, endpoint or public key. It cannot discover or install `0.2.0`. Download and install `0.2.0` manually once (NSIS
-installer or portable ZIP on Windows). After that, the `0.2.0` installation can auto-update to later releases when it uses an
-auto-update-capable bundle.
+`0.1.0` has no updater, endpoint or public key. It cannot discover or install `0.2.0`. Download and install `0.2.0` manually once (NSIS installer or portable
+ZIP on Windows). After that, the `0.2.0` installation can auto-update to later releases when it uses an auto-update-capable bundle.
 
 ## Rollback
 
@@ -215,8 +208,8 @@ There is no automatic downgrade. A rollback is a manual install of an older rele
 | Engine regression | Pin the previous engine version, rebuild and publish a patch |
 | Need an older desktop build | Install it manually; the updater refuses downgrades |
 
-Do not move or reuse a published tag. Keep the previous release assets available for rollback. If the endpoint must be disabled, ship a
-manual release and document it.
+Do not move or reuse a published tag. Keep the previous release assets available for rollback. If the endpoint must be disabled, ship a manual release and
+document it.
 
 ## Verifying a download
 
@@ -226,11 +219,12 @@ manual release and document it.
 sha256sum -c SHA256SUMS.txt --ignore-missing
 ```
 
-On macOS, `shasum -a 256 -c SHA256SUMS.txt` is available in the base system. On Windows, compare `Get-FileHash <file> -Algorithm SHA256`
-with the matching line. Do not run a file whose hash does not match.
+On macOS, `shasum -a 256 -c SHA256SUMS.txt` is available in the base system. On Windows, compare `Get-FileHash <file> -Algorithm SHA256` with the matching line.
+Do not run a file whose hash does not match.
 
-By default, OS packages are unsigned (Windows, Linux) or ad-hoc signed (macOS). The updater signature authenticates updates, not the first manual download. SmartScreen and Gatekeeper warnings are expected; verify the checksum and use the documented **More info → Run anyway** or **Open
-Anyway** flow. Do not disable those protections system-wide.
+By default, OS packages are unsigned (Windows, Linux) or ad-hoc signed (macOS). The updater signature authenticates updates, not the first manual download.
+SmartScreen and Gatekeeper warnings are expected; verify the checksum and use the documented **More info → Run anyway** or **Open Anyway** flow. Do not disable
+those protections system-wide.
 
 See [Security and privacy](/security/) for updater trust and [Architecture](/architecture/) for the sidecar layout.
 

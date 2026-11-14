@@ -34,7 +34,7 @@ lv24-seo auth login --provider gsc
 lv24-seo auth logout --provider gsc
 ```
 
-`auth set` принимает `gsc`, `yandex`, `metrika`, `bing`, `crux`, `psi`, `smtp` и `telegram`. Секрет читается из stdin или скрытого запроса, сохраняется в системный keychain, а команда печатает только `{provider, stored, source}`. Значение никогда не выводится, не попадает в логи и не записывается в `seo.toml`.
+`auth set` принимает `gsc`, `yandex`, `metrika`, `bing`, `crux`, `psi`, `smtp` и `telegram`. Секрет читается из stdin или скрытого запроса, сохраняется в системный keychain, а команда печатает только `{provider, stored, source}`. Значение никогда не выводится, не попадает в логи и не записывается в `seo.toml`. Если недоступны ни keychain, ни файловый fallback, команда завершается ошибкой `WRITE_DISABLED`.
 
 | Провайдер | Переменная окружения |
 |---|---|

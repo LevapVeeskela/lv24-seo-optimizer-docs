@@ -36,7 +36,7 @@ lv24-seo report weekly --days 7 --lag-days 2 --send --json
 - `--lag-days` 将两个窗口一起向后移动，接受 0 或更大值。上一窗口是紧邻当前窗口之前、长度相同的窗口。
 - GSC 数据有 2–3 天延迟，因此周一早上的报告更稳定。默认是 7 天窗口和 2 天延迟。
 - 窗口使用 `report.timezone`。提供商日期不做转换。
-- MCP `seo_weekly_report` 会把 `days` 限制在 1–90、`lag_days` 限制在 0–14，并给出警告；CLI 接受完整的 1–3660 范围。需要更长回看时请使用 CLI。
+- MCP `seo_weekly_report` 会把 `days` 上限设为 90、`lag_days` 上限设为 14，并给出警告；低于最小值的值会被拒绝。CLI 接受完整的 1–3660 范围。需要更长回看时请使用 CLI。
 
 ## 周报包含什么
 

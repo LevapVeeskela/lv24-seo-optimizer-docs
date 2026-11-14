@@ -11,7 +11,7 @@ MCP 服务器提供一个小而明确的能力面：11 个工具、3 个资源�
 
 ## 默认只读
 
-包装提供商数据行的读取响应带有 `truncated`、`total`（当提供商报告时）、`data_age_days` 和 `limitations[]`。读取工具不接受 `format` 参数。响应以文本提供，并在已安装的 MCP SDK 支持时提供 `structuredContent`；文本块是旧客户端的回退。
+返回提供商数据行的读取响应带有 `truncated`、`total`（当提供商报告时）、`data_age_days` 和 `limitations[]`。读取工具不接受 `format` 参数。响应以文本提供，并在已安装的 MCP SDK 支持时提供 `structuredContent`；文本块是旧客户端的回退。
 
 有两个工具会持久化本地状态，因此不再声明为只读：
 
@@ -37,12 +37,12 @@ MCP 服务器提供一个小而明确的能力面：11 个工具、3 个资源�
 | `seo_report_diff` | `base`、`head`，格式 `START..END` | 标题变化、问题数量、机会变动、限制、Markdown |
 | `seo_indexing_triage` | 无 | 带原因、数量、示例和 `next_action` 的桶 |
 | `seo_opportunities` | `days` 1–90（默认 28）、`limit` 1–500、`min_impressions` | 带证据和 `expected_gain` 的排序机会 |
-| `seo_recrawl_request` | `host_id`、`urls`、`allow_write` | 需确认；0.5.1 返回 `WRITE_DISABLED` |
-| `seo_sitemap_submit` | `property`、`sitemap_url`、`action`、`allow_write` | 需确认；0.5.1 返回 `WRITE_DISABLED` |
+| `seo_recrawl_request` | `host_id`、`urls`、`allow_write` | 写入受限；0.5.1 返回 `WRITE_DISABLED` |
+| `seo_sitemap_submit` | `property`、`sitemap_url`、`action`、`allow_write` | 写入受限；0.5.1 返回 `WRITE_DISABLED` |
 
 `gsc_search_analytics` 默认使用 `report.timezone` 中最近七个完整天。`seo_weekly_report` 不接受属性参数：属性、时区和默认延迟来自配置。`seo_opportunities` 返回 `expected_gain`，这是优先级估计，不是流量承诺。
 
-MCP 周报工具会把 `days` 限制在 1–90、`lag_days` 限制在 0–14 并给出警告；CLI 接受最多 3660 的 `--days`。需要更长回看时请使用 CLI。
+MCP 周报工具会把 `days` 上限设为 90、`lag_days` 上限设为 14，并给出警告；低于最小值的值会被拒绝。CLI 接受最多 3660 的 `--days`。需要更长回看时请使用 CLI。
 
 `seo_crawl_site` 按真实规则 id 过滤，例如 `robots-blocked`、`broken-internal-link` 或 `canonical-mismatch`。不存在 `rules` 参数，也不存在 `--ignore-robots` 标志。返回的问题列表最多 500 条，并带有 `meta.issues_shown`、`meta.issues_truncated` 和 `meta.issues_filtered_by`。
 
@@ -52,7 +52,7 @@ MCP 周报工具会把 `days` 限制在 1–90、`lag_days` 限制在 0–14 并
 |---|---|
 | `seo://config` | 已脱敏的有效配置 |
 | `seo://report/latest` | 本服务器会话中最后一次成功的周报，Markdown 格式 |
-| `seo://docs/tools` | 十一个工具的生成式 JSON 参考 |
+| `seo://docs/tools` | 生成的十一个工具 JSON 参考 |
 
 资源恰好三个。没有按属性的基线资源。
 

@@ -13,7 +13,7 @@ LV24 SEO Optimizer 以本地为先。引擎（`lv24-seo 0.5.1`）负责数据源
 
 - **引擎**默认只读，并对每次数据源写入设置门禁；
 - **桌面外壳**执行 argv、路径和环境边界；
-- **操作系统安装包**未签名（Windows、Linux）或仅 ad-hoc 签名（macOS）；
+- **操作系统安装包**默认未签名（Windows、Linux）或仅 ad-hoc 签名（macOS）；
 - **更新包**由 minisign 签名，这是另一个信任锚。
 
 ## 信任模型
@@ -173,7 +173,7 @@ PID；没有通配符进程清理，因为多个 LV24 应用可以同时运行�
 portable ZIP 只能手动更新：UI 禁用应用内安装器并链接到发布页。`0.1.0` 没有更新器、
 端点和公钥，因此其用户需要手动安装一次 `0.2.0`。
 
-操作系统包签名是另一回事。Windows 构建没有 Authenticode 签名，macOS 仅 ad-hoc 签名，
+操作系统包签名是另一回事。默认情况下，Windows 构建没有 Authenticode 签名，macOS 仅 ad-hoc 签名，
 Linux 包未签名。更新器签名不会让操作系统包对 SmartScreen、Gatekeeper 或发行版策略
 变得可信。
 

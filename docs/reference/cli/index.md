@@ -5,9 +5,9 @@ description: Commands, global flags, the JSON envelope, exit codes and worked ex
 
 # CLI reference
 
-`lv24-seo` is the command-line surface of the engine. It is read-only by default, prints one
-machine-readable envelope with `--json`, and changes provider state only through three explicitly
-gated write commands. The same executable runs on Windows, macOS and Linux.
+`lv24-seo` is the command-line surface of the engine. It treats provider data as read-only by
+default, prints one machine-readable envelope with `--json`, and changes provider state only through
+three explicitly gated write commands. The same executable runs on Windows, macOS and Linux.
 
 ## Command table
 

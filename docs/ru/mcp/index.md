@@ -37,12 +37,12 @@ MCP-сервер предоставляет небольшую, продуман
 | `seo_report_diff` | `base`, `head` в формате `START..END` | Изменения заголовка, количество проблем, движение возможностей, ограничения, Markdown |
 | `seo_indexing_triage` | Нет | Корзины с причиной, количеством, примерами и `next_action` |
 | `seo_opportunities` | `days` 1–90 (по умолчанию 28), `limit` 1–500, `min_impressions` | Ранжированные возможности с доказательствами и `expected_gain` |
-| `seo_recrawl_request` | `host_id`, `urls`, `allow_write` | С подтверждением; в 0.5.1 возвращает `WRITE_DISABLED` |
-| `seo_sitemap_submit` | `property`, `sitemap_url`, `action`, `allow_write` | С подтверждением; в 0.5.1 возвращает `WRITE_DISABLED` |
+| `seo_recrawl_request` | `host_id`, `urls`, `allow_write` | С воротами записи; в 0.5.1 возвращает `WRITE_DISABLED` |
+| `seo_sitemap_submit` | `property`, `sitemap_url`, `action`, `allow_write` | С воротами записи; в 0.5.1 возвращает `WRITE_DISABLED` |
 
 `gsc_search_analytics` по умолчанию берёт последние семь полных дней в `report.timezone`. `seo_weekly_report` не принимает свойство: свойство, часовой пояс и задержка по умолчанию берутся из конфигурации. `seo_opportunities` возвращает `expected_gain` — оценку приоритета, а не обещание трафика.
 
-MCP-инструмент недельного отчёта ограничивает `days` диапазоном 1–90, а `lag_days` — 0–14 с предупреждением; CLI принимает `--days` до 3660. Если нужен более длинный период, используйте CLI.
+MCP-инструмент недельного отчёта ограничивает `days` сверху 90, а `lag_days` — 14, с предупреждением; значения ниже минимума отклоняются. CLI принимает `--days` до 3660. Если нужен более длинный период, используйте CLI.
 
 `seo_crawl_site` фильтрует по реальным id правил, например `robots-blocked`, `broken-internal-link` или `canonical-mismatch`. Параметра `rules` и флага `--ignore-robots` не существует. Возвращаемый список проблем ограничен 500 с `meta.issues_shown`, `meta.issues_truncated` и `meta.issues_filtered_by`.
 

@@ -34,7 +34,7 @@ lv24-seo auth login --provider gsc
 lv24-seo auth logout --provider gsc
 ```
 
-`auth set` accepts `gsc`, `yandex`, `metrika`, `bing`, `crux`, `psi`, `smtp` and `telegram`. It reads the secret from stdin or a hidden prompt, stores it in the OS keychain, and prints only `{provider, stored, source}`. The value is never echoed, logged or written to `seo.toml`.
+`auth set` accepts `gsc`, `yandex`, `metrika`, `bing`, `crux`, `psi`, `smtp` and `telegram`. It reads the secret from stdin or a hidden prompt, stores it in the OS keychain, and prints only `{provider, stored, source}`. The value is never echoed, logged or written to `seo.toml`. If neither the keychain nor the file fallback is available, it fails with `WRITE_DISABLED`.
 
 | Provider | Environment variable |
 |---|---|

@@ -42,7 +42,7 @@ The two write tools carry `destructiveHint: true` and require `allow_write=true`
 
 `gsc_search_analytics` defaults to the last seven full days in `report.timezone`. `seo_weekly_report` takes no property argument: the property, timezone and lag defaults come from config. `seo_opportunities` returns `expected_gain`, a prioritisation estimate, never a traffic promise.
 
-The MCP weekly tool clamps `days` to 1–90 and `lag_days` to 0–14 with a warning; the CLI accepts `--days` up to 3660. Use the CLI when a longer lookback is required.
+The MCP weekly tool caps `days` at 90 and `lag_days` at 14 with a warning; values below the minimum are rejected. The CLI accepts `--days` up to 3660. Use the CLI when a longer lookback is required.
 
 `seo_crawl_site` filters by real rule ids such as `robots-blocked`, `broken-internal-link` or `canonical-mismatch`. There is no `rules` parameter and no `--ignore-robots` flag. The returned issue list is capped at 500 with `meta.issues_shown`, `meta.issues_truncated` and `meta.issues_filtered_by`.
 

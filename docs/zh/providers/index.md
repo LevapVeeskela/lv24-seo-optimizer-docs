@@ -34,7 +34,7 @@ lv24-seo auth login --provider gsc
 lv24-seo auth logout --provider gsc
 ```
 
-`auth set` 接受 `gsc`、`yandex`、`metrika`、`bing`、`crux`、`psi`、`smtp` 和 `telegram`。它从 stdin 或隐藏提示读取密钥，存入操作系统钥匙串，并且只打印 `{provider, stored, source}`。密钥值不会被回显、写入日志或写进 `seo.toml`。
+`auth set` 接受 `gsc`、`yandex`、`metrika`、`bing`、`crux`、`psi`、`smtp` 和 `telegram`。它从 stdin 或隐藏提示读取密钥，存入操作系统钥匙串，并且只打印 `{provider, stored, source}`。密钥值不会被回显、写入日志或写进 `seo.toml`。如果钥匙串和文件回退都不可用，命令会以 `WRITE_DISABLED` 失败。
 
 | 提供商 | 环境变量 |
 |---|---|
