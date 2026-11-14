@@ -114,12 +114,12 @@ approves the `desktop-release` environment; a non-owner run is skipped.
 
 | Input | Default | Meaning |
 |---|---|---|
-| `engine_version` | `0.5.0` | Exact engine bundled in the sidecar; use `0.5.1` for 0.2.0 |
+| `engine_version` | `0.5.1` | Exact engine bundled in the sidecar |
 | `signed` | `false` | Request OS signing/notarization; not configured in this zero-spend repository |
 | `publish` | `false` | Create a GitHub release after every matrix build passes |
 | `tag` | Empty | `vX.Y.Z` release tag; required when `publish=true` |
 
-The workflow default is historical. A `0.2.0` publish run must pass `engine_version=0.5.1`; the release gate rejects a manifest mismatch.
+The default matches the `0.2.0` pin. The release gate rejects a manifest mismatch if a different version is passed.
 
 | Runner | Target | Bundles |
 |---|---|---|

@@ -113,13 +113,12 @@ portable ZIP 不能。Linux 包在 Ubuntu 22.04 上构建，glibc 2.35 基线，
 
 | 输入 | 默认值 | 含义 |
 |---|---|---|
-| `engine_version` | `0.5.0` | sidecar 中捆绑的确切引擎；0.2.0 使用 `0.5.1` |
+| `engine_version` | `0.5.1` | sidecar 中捆绑的确切引擎 |
 | `signed` | `false` | 请求操作系统签名/公证；本零支出仓库未配置 |
 | `publish` | `false` | 矩阵构建全部通过后创建 GitHub release |
 | `tag` | 空 | `vX.Y.Z` 发布标签；`publish=true` 时必填 |
 
-工作流默认值是历史遗留。`0.2.0` 发布必须传 `engine_version=0.5.1`；发布门禁会拒绝
-清单不匹配。
+默认值与 `0.2.0` 的固定版本一致。如果传入其他版本，发布门禁会拒绝清单不匹配。
 
 | Runner | Target | 包 |
 |---|---|---|

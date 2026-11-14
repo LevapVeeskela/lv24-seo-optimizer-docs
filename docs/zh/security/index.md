@@ -161,8 +161,8 @@ PID；没有通配符进程清理，因为多个 LV24 应用可以同时运行�
 
 ## 更新信任
 
-更新包使用免费的 Ed25519/minisign 密钥，与操作系统代码签名分开。公钥内嵌在
-`src-tauri/tauri.conf.json`；私钥是仓库密钥，只传给构建步骤。启用了
+更新包使用免费的 Ed25519/minisign 密钥，与操作系统代码签名分开。更新端点是
+`src-tauri/tauri.conf.json` 中配置的 HTTPS GitHub Releases URL；公钥也内嵌在那里。私钥是仓库密钥，只传给构建步骤。启用了
 `requireSignedVersion`，因此公告版本绑定到已签名包。HTTPS 保护传输；签名是信任锚。
 
 更新器只接受高于当前版本的版本，因此不能降级。它从不自行下载或安装：用户点击
@@ -180,7 +180,7 @@ Linux 包未签名。更新器签名不会让操作系统包对 SmartScreen、Ga
 ## 供应链
 
 依赖由 `package-lock.json`、`Cargo.lock` 以及 `scripts/cli-checksums.json` 中的
-引擎/PyInstaller 固定版本锁定。CI action 按 SHA 固定，下载的发布工具有校验和，评审时
+引擎/PyInstaller 固定版本锁定。引擎 CI action 按 SHA 固定；桌面工作流 action 按版本固定。下载的发布工具有校验和，评审时
 运行密钥扫描。发布产物在发布前计算校验和；`SHA256SUMS.txt` 覆盖每个已发布文件，
 包括更新器签名和 `latest.json`。
 

@@ -154,8 +154,8 @@ The production webview CSP has no remote scripts, styles, fonts, images or conne
 
 ## Updater trust
 
-Updater payloads use a free Ed25519/minisign key, separate from OS code signing. The public key is embedded in `src-tauri/tauri.conf.json`;
-the private key is a repository secret passed only to the build step. `requireSignedVersion` is enabled, so the announced version is bound
+Updater payloads use a free Ed25519/minisign key, separate from OS code signing. The updater endpoint is an HTTPS GitHub Releases URL configured in `src-tauri/tauri.conf.json`; the public key is embedded there too.
+The private key is a repository secret passed only to the build step. `requireSignedVersion` is enabled, so the announced version is bound
 to the signed package. HTTPS protects transport; the signature is the trust anchor.
 
 The updater accepts only a version greater than the running one, so it cannot downgrade. It never downloads or installs on its own: the user
@@ -171,8 +171,8 @@ unsigned. The updater signature does not make an OS package trusted to SmartScre
 
 ## Supply chain
 
-Dependencies are pinned by `package-lock.json`, `Cargo.lock` and the engine/PyInstaller pin in `scripts/cli-checksums.json`. CI actions are
-SHA-pinned, downloaded release tools have checksums, and secret scanning runs in review. Release artifacts are checksummed before
+Dependencies are pinned by `package-lock.json`, `Cargo.lock` and the engine/PyInstaller pin in `scripts/cli-checksums.json`. Engine CI actions are
+SHA-pinned; desktop workflow actions are version-tagged. Downloaded release tools have checksums, and secret scanning runs in review. Release artifacts are checksummed before
 publication; `SHA256SUMS.txt` covers every published asset, including updater signatures and `latest.json`.
 
 The sidecar is a PyInstaller **onedir** tree, not onefile. `scripts/verify-sidecar.mjs` checks the executable and the exact engine version.
