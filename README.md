@@ -9,6 +9,25 @@ Live at <https://seo.lv24.by/>. The site ships English at `/`, Russian at
 locales with identical commands and code blocks (`npm test` enforces this), and
 the pages carry `hreflang` alternates.
 
+## Coverage
+
+| Section | Routes | What it covers |
+|---|---|---|
+| Start | `/start/`, `/install/`, `/desktop/` | First run, engine/npm/desktop install, desktop features and update matrix |
+| Use | `/providers/`, `/reports/`, `/crawl/`, `/automation/`, `/mcp/` | Provider capabilities, weekly reports/diffs, crawl rules, scheduling/delivery, MCP tools and skills |
+| Operate | `/security/`, `/architecture/`, `/troubleshooting/`, `/release/` | Secrets and write gates, engine/desktop architecture, diagnostics, release/update pipeline |
+| Reference | `/reference/cli/`, `/reference/config/`, `/faq/` | Filterable CLI table, `seo.toml` keys, 20 common questions |
+
+The documented product surface today:
+
+| Surface | Count |
+|---|---|
+| CLI | 17 command groups, every command with `--json` |
+| MCP | 11 tools, 3 resources, 3 prompts |
+| Skills | 3 canonical skills (`seo-weekly`, `seo-indexing-triage`, `seo-technical-audit`) |
+| Desktop | Windows NSIS/portable, Linux AppImage/deb/rpm, macOS DMG; signed updates for NSIS, `.app` and AppImage |
+| Automation | cron, systemd timer, Windows Task Scheduler, SMTP and Telegram delivery |
+
 ## Quick start
 
 Node.js >= 20 (see `engines` in `package.json`); `npm ci` requires the committed
