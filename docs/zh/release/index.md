@@ -80,7 +80,7 @@ description: 引擎 0.5.1 变更、桌面 0.2.0 产物、签名自动更新矩�
 | `LV24.SEO.Optimizer_0.2.0_aarch64.app.tar.gz` + `.sig` | macOS Apple silicon | 已签名更新包 |
 | `LV24.SEO.Optimizer_0.2.0_x64.app.tar.gz` + `.sig` | macOS Intel | 已签名更新包 |
 | `*_amd64.AppImage` + `.AppImage.sig` | Linux x64 | AppImage；已签名更新包 |
-| `*_amd64.deb`, `*_amd64.rpm` | Linux x64 | 包管理器安装；仅手动 |
+| `*_amd64.deb`, `LV24.SEO.Optimizer-0.2.0-1.x86_64.rpm` | Linux x64 | 包管理器安装；仅手动 |
 | `latest.json` | 全部 | 已签名更新清单 |
 | `SHA256SUMS.txt` | 全部 | 每个已发布产物的 SHA-256 |
 
@@ -124,8 +124,8 @@ portable ZIP 不能。Linux 包在 Ubuntu 22.04 上构建，glibc 2.35 基线，
 |---|---|---|
 | `windows-latest` | `x86_64-pc-windows-msvc` | NSIS |
 | `ubuntu-22.04` | `x86_64-unknown-linux-gnu` | AppImage、deb、rpm |
-| `macos-15` | `aarch64-apple-darwin` | DMG |
-| `macos-15-intel` | `x86_64-apple-darwin` | DMG |
+| `macos-15` | `aarch64-apple-darwin` | DMG + app |
+| `macos-15-intel` | `x86_64-apple-darwin` | DMG + app |
 
 所有 runner 都是标准 GitHub 托管运行器。不使用更大的 runner、付费分钟、付费存储或
 付费签名服务。构建产物保留 7 天；GitHub release 是持久分发渠道。

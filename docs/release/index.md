@@ -83,7 +83,7 @@ Known limits in 0.5.1:
 | `LV24.SEO.Optimizer_0.2.0_aarch64.app.tar.gz` + `.sig` | macOS Apple silicon | Signed updater package |
 | `LV24.SEO.Optimizer_0.2.0_x64.app.tar.gz` + `.sig` | macOS Intel | Signed updater package |
 | `*_amd64.AppImage` + `.AppImage.sig` | Linux x64 | AppImage; signed updater package |
-| `*_amd64.deb`, `*_amd64.rpm` | Linux x64 | Package-manager installs; manual-only |
+| `*_amd64.deb`, `LV24.SEO.Optimizer-0.2.0-1.x86_64.rpm` | Linux x64 | Package-manager installs; manual-only |
 | `latest.json` | All | Signed updater manifest |
 | `SHA256SUMS.txt` | All | SHA-256 for every published asset |
 
@@ -125,8 +125,8 @@ The default matches the `0.2.0` pin. The release gate rejects a manifest mismatc
 |---|---|---|
 | `windows-latest` | `x86_64-pc-windows-msvc` | NSIS |
 | `ubuntu-22.04` | `x86_64-unknown-linux-gnu` | AppImage, deb, rpm |
-| `macos-15` | `aarch64-apple-darwin` | DMG |
-| `macos-15-intel` | `x86_64-apple-darwin` | DMG |
+| `macos-15` | `aarch64-apple-darwin` | DMG + app |
+| `macos-15-intel` | `x86_64-apple-darwin` | DMG + app |
 
 All runners are standard GitHub-hosted runners. No larger runner, paid minute, paid storage or paid signing service is used. Build artifacts are retained for 7
 days; the GitHub release is the durable distribution channel.

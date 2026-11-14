@@ -92,7 +92,7 @@ description: Изменения движка 0.5.1, артефакты прил�
 | `LV24.SEO.Optimizer_0.2.0_aarch64.app.tar.gz` + `.sig` | macOS Apple silicon | Подписанный пакет обновления |
 | `LV24.SEO.Optimizer_0.2.0_x64.app.tar.gz` + `.sig` | macOS Intel | Подписанный пакет обновления |
 | `*_amd64.AppImage` + `.AppImage.sig` | Linux x64 | AppImage; подписанный пакет обновления |
-| `*_amd64.deb`, `*_amd64.rpm` | Linux x64 | Установка менеджером пакетов; manual-only |
+| `*_amd64.deb`, `LV24.SEO.Optimizer-0.2.0-1.x86_64.rpm` | Linux x64 | Установка менеджером пакетов; manual-only |
 | `latest.json` | Все | Подписанный манифест обновлений |
 | `SHA256SUMS.txt` | Все | SHA-256 каждого опубликованного артефакта |
 
@@ -140,8 +140,8 @@ pull-request или tag. Владелец запускает **Actions → Deskt
 |---|---|---|
 | `windows-latest` | `x86_64-pc-windows-msvc` | NSIS |
 | `ubuntu-22.04` | `x86_64-unknown-linux-gnu` | AppImage, deb, rpm |
-| `macos-15` | `aarch64-apple-darwin` | DMG |
-| `macos-15-intel` | `x86_64-apple-darwin` | DMG |
+| `macos-15` | `aarch64-apple-darwin` | DMG + app |
+| `macos-15-intel` | `x86_64-apple-darwin` | DMG + app |
 
 Все runners — стандартные GitHub-hosted. Платные larger runner, минуты, хранилище и
 сервисы подписи не используются. Артефакты сборки хранятся 7 дней; GitHub release —
