@@ -5,8 +5,8 @@ description: Threat model, secret handling, write gates, SSRF defenses, desktop 
 
 # Security and privacy
 
-LV24 SEO Optimizer is local-first. The engine (`lv24-seo 0.5.1`) does the provider, crawl, storage and report work. The desktop app
-(`0.2.1`) is a UI and process shell around that engine; it does not reimplement provider clients and does not proxy provider traffic.
+LV24 SEO Optimizer is local-first. The engine (`lv24-seo 0.5.2`) does the provider, crawl, storage and report work. The desktop app
+(`0.2.2`) is a UI and process shell around that engine; it does not reimplement provider clients and does not proxy provider traffic.
 
 This page separates the two products and the two kinds of signing:
 
@@ -51,8 +51,9 @@ printf '%s' "$TOKEN" | lv24-seo auth set --provider gsc --stdin
 ```
 
 `auth status` reports `present`, the source (`env`, `keyring`, `file`, `missing`) and an expiry when known. It never prints a value. An
-environment token is read-only: `auth set` and `auth logout` return `WRITE_DISABLED` while it is set. The desktop shows the same source and
-explains that removing a file secret does not remove an environment variable.
+environment token is read-only: `auth set` and `auth logout` return `WRITE_DISABLED` while it is set. The desktop shows the same source,
+explains that removing a file secret does not remove an environment variable, and does not offer a delete action that cannot work. An
+`auth logout` that reports `deleted: false` is shown as “nothing was deleted”, not as success.
 
 The desktop and CLI share the same OS keychain entry per provider: service `lv24-seo`, username
 `gsc_token`, `psi_api_key`, and so on. A token entered in a terminal is already available in the
@@ -61,9 +62,12 @@ second copy in the webview or the app data directory. `LV24_SEO_*` environment v
 inherited by the desktop's CLI runner. The opt-in `<data-dir>/secrets.json` fallback is shared only
 when both surfaces use the same workspace/data directory.
 
-Secrets never belong in `seo.toml`, source control, reports or test fixtures. Logging redacts at the formatter level, not at each call site:
-sensitive keys, known token prefixes and opaque 32+ character runs are masked. Redaction is defence in depth; callers must still avoid
-logging raw credentials. `config show` masks secret-looking keys as `***`, and the desktop must not “unredact” it.
+Secrets never belong in `seo.toml`, source control, reports or test fixtures. The redacting formatter masks sensitive keys, known token
+prefixes and opaque 32+ character runs, but it is only installed when `LV24_SEO_LOG_LEVEL` is set. The CLI callback and
+`lv24-seo mcp serve` are the only process entry points that install it; a library import, `create_server()`, `SeoService` or a provider
+client never replaces the caller's root handlers. Output is one JSON line per record when stderr is not a terminal (pipe, scheduler log,
+MCP host) and a plain line otherwise. The MCP transport logs to stderr only; stdout stays the protocol. Redaction is defence in depth;
+callers must still avoid logging raw credentials. `config show` masks secret-looking keys as `***`, and the desktop must not “unredact” it.
 
 The desktop does not retain secrets in the webview. Token input is a password field, sent once over IPC and immediately piped to
 `lv24-seo auth set --provider <p> --stdin`. The Rust layer zeroizes its buffer after the child exits. The value is not written to a log, a MobX store,
@@ -83,7 +87,10 @@ Provider reads are safe to run without a write flag. Provider mutations pass thr
    exception releases it.
 
 The token is an HMAC over the action, target, full plan hash and expiry, and lives for 300 seconds. Changing the URLs, host, key, property
-or summary invalidates it. Write calls are never retried automatically.
+or summary invalidates it. Write calls are never retried automatically. With an initialised workspace the CLI attaches the SQLite
+idempotency ledger, so replaying the same token returns `status: skipped` with `reason: duplicate` and the provider is called once.
+Without a data directory the apply still runs, but the envelope warns that replay protection is off for the token's five-minute lifetime.
+A dry run opens no ledger and creates no database.
 
 | Action | State in this build |
 |---|---|
@@ -134,8 +141,11 @@ limiting is process-local and cannot guarantee account-wide daily quotas across 
 
 ## Data handling and injection
 
-SQLite is local and git-ignored. Schema changes ship as numbered migrations recorded in `schema_migrations`; an upgrade does not delete user
-rows. Back up the database before upgrading. Legacy rows of unknown temporal granularity are retained and labelled, not silently converted.
+SQLite is local and git-ignored. A relative `storage.data_dir` written in `seo.toml` is anchored to that file's parent, so the same
+config uses the same database from any working directory; the built-in default and `LV24_SEO_DATA_DIR` remain process-scoped.
+`doctor --json` reports `meta.data_dir` and `meta.data_dir_source`. Schema changes ship as numbered migrations recorded in
+`schema_migrations`; an upgrade does not delete user rows. Back up the database before upgrading. Legacy rows of unknown temporal
+granularity are retained and labelled, not silently converted.
 
 Repository SQL uses bound parameters, never string interpolation. Multi-dimension metric keys are JSON-encoded, so values containing `|`
 cannot collide. Report HTML escapes every dynamic value and uses no external images, stylesheets, scripts or tracking pixels. The desktop
@@ -153,11 +163,18 @@ The child environment is filtered. Inherited names include the platform basics (
 variables), the Linux Secret Service variables (`DBUS_SESSION_BUS_ADDRESS`, `XDG_RUNTIME_DIR`, `XDG_CONFIG_HOME`, `XDG_DATA_HOME`,
 `XDG_CACHE_HOME`, `TMPDIR`) and every `LV24_SEO_*` name. Unrelated host variables are dropped.
 
-Configuration writes are atomic: build a `toml_edit` patch, write a temporary file next to the target, validate it with
-`lv24-seo config show`, create a timestamped backup (keeping the last five), rename, then re-read the redacted effective config. A failed validation leaves
-the original contents and mtime unchanged. There is no raw editor; edits go through validated Settings forms and field-level patches.
+Configuration and settings writes are durable and private: build a `toml_edit` patch, write a temporary `0600` file next to the target, fsync it,
+validate it with `lv24-seo config show`, create a timestamped `0600` backup (keeping the last five) and fsync it, rename, then fsync
+the parent directory and re-read the redacted effective config. A failed validation leaves the original contents and mtime unchanged.
+Reads are bounded at 8 MiB and reject a non-regular or oversized file. Settings load per field, so one malformed value does not discard
+the rest. A stale saved config path is tolerated and reported as missing. Windows reserved device names and trailing dots or spaces are
+rejected in every path component. There is no raw editor; edits go through validated Settings forms and field-level patches.
 
-The production webview CSP has no remote scripts, styles, fonts, images or connect targets; it allows self-hosted assets, inline styles, app-asset/data images and IPC. `withGlobalTauri` is false, and the UI uses typed API imports. There is no local HTTP API in `0.2.1`; a future one would need its own authentication and loopback binding.
+Workspace, report, doctor and secret state is cleared when the workspace changes or the engine goes offline, so a previous project's
+data is never shown against a new workspace. Actions that cannot succeed are disabled rather than failing on click. The en/ru/zh
+catalogues are at parity; a missing key is a test failure.
+
+The production webview CSP has no remote scripts, styles, fonts, images or connect targets; it allows self-hosted assets, inline styles, app-asset/data images and IPC. `withGlobalTauri` is false, and the UI uses typed API imports. There is no local HTTP API in `0.2.2`; a future one would need its own authentication and loopback binding.
 
 ## Updater trust
 
@@ -169,8 +186,13 @@ The updater accepts only a version greater than the running one, so it cannot do
 presses **Download and install**, and an unsaved configuration draft disables the button. A signature failure blocks that artifact, marks
 the error as non-retryable and points to the release page; it is never downgraded to an offline warning or retried automatically.
 
+Immediately before the installer starts, the shell stops the engine sidecar PIDs **this app instance registered**. The sidecar lives
+inside the installed resource directory, so a live process keeps it locked and breaks the NSIS update. Only exact tracked PIDs are
+stopped; nothing is matched by image name, so another installed copy, a portable build or a terminal run is untouched. A cleanup
+failure blocks the install with `UPDATE_ENGINE_BUSY` instead of launching an installer that will fail halfway.
+
 Auto-update works only for Windows NSIS, macOS `.app` and Linux AppImage. deb, rpm, MSI and the portable ZIP are manual-only: the UI
-disables the in-app installer and links to the release page. `0.1.0` has no updater, endpoint or public key, so its users install `0.2.1`
+disables the in-app installer and links to the release page. `0.1.0` has no updater, endpoint or public key, so its users install `0.2.2`
 manually once.
 
 OS package signing is separate. By default, Windows builds have no Authenticode signature, macOS builds are ad-hoc signed only, and Linux packages are
@@ -201,4 +223,4 @@ sending. A secret that was exposed should be rotated, not merely deleted from th
 
 See [Architecture](/architecture/) for the trust boundaries and [Releases and updates](/release/) for the signed updater matrix.
 
-Source: `_source/engine-security.md`, `_source/desktop-security.md`, `_source/engine-architecture.md`, `_source/desktop-architecture.md`.
+Source: `_source/engine-security.md`, `_source/desktop-security.md`, `_source/engine-architecture.md`, `_source/desktop-architecture.md`, `_source/engine-releases-0.5.2.md`, `_source/desktop-releases-0.2.2.md`.

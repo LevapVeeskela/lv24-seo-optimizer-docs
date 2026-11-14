@@ -41,6 +41,11 @@ the scheduler environment that runs the command.
 Unsupported `LV24_SEO_*` variables are ignored for forward compatibility. Secret variables are
 listed under [Secrets](#secrets); they are resolved by the secret store, not by this config model.
 
+`LV24_SEO_LOG_LEVEL` is not a config key. Set it to `DEBUG`, `INFO`, `WARNING`, … to opt the process
+into redacting logging. The CLI and `lv24-seo mcp serve` install the handler; an unset variable leaves
+the caller's logging configuration untouched. Output is one JSON line per record when stderr is not a
+terminal (pipe, scheduler log, MCP host) and a plain line otherwise.
+
 ## Key reference
 
 Every key below is optional. An absent provider block means "not configured", not a failure.
@@ -141,8 +146,34 @@ the single source of truth for every rendered surface.
 
 | Key | Type | Default | Notes |
 |---|---|---|---|
-| `data_dir` | path | `"data"` | Local directory for `seo.sqlite3` and engine state. Relative paths resolve against the working directory; the desktop runs the engine with `cwd` set to the config file's directory. |
+| `data_dir` | path | `"data"` | Local directory for `seo.sqlite3` and engine state. A relative value written in the file resolves against the config file's parent; the built-in default resolves against the working directory. `LV24_SEO_DATA_DIR` overrides the file and stays process-scoped. |
 | `raw_retention_days` | integer ≥ 0 | `90` | Reserved. No raw archives are written, so pruning is a logged no-op. |
+
+## Data directory
+
+`storage.data_dir` has three scopes:
+
+| Value | Resolved against |
+|---|---|
+| Relative value written in `seo.toml` (`data_dir = "./data"`) | the config file's parent |
+| Built-in default (no `[storage]` block) | the process working directory |
+| `LV24_SEO_DATA_DIR` | used as given; a relative value resolves against the process working directory. The environment always wins over the file |
+
+A config that pins a relative directory is self-contained: `--config /srv/site/seo.toml` uses
+`/srv/site/data` from any working directory. `lv24-seo init` creates `<config dir>/data` and writes
+`data_dir = "./data"`. Paths are made absolute with `os.path.abspath` (`~` expanded, `..` normalised);
+symlinks are deliberately not resolved, so a config reached through a link anchors its data directory
+next to the link. The SQLite store is `<data_dir>/seo.sqlite3`.
+
+`lv24-seo doctor --json` makes the scope visible: `meta.data_dir` is the effective directory,
+`meta.data_dir_source` is `config` when it is absolute (pinned by the file or an absolute
+`LV24_SEO_DATA_DIR`) and `working directory` when it is relative, and a relative directory with a
+config file present adds a warning that names the config's folder. A relative directory still works,
+but running the same config from two directories reads two different databases. Set an absolute path
+to pin it. `lv24-seo config show --json` reports the same effective path.
+
+The opt-in `<data_dir>/secrets.json` fallback follows the same directory; the desktop app and the CLI
+share it only when they resolve the same data directory.
 
 ## Secrets
 
@@ -191,7 +222,9 @@ translated. An unsupported locale fails validation instead of falling back silen
   name looks like a credential (`token`, `secret`, `password`, `api_key`, `authorization`) is masked
   with `***`.
 - `lv24-seo doctor` checks Python, platform, config readability, working-directory writability, the
-  data directory and token presence. It makes no network calls.
+  effective data directory and its scope, and token presence. It makes no network calls. A relative
+  directory is reported with `meta.data_dir_source: "working directory"` and a warning; it is not a
+  failure.
 
 ## Minimal example
 
@@ -268,7 +301,7 @@ respect_robots = true
 user_agent = "lv24-seo/0.1"
 
 [storage]
-data_dir = "./data"
+data_dir = "./data"      # relative to this file; absolute values and LV24_SEO_DATA_DIR are used as-is
 raw_retention_days = 90
 ```
 
@@ -282,4 +315,4 @@ Telegram bot token in the secret store, not in this file.
 - [Automation and delivery](/automation/)
 - [Troubleshooting](/troubleshooting/)
 
-Source: `_source/engine-config.md`, `_source/engine-data-sources.md`; 0.5.1 config model in the engine repository.
+Source: `_source/engine-config.md`, `_source/engine-data-sources.md`, `_source/engine-releases-0.5.2.md`; 0.5.2 config model in the engine repository.

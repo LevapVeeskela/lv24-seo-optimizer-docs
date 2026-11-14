@@ -11,7 +11,7 @@ Related: [Reports and diffs](/reports/), [Data sources and quotas](/providers/),
 
 ## Read-only by default
 
-Read responses that wrap provider rows carry `truncated`, `total` when the provider reports one, `data_age_days` and `limitations[]`. Read tools take no `format` parameter. Responses are available as text and, when the installed MCP SDK supports it, as `structuredContent`; the text block is the fallback for older clients.
+Read responses that wrap provider rows carry `truncated`, `total` when the provider reports one, `data_age_days` and `limitations[]`. A GSC final page that exactly fills the 50,000-row cap is reported as `truncated: true` with `rows_cap_50000`; a full page is not proof of complete coverage. Read tools take no `format` parameter. Responses are available as text and, when the installed MCP SDK supports it, as `structuredContent`; the text block is the fallback for older clients.
 
 Two tools persist local state and are no longer advertised as read-only:
 
@@ -22,7 +22,7 @@ Two tools persist local state and are no longer advertised as read-only:
 
 They save crawl or weekly snapshots but never mutate provider state and need no confirm token. MCP clients that branch on `readOnlyHint` may ask for confirmation before calling them; that is intentional.
 
-The two write tools carry `destructiveHint: true` and require `allow_write=true`. In 0.5.1 their provider handlers are not wired, so they return `WRITE_DISABLED` instead of pretending. The CLI write path has the additional dry-run and HMAC confirm-token flow described in [Automation and delivery](/automation/).
+The two write tools carry `destructiveHint: true` and require `allow_write=true`. In 0.5.2 their provider handlers are not wired, so they return `WRITE_DISABLED` instead of pretending. The CLI write path has the additional dry-run and HMAC confirm-token flow described in [Automation and delivery](/automation/).
 
 ## Tools
 
@@ -37,14 +37,14 @@ The two write tools carry `destructiveHint: true` and require `allow_write=true`
 | `seo_report_diff` | `base`, `head` as `START..END` | Headline changes, issue counts, opportunity churn, limitations, Markdown |
 | `seo_indexing_triage` | None | Buckets with reason, count, examples and `next_action` |
 | `seo_opportunities` | `days` 1–90 (default 28), `limit` 1–500, `min_impressions` | Ranked opportunities with evidence and `expected_gain` |
-| `seo_recrawl_request` | `host_id`, `urls`, `allow_write` | Gated; returns `WRITE_DISABLED` in 0.5.1 |
-| `seo_sitemap_submit` | `property`, `sitemap_url`, `action`, `allow_write` | Gated; returns `WRITE_DISABLED` in 0.5.1 |
+| `seo_recrawl_request` | `host_id`, `urls`, `allow_write` | Gated; returns `WRITE_DISABLED` in 0.5.2 |
+| `seo_sitemap_submit` | `property`, `sitemap_url`, `action`, `allow_write` | Gated; returns `WRITE_DISABLED` in 0.5.2 |
 
 `gsc_search_analytics` defaults to the last seven full days in `report.timezone`. `seo_weekly_report` takes no property argument: the property, timezone and lag defaults come from config. `seo_opportunities` returns `expected_gain`, a prioritisation estimate, never a traffic promise.
 
 The MCP weekly tool caps `days` at 90 and `lag_days` at 14 with a warning; values below the minimum are rejected. The CLI accepts `--days` up to 3660. Use the CLI when a longer lookback is required.
 
-`seo_crawl_site` filters by real rule ids such as `robots-blocked`, `broken-internal-link` or `canonical-mismatch`. There is no `rules` parameter and no `--ignore-robots` flag. The returned issue list is capped at 500 with `meta.issues_shown`, `meta.issues_truncated` and `meta.issues_filtered_by`.
+`seo_crawl_site` filters by real rule ids such as `robots-blocked`, `broken-internal-link` or `canonical-mismatch`. There is no `rules` parameter and no `--ignore-robots` flag. The returned issue list is capped at 500 with `meta.issues_shown`, `meta.issues_truncated` and `meta.issues_filtered_by`. A sitemap that fails to load reports only the exception type, never the URL or query string.
 
 ## Resources
 
@@ -154,4 +154,4 @@ Codes: `AUTH_REQUIRED`, `AUTH_INVALID`, `PROPERTY_NOT_FOUND`, `QUOTA_EXCEEDED`, 
 - **Technical audit.** Crawl up to 500 URLs with `seo_crawl_site` and summarise critical and high issues by rule id. Do not describe an unvisited URL as broken.
 - **Write request.** Prepare a recrawl plan for these URLs and show the quota first. Do not write anything until I approve the plan.
 
-Source: `_source/engine-mcp.md`, `_source/engine-skills.md`, `_source/engine-cli.md`, `_source/engine-releases-0.5.1.md`.
+Source: `_source/engine-mcp.md`, `_source/engine-skills.md`, `_source/engine-cli.md`, `_source/engine-releases-0.5.2.md`.

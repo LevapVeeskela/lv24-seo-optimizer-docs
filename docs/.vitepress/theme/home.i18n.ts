@@ -76,7 +76,7 @@ function surfaces(texts: [string, string, string, string]): SurfaceCard[] {
 }
 
 const en: HomeCopy = {
-  eyebrow: 'LV24 SEO Optimizer · Documentation · engine 0.5.1 · desktop 0.2.1',
+  eyebrow: 'LV24 SEO Optimizer · Documentation · engine 0.5.2 · desktop 0.2.2',
   title: 'SEO audits and weekly reports from Search Console, Yandex, Bing, CrUX and PSI',
   lead: 'One Python engine for search analytics, crawl audits, weekly reports and delivery — run it from the CLI, expose it to agents over MCP, schedule it, or open the desktop app. Free providers first, read-only by default.',
   ctaStart: 'Start in 5 minutes',
@@ -128,7 +128,7 @@ const en: HomeCopy = {
     ],
     [
       'Desktop app',
-      'Install 0.2.1 for Windows, Linux or macOS and connect a project.',
+      'Install 0.2.2 for Windows, Linux or macOS and connect a project.',
       'Open the desktop guide',
     ],
     [
@@ -140,13 +140,13 @@ const en: HomeCopy = {
   surfaces: surfaces([
     'lv24-seo version, doctor, crawl, report — one envelope per run, stable exit codes.',
     'stdio or HTTP MCP with 11 tools for audits, reports and indexing triage.',
-    'Tauri 0.2.1: dashboard KPIs, crawl, reports and the recommendations workbench.',
+    'Tauri 0.2.2: dashboard KPIs, crawl, reports and the recommendations workbench.',
     'cron, systemd or Task Scheduler jobs that build and deliver the weekly report.',
   ]),
 };
 
 const ru: HomeCopy = {
-  eyebrow: 'LV24 SEO Optimizer · Документация · движок 0.5.1 · приложение 0.2.1',
+  eyebrow: 'LV24 SEO Optimizer · Документация · движок 0.5.2 · приложение 0.2.2',
   title: 'SEO-аудиты и недельные отчёты из Search Console, Яндекса, Bing, CrUX и PSI',
   lead: 'Один Python-движок для поисковой аналитики, обхода и аудита сайта, недельных отчётов и доставки — запускайте из CLI, подключайте к агентам через MCP, ставьте в расписание или открывайте приложение. Сначала бесплатные источники, по умолчанию только чтение.',
   ctaStart: 'Начать за 5 минут',
@@ -202,7 +202,7 @@ const ru: HomeCopy = {
     ],
     [
       'Приложение',
-      'Установите 0.2.1 для Windows, Linux или macOS и подключите проект.',
+      'Установите 0.2.2 для Windows, Linux или macOS и подключите проект.',
       'Открыть руководство',
     ],
     [
@@ -214,13 +214,13 @@ const ru: HomeCopy = {
   surfaces: surfaces([
     'lv24-seo version, doctor, crawl, report — один конверт на запуск, стабильные коды выхода.',
     'stdio или HTTP MCP с 11 инструментами: аудиты, отчёты, разбор индексации.',
-    'Tauri 0.2.1: KPI на дашборде, обход, отчёты и мастер рекомендаций.',
+    'Tauri 0.2.2: KPI на дашборде, обход, отчёты и мастер рекомендаций.',
     'Задания cron, systemd или Task Scheduler, которые собирают и доставляют недельный отчёт.',
   ]),
 };
 
 const zh: HomeCopy = {
-  eyebrow: 'LV24 SEO Optimizer · 文档 · 引擎 0.5.1 · 桌面应用 0.2.1',
+  eyebrow: 'LV24 SEO Optimizer · 文档 · 引擎 0.5.2 · 桌面应用 0.2.2',
   title: '来自 Search Console、Yandex、Bing、CrUX 和 PSI 的 SEO 审计与周报',
   lead: '一个 Python 引擎完成搜索分析、抓取审计、周报与投递——可通过 CLI 运行、通过 MCP 交给智能体、加入定时任务，或打开桌面应用。优先使用免费数据源，默认只读。',
   ctaStart: '5 分钟上手',
@@ -264,7 +264,7 @@ const zh: HomeCopy = {
     ['数据源', '每个数据源返回什么、配额与限制。', '比较数据源'],
     [
       '桌面应用',
-      '为 Windows、Linux 或 macOS 安装 0.2.1 并连接项目。',
+      '为 Windows、Linux 或 macOS 安装 0.2.2 并连接项目。',
       '打开桌面指南',
     ],
     [
@@ -276,7 +276,7 @@ const zh: HomeCopy = {
   surfaces: surfaces([
     'lv24-seo version、doctor、crawl、report——每次运行一个信封，退出码稳定。',
     'stdio 或 HTTP MCP，提供 11 个工具，覆盖审计、报告和索引排查。',
-    'Tauri 0.2.1：仪表盘 KPI、抓取、报告和推荐工作台。',
+    'Tauri 0.2.2：仪表盘 KPI、抓取、报告和推荐工作台。',
     'cron、systemd 或 Task Scheduler 任务，自动生成并投递周报。',
   ]),
 };

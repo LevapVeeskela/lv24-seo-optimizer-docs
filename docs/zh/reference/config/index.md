@@ -38,6 +38,10 @@ description: seo.toml 的位置与优先级、所有键及默认值，以及密�
 不支持的 `LV24_SEO_*` 变量会被忽略，以保持向前兼容。密钥变量列在[密钥](#密钥)一节；它们由密钥
 存储解析，而不是由这个配置模型处理。
 
+`LV24_SEO_LOG_LEVEL` 不是配置键。设置为 `DEBUG`、`INFO`、`WARNING` 等可启用脱敏日志。CLI
+和 `lv24-seo mcp serve` 会安装处理器；未设置变量时不会改变调用方的日志配置。当 stderr 不是
+终端（管道、调度器日志、MCP 宿主）时，每条记录输出一行 JSON；否则输出普通行。
+
 ## 键参考
 
 下面的每个键都是可选的。缺少某个提供方块表示“未配置”，不是失败。
@@ -137,8 +141,31 @@ description: seo.toml 的位置与优先级、所有键及默认值，以及密�
 
 | 键 | 类型 | 默认值 | 说明 |
 |---|---|---|---|
-| `data_dir` | 路径 | `"data"` | 存放 `seo.sqlite3` 和引擎状态的本地目录。相对路径按工作目录解析；桌面应用以配置文件所在目录作为 `cwd` 运行引擎。 |
+| `data_dir` | 路径 | `"data"` | 存放 `seo.sqlite3` 和引擎状态的本地目录。文件中写入的相对值相对于配置目录解析；内置默认值相对于工作目录。`LV24_SEO_DATA_DIR` 覆盖文件并保持进程作用域。 |
 | `raw_retention_days` | 整数 ≥ 0 | `90` | 保留。不会写入原始归档，因此清理是记录日志的空操作。 |
+
+## 数据目录
+
+`storage.data_dir` 有三种作用域：
+
+| 值 | 相对于什么解析 |
+|---|---|
+| `seo.toml` 中写入的相对值（`data_dir = "./data"`） | 配置文件所在目录 |
+| 内置默认值（没有 `[storage]` 块） | 进程工作目录 |
+| `LV24_SEO_DATA_DIR` | 按给定值使用；相对值相对于进程工作目录解析。环境始终优先于文件 |
+
+固定相对目录的配置是自包含的：`--config /srv/site/seo.toml` 从任何工作目录都使用
+`/srv/site/data`。`lv24-seo init` 创建 `<config dir>/data` 并写入 `data_dir = "./data"`。
+路径通过 `os.path.abspath` 变为绝对路径（展开 `~`、规范化 `..`）；符号链接有意不解析，
+因此通过链接访问的配置会把 data-dir 锚定在链接旁。SQLite 存储为 `<data_dir>/seo.sqlite3`。
+
+`lv24-seo doctor --json` 让作用域可见：`meta.data_dir` 是有效目录，`meta.data_dir_source`
+在路径为绝对（由文件或绝对 `LV24_SEO_DATA_DIR` 固定）时是 `config`，为相对时是
+`working directory`。存在配置文件时，相对目录会添加一条指名配置目录的警告。
+`config show --json` 报告同一有效路径。设置绝对路径可固定数据库。
+
+显式启用的 `<data_dir>/secrets.json` 回退遵循同一目录；桌面端和 CLI 只有在解析到同一 data-dir
+时才共享它。
 
 ## 密钥
 
@@ -183,8 +210,9 @@ description: seo.toml 的位置与优先级、所有键及默认值，以及密�
   以 `CONFIG_INVALID` 失败并返回退出码 `2`。
 - `lv24-seo config show --json` 输出有效配置，并带有 `meta.redacted: true`。任何名称看起来像凭据
   的键（`token`、`secret`、`password`、`api_key`、`authorization`）都会以 `***` 掩码。
-- `lv24-seo doctor` 检查 Python、平台、配置可读性、工作目录可写性、数据目录和令牌存在性。不会
-  发起网络调用。
+- `lv24-seo doctor` 检查 Python、平台、配置可读性、工作目录可写性、有效数据目录及其作用域，
+  以及令牌存在性。不会发起网络调用。相对目录会显示 `meta.data_dir_source: "working directory"`
+  并带警告；这不是失败。
 
 ## 最小示例
 
@@ -261,7 +289,7 @@ respect_robots = true
 user_agent = "lv24-seo/0.1"
 
 [storage]
-data_dir = "./data"
+data_dir = "./data"      # relative to this file; absolute values and LV24_SEO_DATA_DIR are used as-is
 raw_retention_days = 90
 ```
 
@@ -275,4 +303,4 @@ raw_retention_days = 90
 - [自动化与投递](/zh/automation/)
 - [故障排查](/zh/troubleshooting/)
 
-Source: `_source/engine-config.md`, `_source/engine-data-sources.md`; 引擎仓库中 0.5.1 的配置模型。
+Source: `_source/engine-config.md`, `_source/engine-data-sources.md`, `_source/engine-releases-0.5.2.md`; 引擎仓库中 0.5.2 的配置模型。

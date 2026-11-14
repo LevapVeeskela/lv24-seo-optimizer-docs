@@ -7,9 +7,9 @@ description: 引擎包结构、数据源信封、存储、报告快照、桌面 
 
 产品有一个权威引擎和一个外壳：
 
-- `lv24-seo 0.5.1` 负责数据源客户端、抓取、分析、报告、存储、MCP 工具、CLI 命令和
+- `lv24-seo 0.5.2` 负责数据源客户端、抓取、分析、报告、存储、MCP 工具、CLI 命令和
   自动化。
-- 桌面应用 `0.2.1` 是 React webview 加 Rust 进程外壳。它渲染界面、编辑配置并启动
+- 桌面应用 `0.2.2` 是 React webview 加 Rust 进程外壳。它渲染界面、编辑配置并启动
   内置引擎；不重新实现引擎行为。
 
 当两者指向同一工作区时，共享同一份 SQLite 历史。
@@ -77,8 +77,8 @@ class ProviderResult[T]:
 
 规则：
 
-- `truncated` 根据数据源自身的上限和“还有更多数据”的证据计算，绝不猜测。恰好填满上限
-  的批次是完整的。
+- `truncated` 根据数据源自身的上限和“还有更多数据”的证据计算，绝不猜测。GSC 将恰好
+  填满上限的最后一页报告为 `truncated: true`；完整一页不能证明不存在下一行。
 - `limitations` 代码类似枚举，只在报告渲染器中翻译。
 - 降级主机是数据，不是异常：空行、`host_not_loaded` 警告和 `degraded_host` 限制。
 
@@ -107,7 +107,10 @@ CLI `--json` 和 MCP 结构化输出使用同一个信封：
 
 ## 存储与迁移
 
-SQLite 以 WAL 模式运行。`data/seo.sqlite3` 被 git 忽略。主要表：
+SQLite 以 WAL 模式运行。`data/seo.sqlite3` 被 git 忽略。`seo.toml` 中的相对
+`storage.data_dir` 锚定到配置目录；内置默认值和 `LV24_SEO_DATA_DIR` 保持进程作用域。
+`doctor --json` 报告 `meta.data_dir` 和 `meta.data_dir_source`，`config show --json`
+报告有效路径。主要表：
 
 | 表 | 用途 |
 |---|---|
@@ -159,12 +162,16 @@ entities/   config, engine, report, stats, recommendation, update
 shared/     CLI transport, desktop settings/files, i18n, UI primitives, formatting
 ```
 
-`0.2.1` 没有 `widgets/` 层。页头、导航和更新徽章位于 `app/layout` 和
+`0.2.2` 没有 `widgets/` 层。页头、导航和更新徽章位于 `app/layout` 和
 `features/update`；只有当切片确实跨页面复用时才增加 widget 层。
 
 每个切片暴露一个公共 API，从不导入另一个切片的内部实现。信封解析器和错误映射位于
 `shared`；界面从不解析原始进程输出。UI 语言（`en`、`ru`、`zh`）独立于
 `report.locale`。机器码从不翻译；未知码按原样显示。
+
+状态限定在当前工作区：切换工作区或引擎离线时，报告、统计、doctor 和密钥状态会被清除，
+不会显示上一个项目的数据。无法执行的操作会被禁用，而不是点击后失败。en/ru/zh 目录保持
+一致；缺少键是测试失败。
 
 MobX store 保存根状态、引擎状态、配置草稿、报告数据、建议和更新器状态。
 `UpdateStore` 在启动时做静默检查（30 秒超时），在 Settings 中手动检查，并且只在用户
@@ -174,9 +181,9 @@ MobX store 保存根状态、引擎状态、配置草稿、报告数据、建议
 
 | 模块 | 职责 |
 |---|---|
-| `commands.rs` | 固定 Tauri 命令、引擎状态、`MIN_ENGINE_VERSION` |
+| `commands.rs` | 固定 Tauri 命令、引擎状态、`MIN_ENGINE_VERSION`、`prepare_update` |
 | `cli.rs` | argv 构造、stdin 桥、环境过滤、超时、有界输出 |
-| `config.rs` | `toml_edit` 补丁、校验、原子替换、备份 |
+| `config.rs` | `toml_edit` 补丁、校验、持久原子替换、`0600` 备份、有界读取 |
 | `paths.rs` | config/data/log/export 根、路径允许列表、sidecar 解析 |
 | `settings.rs` | UI 语言、窗口大小、选定的配置路径 |
 | `error.rs` | 跨越 IPC 边界的类型化错误 |
@@ -187,17 +194,19 @@ MobX store 保存根状态、引擎状态、配置草稿、报告数据、建议
 1. `LV24_SEO_BIN`（仅绝对路径）；
 2. `<resource_dir>/engine/lv24-seo/lv24-seo[.exe]`（`bundled`）；
 3. `<resource_dir>/lv24-seo/lv24-seo[.exe]`（`bundled-flat`）；
-4. 应用旁的 `lv24-seo/` 目录（`sibling`）；
-5. `PATH`，仅当设置 `LV24_SEO_ALLOW_PATH_ENGINE=1`。
+4. Linux AppImage 树 `$APPDIR/usr/lib/<product>/engine/lv24-seo/`（`appimage`）；
+5. 应用旁的 `lv24-seo/` 目录（`sibling`）；
+6. `PATH`，仅当设置 `LV24_SEO_ALLOW_PATH_ENGINE=1`。
 
 不会自动下载任何内容。外壳运行 `lv24-seo version --json`，记录路径、来源和版本，并与
-`MIN_ENGINE_VERSION`（当前源码中为 `0.5.1`）比较。旧引擎标记为 `compatible: false`；
+`MIN_ENGINE_VERSION`（当前源码中为 `0.5.2`）比较。旧引擎标记为 `compatible: false`；
 UI 将其视为离线并显示提示。更新的引擎通过门禁，但不是发布测试的固定版本。
 
 ## 数据流
 
 - **CLI：** 解析参数 → 构建一个 `composition.Workspace`（配置加共享 SQLite）→ 运行一个
-  服务操作 → 关闭存储。
+  服务操作 → 关闭存储。带 `--confirm` 的写入应用会附加 SQLite 幂等账本；没有存储时信封
+  会警告：在令牌五分钟有效期内没有重放保护。
 - **MCP：** 工具通过同一 composition root 调用同一批服务。SDK 在工作线程中运行处理
   程序，但 `sqlite3` 连接绑定到创建它的线程，因此每个工具都通过 `async` 适配器注册。
   调用在事件循环线程上逐个运行；并发 `tools/call` 请求串行化。
@@ -223,4 +232,4 @@ UI 将其视为离线并显示提示。更新的引擎通过门禁，但不是�
 
 控制措施见[安全与隐私](/zh/security/)，打包方式见[发布与更新](/zh/release/)。
 
-Source: `_source/engine-architecture.md`, `_source/desktop-architecture.md`, `_source/engine-releases-0.5.1.md`, `_source/desktop-release.md`.
+Source: `_source/engine-architecture.md`, `_source/desktop-architecture.md`, `_source/engine-releases-0.5.2.md`, `_source/desktop-releases-0.2.2.md`, `_source/desktop-release.md`.

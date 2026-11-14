@@ -49,7 +49,7 @@ Loopback, private and link-local addresses are refused by default, and DNS is re
 
 Discovery starts from `Sitemap:` lines in `robots.txt` plus the standard `/sitemap.xml`. A missing standard sitemap is normal and is not reported as an error. Every candidate, index child and sitemap redirect must stay on the start origin; an off-origin target is skipped and noted.
 
-Sitemap documents get the 50 MB body budget and the 50,000-URL protocol cap. A sitemap index may read up to 20 documents to depth 2. Sitemap-only URLs are added to the crawl frontier, so a crawl can start from a sitemap even when the home page links to little.
+Sitemap documents get the 50 MB body budget and the 50,000-URL protocol cap. A sitemap index may read up to 20 documents to depth 2. Sitemap-only URLs are added to the crawl frontier, so a crawl can start from a sitemap even when the home page links to little. A sitemap that fails to load reports only the exception type (`HTTPError`, `TimeoutError`, …), never the URL or query string; a URL carrying `?key=…` must not leak into warnings or `limitations[]`.
 
 ## Sitemap coverage
 
@@ -101,8 +101,8 @@ Rules report what the crawl observed. They do not claim that an unvisited URL is
 
 ## Stored pages and issues
 
-`lv24-seo init` creates the data directory. When it exists, `crawl` opens `data/seo.sqlite3` and stores pages and issues under the crawl property id. The weekly report reads the latest stored issues for its issues section; a crawl without a store still returns the full JSON payload but persists nothing.
+`lv24-seo init` creates `<config dir>/data` and writes a relative `data_dir` anchored to the config file. When the data directory exists, `crawl` opens `data/seo.sqlite3` and stores pages and issues under the crawl property id. The weekly report reads the latest stored issues for its issues section; a crawl without a store still returns the full JSON payload but persists nothing.
 
 The CLI prints a short human summary without `--json`. With `--json`, the envelope contains `summary`, `issues`, `graph`, `errors`, `blocked` and `sitemap_coverage`. MCP `seo_crawl_site` filters issues by `include_rules`, caps the returned list at 500 and reports `issues_shown`, `issues_truncated` and `issues_filtered_by` in `meta`.
 
-Source: `_source/engine-data-sources.md`, `_source/engine-cli.md`, `_source/engine-releases-0.5.1.md`.
+Source: `_source/engine-data-sources.md`, `_source/engine-cli.md`, `_source/engine-releases-0.5.2.md`.

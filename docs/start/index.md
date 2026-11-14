@@ -25,7 +25,7 @@ lv24-seo doctor
 lv24-seo stats --days 7 --json
 ```
 
-`init` writes `seo.toml` and `data/` in the current directory. `doctor` is offline: it checks Python, the config file, the data directory and token presence, and makes no network calls. `stats` is read-only and returns one bounded envelope for the dashboard: current and previous windows, per-provider status, coverage, data age, truncation and limitations.
+`init` writes `seo.toml` and creates `<config dir>/data`; a relative `data_dir` is anchored to the config file. `doctor` is offline: it checks Python, the config file, the effective data directory and its scope, working-directory writability and token presence, and makes no network calls. `stats` is read-only and returns one bounded envelope for the dashboard: current and previous windows, per-provider status, coverage, data age, truncation and limitations.
 
 A `stats` envelope carries `period`, `previous_period`, `generated_at`, a `services` array and a `coverage` summary. Each service card has `provider`, `label`, `configured`, `ready`, `status`, `metrics`, `previous`, `rows`, `data_age_days`, `truncated`, `limitations`, `warnings` and `error`. `status` is one of `ok`, `no_data`, `missing_token`, `not_configured` or `error`.
 
@@ -54,7 +54,7 @@ GSC uses a manually supplied OAuth access token today; a service-account flow is
 
 By default the tool does not change provider state. `stats`, `doctor`, `config show`, `properties`, `gsc query`, `yandex queries`, `yandex indexing` and `report diff` do not write at all. `report weekly` without `--send` only builds and stores a local snapshot; `crawl` writes only to the local SQLite store; `init` writes `seo.toml` and `data/`.
 
-Provider writes are gated. A dry run returns a plan and a `confirm_token`; applying it requires `--allow-write` and a fresh `--confirm <token>` within five minutes, plus `LV24_SEO_WRITE_SECRET` in the environment. IndexNow really submits URLs. GSC sitemap submit and Yandex recrawl currently return `WRITE_DISABLED` instead of pretending the provider path is wired.
+Provider writes are gated. A dry run returns a plan and a `confirm_token`; applying it requires `--allow-write` and a fresh `--confirm <token>` within five minutes, plus `LV24_SEO_WRITE_SECRET` in the environment. With an initialised workspace the apply uses the SQLite idempotency ledger, so replaying the same token returns `skipped` / `duplicate` and the provider is called once. Without a data directory the apply still runs, but the envelope warns that replay protection is off for the token's five-minute lifetime. IndexNow really submits URLs. GSC sitemap submit and Yandex recrawl currently return `WRITE_DISABLED` instead of pretending the provider path is wired.
 
 The MCP server is read-only by default; its write tools are annotated and gated, and some provider paths still return `WRITE_DISABLED`. The desktop requires a confirmation dialog that names the exact target before it sends a report, installs a scheduler job, installs an MCP client entry or runs a provider write.
 
@@ -71,17 +71,18 @@ The CLI envelope is `{ok, data, meta, warnings}`. `meta.complete` is `false` whe
 
 ## Optional desktop
 
-The desktop is a preview at `0.2.1` and bundles `lv24-seo 0.5.1`. It is useful when you do not want to remember flags: choose `seo.toml` in Settings, read the dashboard, edit configuration through a validated form, open the weekly HTML report, and copy a bounded recommendation as a Markdown prompt for an agent. Windows NSIS, macOS `.app` and Linux AppImage can auto-update; portable ZIP, deb and rpm are manual-only.
+The desktop is a preview at `0.2.2` and bundles `lv24-seo 0.5.2`. It is useful when you do not want to remember flags: choose `seo.toml` in Settings, read the dashboard, edit configuration through a validated form, open the weekly HTML report, and copy a bounded recommendation as a Markdown prompt for an agent. Windows NSIS, macOS `.app` and Linux AppImage can auto-update; portable ZIP, deb and rpm are manual-only. The updater stops only the sidecar PIDs it started and blocks with `UPDATE_ENGINE_BUSY` if one cannot be stopped.
 
 ## Status and limits
 
-The engine is beta `0.5.1`; the desktop is a `0.2.1` preview. Known gaps before 1.0:
+The engine is beta `0.5.2`; the desktop is a `0.2.2` preview. Known gaps before 1.0:
 
 - GSC supports a manually supplied OAuth access token today; a service-account flow is planned.
 - GSC sitemap submit and Yandex recrawl return `WRITE_DISABLED`; IndexNow really submits.
 - `storage.raw_retention_days` is reserved; no raw archives are written yet.
-- The desktop has no separate Crawl screen and no job progress or cancel in `0.2.1`.
+- The desktop has no separate Crawl screen and no job progress or cancel in `0.2.2`.
 - `report indexing`, `report opportunities` and `report history` are planned, not shipped.
+- Logging is opt-in: set `LV24_SEO_LOG_LEVEL` to install the redacting handler in the CLI and `mcp serve`. The `--json` envelope remains the stable diagnostic interface.
 
 Unknown values stay unknown instead of being filled in. That is deliberate: a bounded answer with explicit limitations is more useful than a clean-looking number with no coverage.
 

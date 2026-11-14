@@ -49,7 +49,7 @@ lv24-seo crawl --start https://example.com/ --max-urls 500 --json
 
 发现从 `robots.txt` 中的 `Sitemap:` 行加上标准 `/sitemap.xml` 开始。标准站点地图缺失是正常的，不会报告为错误。每个候选、索引子项和站点地图重定向都必须留在起始 origin；越界目标会被跳过并记录。
 
-站点地图文档获得 50 MB 正文预算和 50,000 URL 协议上限。站点地图索引最多读取 20 个文档，深度为 2。仅出现在站点地图中的 URL 会加入抓取前沿，因此即使首页几乎没有链接，抓取也可以从站点地图开始。
+站点地图文档获得 50 MB 正文预算和 50,000 URL 协议上限。站点地图索引最多读取 20 个文档，深度为 2。仅出现在站点地图中的 URL 会加入抓取前沿，因此即使首页几乎没有链接，抓取也可以从站点地图开始。加载失败的站点地图只报告异常类型（`HTTPError`、`TimeoutError` 等），绝不报告 URL 或查询字符串；携带 `?key=…` 的 URL 不得泄漏到警告或 `limitations[]`。
 
 ## 站点地图覆盖
 
@@ -101,8 +101,8 @@ lv24-seo crawl --start https://example.com/ --max-urls 500 --json
 
 ## 已保存的页面与问题
 
-`lv24-seo init` 创建数据目录。目录存在时，`crawl` 打开 `data/seo.sqlite3`，并按抓取属性 id 保存页面和问题。周报读取最近的已保存问题用于问题部分；没有存储的抓取仍返回完整 JSON，但不持久化任何内容。
+`lv24-seo init` 创建 `<config dir>/data` 并写入锚定到配置的相对 `data_dir`。目录存在时，`crawl` 打开 `data/seo.sqlite3`，并按抓取属性 id 保存页面和问题。周报读取最近的已保存问题用于问题部分；没有存储的抓取仍返回完整 JSON，但不持久化任何内容。
 
 不带 `--json` 时，CLI 打印简短的人类可读摘要。带 `--json` 时，信封包含 `summary`、`issues`、`graph`、`errors`、`blocked` 和 `sitemap_coverage`。MCP `seo_crawl_site` 按 `include_rules` 过滤问题，返回列表最多 500 条，并在 `meta` 中报告 `issues_shown`、`issues_truncated` 和 `issues_filtered_by`。
 
-Source: `_source/engine-data-sources.md`, `_source/engine-cli.md`, `_source/engine-releases-0.5.1.md`.
+Source: `_source/engine-data-sources.md`, `_source/engine-cli.md`, `_source/engine-releases-0.5.2.md`.

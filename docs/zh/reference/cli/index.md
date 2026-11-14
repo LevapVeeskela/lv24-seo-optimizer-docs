@@ -24,13 +24,13 @@ description: lv24-seo 命令行的命令、全局参数、JSON 信封、退出�
 使用 `--json` 时，命令只输出一个 JSON 文档，不会输出其他内容：
 
 ```json
-{ "ok": true, "data": {}, "meta": { "version": "0.5.1", "duration_ms": 812 }, "warnings": [] }
+{ "ok": true, "data": {}, "meta": { "version": "0.5.2", "duration_ms": 812 }, "warnings": [] }
 ```
 
 失败的命令使用相同结构，但 `ok: false`，并用 `error` 对象代替 `data`：
 
 ```json
-{ "ok": false, "error": { "code": "AUTH_REQUIRED", "message": "Google Search Console token is missing", "retryable": false, "next_action": "lv24-seo auth login --provider gsc" }, "meta": { "version": "0.5.1" }, "warnings": ["gsc: token missing"] }
+{ "ok": false, "error": { "code": "AUTH_REQUIRED", "message": "Google Search Console token is missing", "retryable": false, "next_action": "lv24-seo auth login --provider gsc" }, "meta": { "version": "0.5.2" }, "warnings": ["gsc: token missing"] }
 ```
 
 - `data` 因命令而异。`meta` 始终包含 `version`，通常还会加入 `duration_ms`、`truncated`、
@@ -52,18 +52,22 @@ description: lv24-seo 命令行的命令、全局参数、JSON 信封、退出�
 | `5` | 部分结果：输出被截断。 | `TRUNCATED` |
 
 `WRITE_DISABLED` 的退出码是 `2` 而不是 `4`：写入在调用提供方之前就被拒绝。退出码 `5` 保留给同时
-带有 `truncated` 和 `meta.strict` 的成功信封；0.5.1 中没有任何参数会启用严格模式，因此脚本应把
+带有 `truncated` 和 `meta.strict` 的成功信封；0.5.2 中没有任何参数会启用严格模式，因此脚本应把
 `5` 视为部分结果而不是硬失败。请依据退出码和 `error.code` 判断，不要解析面向人的文本。
 
 ### 配置与参数
 
 - `--config PATH` 选择特定的 `seo.toml`。路径必须存在；文件缺失会返回 `CONFIG_INVALID`，不会
-  静默回退。
+  静默回退。解析后的路径是绝对且规范化的，因此调度器产物和相对设置不依赖进程工作目录。
 - 不带 `--config` 时，引擎先查找 `./seo.toml`，再查找平台用户配置
   （Windows 为 `%APPDATA%\lv24-seo\config.toml`，Linux 为 `~/.config/lv24-seo/config.toml`）。
 - `LV24_SEO_*` 环境变量覆盖文件中的值。`.env` 文件不会自动加载；请在 shell 或运行命令的服务
   单元中导出变量。
 - `mcp serve` 是长期运行的服务器，不接受 `--json` 和 `--config`。
+
+`doctor --json` 报告 `meta.data_dir` 和 `meta.data_dir_source`（有效目录为绝对时是 `config`，
+为相对时是 `working directory`），并在相对目录与配置文件并存时添加警告。相对目录不会导致
+检查失败。
 
 完整的键列表、默认值和密钥处理见[配置参考](/zh/reference/config/)。
 
@@ -76,9 +80,18 @@ description: lv24-seo 命令行的命令、全局参数、JSON 信封、退出�
 2. 在同一个 shell 中设置一个足够长的随机 `LV24_SEO_WRITE_SECRET`，然后在五分钟内使用
    `--allow-write --confirm TOKEN` 重新运行。
 
-令牌是对操作、目标、完整计划哈希和有效期的 HMAC，因此任何输入变化都会使其失效。CLI 不接入
-幂等账本，请把令牌视为一次性使用。IndexNow 会真正提交 URL。GSC sitemap submit 和 Yandex
+令牌是对操作、目标、完整计划哈希和有效期的 HMAC，因此任何输入变化都会使其失效。工作区初始化
+后，CLI 会附加 SQLite 幂等账本：重放同一令牌返回 `status: skipped` 和 `reason: duplicate`，
+提供商只被调用一次。没有数据目录时仍会应用，但信封会警告：在令牌五分钟有效期内没有重放保护；
+试运行不打开账本，也不创建数据库。IndexNow 会真正提交 URL。GSC sitemap submit 和 Yandex
 recrawl 目前返回 `WRITE_DISABLED`，不会假装提供方调用已经发生。
+
+### 日志
+
+日志是可选项。`LV24_SEO_LOG_LEVEL=INFO`（或 `DEBUG`、`WARNING` 等）会在 CLI 和
+`lv24-seo mcp serve` 中安装脱敏处理器；未设置变量时不会改变调用方的日志配置。当 stderr
+不是终端时，每条记录输出一行 JSON；否则输出普通行。MCP 传输只写 stderr；stdout 保持协议
+输出。`--json` 信封仍是稳定的诊断接口。
 
 ### 确定性与数据诚实
 
@@ -208,4 +221,4 @@ lv24-seo export skills --out skills/
 - [MCP 与智能体技能](/zh/mcp/)
 - [故障排查](/zh/troubleshooting/)
 
-Source: `_source/engine-cli.md`, `_source/engine-mcp.md`, `_source/engine-releases-0.5.1.md`; 引擎仓库中 0.5.1 的 `--help` 输出。
+Source: `_source/engine-cli.md`, `_source/engine-mcp.md`, `_source/engine-releases-0.5.2.md`; 引擎仓库中 0.5.2 的 `--help` 输出。

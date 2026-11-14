@@ -25,7 +25,7 @@ lv24-seo doctor
 lv24-seo stats --days 7 --json
 ```
 
-`init` 在当前目录写入 `seo.toml` 和 `data/`。`doctor` 离线运行：检查 Python、配置文件、数据目录和 token 是否存在，不发起网络调用。`stats` 只读，返回一个用于仪表板的有边界信封：当前和上一窗口、每个提供商的状态、覆盖情况、数据时效、截断和限制。
+`init` 在当前目录写入 `seo.toml` 并创建 `<config dir>/data`；相对 `data_dir` 锚定到配置文件。`doctor` 离线运行：检查 Python、配置文件、有效数据目录及其作用域、当前目录可写性和 token 是否存在，不发起网络调用。`stats` 只读，返回一个用于仪表板的有边界信封：当前和上一窗口、每个提供商的状态、覆盖情况、数据时效、截断和限制。
 
 `stats` 信封包含 `period`、`previous_period`、`generated_at`、`services` 数组和 `coverage` 汇总。每个服务卡片包含 `provider`、`label`、`configured`、`ready`、`status`、`metrics`、`previous`、`rows`、`data_age_days`、`truncated`、`limitations`、`warnings` 和 `error`。`status` 取值为 `ok`、`no_data`、`missing_token`、`not_configured` 或 `error`。
 
@@ -52,9 +52,9 @@ GSC 目前使用手动提供的 OAuth 访问令牌；服务账号流程已计划
 
 ## 默认只读
 
-默认情况下，工具不会更改提供商状态。`stats`、`doctor`、`config show`、`properties`、`gsc query`、`yandex queries`、`yandex indexing` 和 `report diff` 完全不写入。`report weekly` 不带 `--send` 时只构建并保存本地快照；`crawl` 只写入本地 SQLite 存储；`init` 写入 `seo.toml` 和 `data/`。
+默认情况下，工具不会更改提供商状态。`stats`、`doctor`、`config show`、`properties`、`gsc query`、`yandex queries`、`yandex indexing` 和 `report diff` 完全不写入。`report weekly` 不带 `--send` 时只构建并保存本地快照；`crawl` 只写入本地 SQLite 存储；`init` 写入 `seo.toml` 并创建 `<config dir>/data`。
 
-提供商写操作受门控。试运行返回计划和 `confirm_token`；应用它需要 `--allow-write` 和五分钟内的新 `--confirm <token>`，以及环境中的 `LV24_SEO_WRITE_SECRET`。IndexNow 会真正提交 URL。GSC sitemap 提交和 Yandex 重新抓取目前返回 `WRITE_DISABLED`，而不是假装提供商路径已接通。
+提供商写操作受门控。试运行返回计划和 `confirm_token`；应用它需要 `--allow-write` 和五分钟内的新 `--confirm <token>`，以及环境中的 `LV24_SEO_WRITE_SECRET`。工作区初始化后，应用会使用 SQLite 幂等账本：重放同一令牌返回 `skipped` / `duplicate`，提供商只被调用一次。没有数据目录时仍会应用，但信封会警告：在令牌五分钟有效期内没有重放保护。IndexNow 会真正提交 URL。GSC sitemap 提交和 Yandex 重新抓取目前返回 `WRITE_DISABLED`，而不是假装提供商路径已接通。
 
 MCP 服务器默认只读；其写工具带注解并受门控，部分提供商路径仍返回 `WRITE_DISABLED`。桌面端在发送报告、安装计划任务、安装 MCP 客户端条目或执行提供商写操作前，会要求一个指明确切目标的确认对话框。
 
@@ -71,17 +71,18 @@ CLI 信封为 `{ok, data, meta, warnings}`。当输入缺失、被截断或采�
 
 ## 可选桌面端
 
-桌面端是 `0.2.1` 预览，内置 `lv24-seo 0.5.1`。当你不想记参数时它很有用：在 Settings 中选择 `seo.toml`，查看仪表板，通过带校验的表单编辑配置，打开周报 HTML，并把有边界的建议复制为给智能体的 Markdown 提示词。Windows NSIS、macOS `.app` 和 Linux AppImage 可以自动更新；便携 ZIP、deb 和 rpm 仅手动更新。
+桌面端是 `0.2.2` 预览，内置 `lv24-seo 0.5.2`。当你不想记参数时它很有用：在 Settings 中选择 `seo.toml`，查看仪表板，通过带校验的表单编辑配置，打开周报 HTML，并把有边界的建议复制为给智能体的 Markdown 提示词。Windows NSIS、macOS `.app` 和 Linux AppImage 可以自动更新；便携 ZIP、deb 和 rpm 仅手动更新。更新器只停止它启动的 sidecar，如果无法停止会以 `UPDATE_ENGINE_BUSY` 阻止安装。
 
 ## 状态与限制
 
-引擎为 beta `0.5.1`；桌面端为 `0.2.1` 预览。1.0 之前的已知缺口：
+引擎为 beta `0.5.2`；桌面端为 `0.2.2` 预览。1.0 之前的已知缺口：
 
 - GSC 目前支持手动提供的 OAuth 访问令牌；服务账号流程已计划。
 - GSC sitemap 提交和 Yandex 重新抓取返回 `WRITE_DISABLED`；IndexNow 会真正提交。
 - `storage.raw_retention_days` 已保留；目前不会写入原始归档。
-- 桌面端 `0.2.1` 没有单独的 Crawl 屏幕，也没有任务进度或取消。
+- 桌面端 `0.2.2` 没有单独的 Crawl 屏幕，也没有任务进度或取消。
 - `report indexing`、`report opportunities` 和 `report history` 已计划，尚未发布。
+- 日志是可选项：设置 `LV24_SEO_LOG_LEVEL` 才会在 CLI 和 `mcp serve` 中安装脱敏处理器。稳定的诊断接口仍是 `--json` 信封。
 
 未知值保持未知，而不会被填充。这是刻意设计：带有明确限制的有边界答案，比没有覆盖情况却看起来很干净的数字更有用。
 

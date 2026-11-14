@@ -7,9 +7,9 @@ description: Engine package layout, provider envelopes, storage, report snapshot
 
 The product has one engine of record and one shell:
 
-- `lv24-seo 0.5.1` owns provider clients, crawl, analysis, reports, storage, MCP tools,
+- `lv24-seo 0.5.2` owns provider clients, crawl, analysis, reports, storage, MCP tools,
   CLI commands and automation.
-- The desktop app `0.2.1` is a React webview plus a Rust process shell. It renders
+- The desktop app `0.2.2` is a React webview plus a Rust process shell. It renders
   screens, edits configuration and launches the bundled engine; it does not reimplement
   engine behaviour.
 
@@ -78,7 +78,8 @@ class ProviderResult[T]:
 Rules:
 
 - `truncated` is computed from the provider's own cap and evidence of more data, never
-  guessed. A batch that exactly fills the cap is complete.
+  guessed. GSC reports a final page that exactly fills the cap as `truncated: true`; a full page
+  is not proof that no further row exists.
 - `limitations` codes are enum-like and translated only in the report renderer.
 - A degraded host is data, not an exception: empty rows, `host_not_loaded` warning and
   `degraded_host` limitation.
@@ -106,7 +107,9 @@ cancels the whole run for one engine's 401/403/429/timeout. A total outage yield
 
 ## Storage and migrations
 
-SQLite runs in WAL mode. `data/seo.sqlite3` is git-ignored. The main tables are:
+SQLite runs in WAL mode. `data/seo.sqlite3` is git-ignored. A relative `storage.data_dir` written in `seo.toml` is anchored to the
+config file's parent; the built-in default and `LV24_SEO_DATA_DIR` stay process-scoped. `doctor --json` reports `meta.data_dir` and
+`meta.data_dir_source`, and `config show --json` reports the effective path. The main tables are:
 
 | Table | Purpose |
 |---|---|
@@ -155,11 +158,15 @@ entities/   config, engine, report, stats, recommendation, update
 shared/     CLI transport, desktop settings/files, i18n, UI primitives, formatting
 ```
 
-There is no `widgets/` layer in `0.2.1`. The header, navigation and update badge live in `app/layout` and `features/update`; a widget layer is added only when a
+There is no `widgets/` layer in `0.2.2`. The header, navigation and update badge live in `app/layout` and `features/update`; a widget layer is added only when a
 slice is genuinely reused across pages.
 
 Each slice exposes one public API and never imports another slice's internals. The envelope parser and error mapping live in `shared`; screens never parse raw
 process output. The UI locale (`en`, `ru`, `zh`) is independent from `report.locale`. Machine codes are never translated; unknown codes are shown raw.
+
+State is scoped to the current workspace: changing the workspace or losing the engine clears report, stats, doctor and secret state instead of showing
+the previous project's data. Actions that cannot succeed are disabled, not left to fail on click. The en/ru/zh catalogues are at parity; a missing key is
+a test failure.
 
 MobX stores hold the root state, engine status, configuration draft, report data, recommendations and updater state. `UpdateStore` performs a silent startup
 check with a 30-second timeout, a manual check from Settings, and an install only after an explicit click. It disables in-app installation for portable, deb,
@@ -169,9 +176,9 @@ rpm, MSI and unknown bundle types.
 
 | Module | Responsibility |
 |---|---|
-| `commands.rs` | Fixed Tauri commands, engine status, `MIN_ENGINE_VERSION` |
+| `commands.rs` | Fixed Tauri commands, engine status, `MIN_ENGINE_VERSION`, `prepare_update` |
 | `cli.rs` | Argv construction, stdin bridge, environment filter, timeouts, bounded output |
-| `config.rs` | `toml_edit` patches, validation, atomic replace, backups |
+| `config.rs` | `toml_edit` patches, validation, durable atomic replace, `0600` backups, bounded reads |
 | `paths.rs` | Config/data/log/export roots, path allow-lists, sidecar resolution |
 | `settings.rs` | UI locale, window bounds, selected config path |
 | `error.rs` | Typed errors crossing the IPC boundary |
@@ -182,17 +189,20 @@ The tree is mapped into Tauri resources as `engine/lv24-seo/`; the shell resolve
 1. `LV24_SEO_BIN` (absolute only);
 2. `<resource_dir>/engine/lv24-seo/lv24-seo[.exe]` (`bundled`);
 3. `<resource_dir>/lv24-seo/lv24-seo[.exe]` (`bundled-flat`);
-4. a sibling `lv24-seo/` next to the app (`sibling`);
-5. `PATH`, only when `LV24_SEO_ALLOW_PATH_ENGINE=1`.
+4. the Linux AppImage tree `$APPDIR/usr/lib/<product>/engine/lv24-seo/` (`appimage`);
+5. a sibling `lv24-seo/` next to the app (`sibling`);
+6. `PATH`, only when `LV24_SEO_ALLOW_PATH_ENGINE=1`.
 
 Nothing is downloaded automatically. The shell runs `lv24-seo version --json`, records the path, source and version, and compares it with `MIN_ENGINE_VERSION`
-(`0.5.1` in the current source). An older engine is marked `compatible: false`; the UI treats it as offline and shows a notice. A newer engine passes the gate
+(`0.5.2` in the current source). An older engine is marked `compatible: false`; the UI treats it as offline and shows a notice. A newer engine passes the gate
 but is not the release-tested pin.
 
 ## Data flow
 
 - **CLI:** parse args → build one `composition.Workspace` (config plus shared SQLite) →
-  run one service operation → close storage.
+  run one service operation → close storage. A write apply with `--confirm` attaches the SQLite
+  idempotency ledger; a store-less apply warns that replay protection is off for the token's
+  five-minute lifetime.
 - **MCP:** tools call the same services through the same composition root. The SDK runs
   handlers in worker threads, but the `sqlite3` connection is bound to its creating
   thread, so every tool is registered through an `async` adapter. Calls run on the
@@ -219,4 +229,4 @@ Windows, macOS and Linux are supported targets:
 
 See [Security and privacy](/security/) for the controls and [Releases and updates](/release/) for packaging.
 
-Source: `_source/engine-architecture.md`, `_source/desktop-architecture.md`, `_source/engine-releases-0.5.1.md`, `_source/desktop-release.md`.
+Source: `_source/engine-architecture.md`, `_source/desktop-architecture.md`, `_source/engine-releases-0.5.2.md`, `_source/desktop-releases-0.2.2.md`, `_source/desktop-release.md`.

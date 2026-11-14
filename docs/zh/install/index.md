@@ -54,7 +54,7 @@ lv24-seo version --json
 lv24-seo doctor
 ```
 
-`version --json` 在标准信封中返回包名和版本。`doctor` 检查 Python、配置文件、可写的数据目录和 token 是否存在。它不发起网络调用，因此 `doctor` 通过并不能证明提供商 token 有效。
+`version --json` 在标准信封中返回包名和版本。`doctor` 检查 Python、配置文件、有效数据目录及其作用域（`meta.data_dir`、`meta.data_dir_source`）、当前目录可写性和 token 是否存在。它不发起网络调用，因此 `doctor` 通过并不能证明提供商 token 有效。
 
 ## 创建工作区
 
@@ -62,7 +62,7 @@ lv24-seo doctor
 lv24-seo init --property https://example.com
 ```
 
-`init` 在当前目录写入带注释的 `seo.toml` 和 `data/` 目录。除非传入 `--force`，否则它拒绝覆盖已有的 `seo.toml`。一个 `seo.toml` 描述一个项目和一组提供商目标。多个站点请保留多个配置文件，并传入 `--config path/to/seo.toml`。
+`init` 写入带注释的 `seo.toml`，创建 `<config dir>/data` 并写入 `data_dir = "./data"`，因此工作区是自包含的。除非传入 `--force`，否则它拒绝覆盖已有的 `seo.toml`。一个 `seo.toml` 描述一个项目和一组提供商目标。多个站点请保留多个配置文件，并传入 `--config path/to/seo.toml`。
 
 编辑 `seo.toml` 以设置 GSC 资源、Yandex 主机 ID、Metrika 计数器、Bing 站点、CrUX 源和 PSI URL。`lv24-seo config show --json` 打印生效配置，并隐藏看起来像密钥的值。
 
@@ -80,17 +80,17 @@ lv24-seo auth status --json
 
 ## 桌面安装矩阵
 
-桌面端 `0.2.1` 是当前补丁版本，内置 `lv24-seo 0.5.1`。从项目的 Releases 页面下载资源文件；`SHA256SUMS.txt` 覆盖所有已发布资源。Linux 的确切文件名以发行页面为准。
+桌面端 `0.2.2` 是当前加固补丁，内置 `lv24-seo 0.5.2`。从项目的 Releases 页面下载资源文件；`SHA256SUMS.txt` 覆盖所有已发布资源。
 
 | 平台 | 文件 | 自动更新 |
 |---|---|---|
-| Windows 10/11 x64 | NSIS `LV24.SEO.Optimizer_0.2.1_x64-setup.exe`（+ `.sig`）、便携包 `LV24-SEO-Optimizer_0.2.1_x64-portable.zip` | 仅 NSIS；便携包手动更新 |
-| Linux x64 | AppImage（+ `.AppImage.sig`）、deb、rpm | 仅 AppImage；deb/rpm 手动更新 |
-| macOS 13+ arm64/x64 | 首次安装用 DMG，更新用 `.app.tar.gz`（+ `.sig`） | 仅 `.app`；DMG 用于首次安装 |
+| Windows 10/11 x64 | NSIS `LV24.SEO.Optimizer_0.2.2_x64-setup.exe`（+ `.sig`）、便携包 `LV24-SEO-Optimizer_0.2.2_x64-portable.zip` | 仅 NSIS；便携包手动更新 |
+| Linux x64 | `LV24.SEO.Optimizer_0.2.2_amd64.AppImage`（+ `.AppImage.sig`）、`LV24.SEO.Optimizer_0.2.2_amd64.deb`、`LV24.SEO.Optimizer-0.2.2-1.x86_64.rpm` | 仅 AppImage；deb/rpm 手动更新 |
+| macOS 13+ arm64/x64 | 首次安装用 `LV24.SEO.Optimizer_0.2.2_aarch64.dmg` / `LV24.SEO.Optimizer_0.2.2_x64.dmg`，更新用 `LV24.SEO.Optimizer_0.2.2_aarch64.app.tar.gz` / `LV24.SEO.Optimizer_0.2.2_x64.app.tar.gz`（+ `.sig`） | 仅 `.app`；DMG 用于首次安装 |
 
 ### Windows
 
-NSIS 安装程序按当前用户安装，添加开始菜单条目，并可以自动更新。由于构建未签名，SmartScreen 可能警告；请先校验校验和，然后选择 **更多信息 → 仍要运行**。便携 ZIP 没有安装程序，也没有应用内更新：解压整个 `LV24 SEO Optimizer` 文件夹，将 `lv24-seo\` 文件夹与 `lv24-seo-desktop.exe` 放在一起，然后运行可执行文件。要删除便携版，请删除解压后的文件夹。
+NSIS 安装程序按当前用户安装，添加开始菜单条目，并可以自动更新。由于构建未签名，SmartScreen 可能警告；请先校验校验和，然后选择 **更多信息 → 仍要运行**。应用内更新前，外壳只停止它启动的引擎 sidecar PID；如果无法停止，安装会以 `UPDATE_ENGINE_BUSY` 阻止，并在该运行退出后重试。便携 ZIP 没有安装程序，也没有应用内更新：解压整个 `LV24 SEO Optimizer` 文件夹，将 `lv24-seo\` 文件夹与 `lv24-seo-desktop.exe` 放在一起，然后运行可执行文件。要删除便携版，请删除解压后的文件夹。
 
 ### Linux
 
@@ -111,7 +111,7 @@ Apple 芯片使用 `aarch64` DMG，Intel 使用 `x64` DMG。打开 DMG，将 **L
 
 ### 从桌面 0.1.0 升级
 
-`0.1.0` 是仅限 Windows 的预览，没有更新器、端点或公钥。请手动安装一次 `0.2.1`（NSIS 安装程序或便携 ZIP）。从 `0.2.0` 起，只有 Windows NSIS、macOS `.app` 和 Linux AppImage 可以自动更新。
+`0.1.0` 是仅限 Windows 的预览，没有更新器、端点或公钥。请手动安装一次 `0.2.2`（NSIS 安装程序或便携 ZIP）。从 `0.2.0` 起，只有 Windows NSIS、macOS `.app` 和 Linux AppImage 可以自动更新。
 
 ## 未签名构建
 
@@ -142,4 +142,4 @@ pip uninstall lv24-seo
 - [配置参考](/zh/reference/config/) — 所有 `seo.toml` 键。
 - [安全与隐私](/zh/security/) — token 存储和写操作门控。
 
-Source: `_source/engine-README.md`, `_source/engine-cli.md`, `_source/engine-config.md`, `_source/desktop-README.md`, `_source/desktop-releases-0.2.1.md`, `_source/desktop-releases-0.2.0.md`.
+Source: `_source/engine-README.md`, `_source/engine-cli.md`, `_source/engine-config.md`, `_source/desktop-README.md`, `_source/desktop-releases-0.2.2.md`, `_source/desktop-releases-0.2.0.md`.

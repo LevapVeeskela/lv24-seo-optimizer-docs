@@ -54,7 +54,7 @@ lv24-seo version --json
 lv24-seo doctor
 ```
 
-`version --json` returns the package name and version in the standard envelope. `doctor` checks Python, the config file, a writable data directory and token presence. It makes no network calls, so a passing `doctor` does not prove that a provider token is valid.
+`version --json` returns the package name and version in the standard envelope. `doctor` checks Python, the config file, the effective data directory and its scope (`meta.data_dir`, `meta.data_dir_source`), working-directory writability and token presence. It makes no network calls, so a passing `doctor` does not prove that a provider token is valid.
 
 ## Create a workspace
 
@@ -62,7 +62,7 @@ lv24-seo doctor
 lv24-seo init --property https://example.com
 ```
 
-`init` writes a commented `seo.toml` and a `data/` directory in the current directory. It refuses to overwrite an existing `seo.toml` unless you pass `--force`. One `seo.toml` describes one project and one set of provider targets. For several sites, keep several config files and pass `--config path/to/seo.toml`.
+`init` writes a commented `seo.toml`, creates `<config dir>/data` and writes `data_dir = "./data"`, so the workspace is self-contained. It refuses to overwrite an existing `seo.toml` unless you pass `--force`. One `seo.toml` describes one project and one set of provider targets. For several sites, keep several config files and pass `--config path/to/seo.toml`.
 
 Edit `seo.toml` to set the GSC property, Yandex host id, Metrika counter, Bing site, CrUX origin and PSI URLs. `lv24-seo config show --json` prints the effective config with secret-looking values redacted.
 
@@ -80,17 +80,17 @@ Supported provider names are `gsc`, `yandex`, `metrika`, `bing`, `crux`, `psi`, 
 
 ## Desktop install matrix
 
-Desktop `0.2.1` is the current patch release and bundles `lv24-seo 0.5.1`. Download the assets from the project's Releases page; `SHA256SUMS.txt` covers every published asset. The exact Linux file names are the ones on the release page.
+Desktop `0.2.2` is the current hardening patch and bundles `lv24-seo 0.5.2`. Download the assets from the project's Releases page; `SHA256SUMS.txt` covers every published asset.
 
 | Platform | Assets | Auto-update |
 |---|---|---|
-| Windows 10/11 x64 | NSIS `LV24.SEO.Optimizer_0.2.1_x64-setup.exe` (+ `.sig`), portable `LV24-SEO-Optimizer_0.2.1_x64-portable.zip` | NSIS only; portable is manual |
-| Linux x64 | AppImage (+ `.AppImage.sig`), deb, rpm | AppImage only; deb/rpm are manual |
-| macOS 13+ arm64/x64 | DMG for first install, `.app.tar.gz` (+ `.sig`) for updates | `.app` only; DMG is the first install |
+| Windows 10/11 x64 | NSIS `LV24.SEO.Optimizer_0.2.2_x64-setup.exe` (+ `.sig`), portable `LV24-SEO-Optimizer_0.2.2_x64-portable.zip` | NSIS only; portable is manual |
+| Linux x64 | `LV24.SEO.Optimizer_0.2.2_amd64.AppImage` (+ `.AppImage.sig`), `LV24.SEO.Optimizer_0.2.2_amd64.deb`, `LV24.SEO.Optimizer-0.2.2-1.x86_64.rpm` | AppImage only; deb/rpm are manual |
+| macOS 13+ arm64/x64 | `LV24.SEO.Optimizer_0.2.2_aarch64.dmg` / `LV24.SEO.Optimizer_0.2.2_x64.dmg` for first install, `LV24.SEO.Optimizer_0.2.2_aarch64.app.tar.gz` / `LV24.SEO.Optimizer_0.2.2_x64.app.tar.gz` (+ `.sig`) for updates | `.app` only; DMG is the first install |
 
 ### Windows
 
-The NSIS installer installs per user, adds a Start menu entry and can auto-update. SmartScreen may warn because the build is unsigned; verify the checksum, then choose **More info → Run anyway**. The portable ZIP has no installer and no in-app update: extract the whole `LV24 SEO Optimizer` folder, keep the `lv24-seo\` folder next to `lv24-seo-desktop.exe`, and run the executable. To remove the portable build, delete the extracted folder.
+The NSIS installer installs per user, adds a Start menu entry and can auto-update. SmartScreen may warn because the build is unsigned; verify the checksum, then choose **More info → Run anyway**. Before an in-app update the shell stops only the engine sidecar PIDs it started; if one cannot be stopped, the install is blocked with `UPDATE_ENGINE_BUSY` and can be retried after that run exits. The portable ZIP has no installer and no in-app update: extract the whole `LV24 SEO Optimizer` folder, keep the `lv24-seo\` folder next to `lv24-seo-desktop.exe`, and run the executable. To remove the portable build, delete the extracted folder.
 
 ### Linux
 
@@ -111,7 +111,7 @@ Use the `aarch64` DMG on Apple silicon and the `x64` DMG on Intel. Open the DMG,
 
 ### Upgrading from desktop 0.1.0
 
-`0.1.0` was a Windows-only preview with no updater, endpoint or public key. Install `0.2.1` manually once (NSIS installer or portable ZIP). Auto-update works from `0.2.0` onward only for Windows NSIS, macOS `.app` and Linux AppImage.
+`0.1.0` was a Windows-only preview with no updater, endpoint or public key. Install `0.2.2` manually once (NSIS installer or portable ZIP). Auto-update works from `0.2.0` onward only for Windows NSIS, macOS `.app` and Linux AppImage.
 
 ## Unsigned builds
 
@@ -142,4 +142,4 @@ Uninstalling the tool does not delete your project. `seo.toml`, `data/`, SQLite 
 - [Config reference](/reference/config/) — every `seo.toml` key.
 - [Security and privacy](/security/) — token storage and write gates.
 
-Source: `_source/engine-README.md`, `_source/engine-cli.md`, `_source/engine-config.md`, `_source/desktop-README.md`, `_source/desktop-releases-0.2.1.md`, `_source/desktop-releases-0.2.0.md`.
+Source: `_source/engine-README.md`, `_source/engine-cli.md`, `_source/engine-config.md`, `_source/desktop-README.md`, `_source/desktop-releases-0.2.2.md`, `_source/desktop-releases-0.2.0.md`.

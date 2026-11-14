@@ -12,7 +12,7 @@ const { t, link } = useLocale();
         <span class="lv-footer__mark" aria-hidden="true"><BrandMark /></span>
         <span class="lv-footer__name">LV24 SEO Optimizer</span>
       </a>
-      <p class="lv-footer__meta">Apache-2.0 · engine 0.5.1 · desktop 0.2.1</p>
+      <p class="lv-footer__meta">Apache-2.0 · engine 0.5.2 · desktop 0.2.2</p>
       <nav class="lv-footer__links" :aria-label="t.footer">
         <a :href="link('/start/')">{{ t.quickstart }}</a>
         <a :href="link('/reference/cli/')">{{ t.cli }}</a>

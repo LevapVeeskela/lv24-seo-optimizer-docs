@@ -9,7 +9,7 @@ description: 使用稳定错误码诊断认证、存储、抓取、报告、MCP�
 `PROPERTY_NOT_FOUND` 没有专用退出码。每个 CLI 命令都接受 `--json`：
 
 ```json
-{"ok": false, "error": {"code": "AUTH_REQUIRED", "message": "Google Search Console token is missing", "retryable": false, "next_action": "lv24-seo auth login --provider gsc"}, "meta": {"version": "0.5.1"}, "warnings": ["gsc: token missing"]}
+{"ok": false, "error": {"code": "AUTH_REQUIRED", "message": "Google Search Console token is missing", "retryable": false, "next_action": "lv24-seo auth login --provider gsc"}, "meta": {"version": "0.5.2"}, "warnings": ["gsc: token missing"]}
 ```
 
 MCP 工具以 `structuredContent` 返回同一信封，并在失败时设置 `isError: true`。桌面把
@@ -24,9 +24,9 @@ lv24-seo config show --json
 # repeat the failing command with --json added
 ```
 
-`doctor` 检查 Python、平台、配置路径、当前目录可写性、数据目录和令牌是否存在，不进行
-网络调用。它的顶层 `ok` 只取决于致命检查：Python 和当前目录可写性。其余内容查看
-`checks[]`。
+`doctor` 检查 Python、平台、配置路径、当前目录可写性、有效数据目录及其作用域，以及令牌
+是否存在，不进行网络调用。它的顶层 `ok` 只取决于致命检查：Python 和当前目录可写性。其余
+内容查看 `checks[]`。
 
 常见退出码：`AUTH_REQUIRED` 和 `AUTH_INVALID`（3）、`PROPERTY_NOT_FOUND`（1）、
 `QUOTA_EXCEEDED` 和 `UPSTREAM_UNAVAILABLE`（4）、`WRITE_DISABLED`（2）、
@@ -63,19 +63,24 @@ printf '%s' "$TOKEN" | lv24-seo auth set --provider gsc --stdin
 
 ## `data_dir` 与相对路径
 
-`storage.data_dir` 默认为 `data`，引擎相对于进程的当前工作目录解析它，而不是相对于
-`seo.toml`。从另一个目录运行会打开不同的数据库，或者根本打不开。`init` 写入
-`data_dir = "data"` 并在配置文件旁创建目录。
+`seo.toml` 中写入的相对 `storage.data_dir` 锚定到该文件所在目录。`init` 创建
+`<config dir>/data` 并写入 `data_dir = "./data"`，因此 `--config /srv/site/seo.toml`
+从任何工作目录都使用 `/srv/site/data`。路径通过 `os.path.abspath` 变为绝对路径
+（展开 `~`、规范化 `..`）；符号链接有意不解析。
 
-桌面以 `cwd = config parent` 启动引擎。终端运行也必须这样做，或者使用绝对路径：
+两种情况有意保持进程作用域：内置默认值（没有 `[storage]` 块）是相对于工作目录的 `data`，
+而 `LV24_SEO_DATA_DIR` 覆盖文件，并把相对值解析为相对于工作目录。
 
-```toml
-[storage]
-data_dir = "/absolute/path/to/project/data"
-```
+`doctor --json` 让作用域可见：`meta.data_dir` 是有效目录，`meta.data_dir_source` 在路径
+为绝对时是 `config`，为相对时是 `working directory`。存在配置文件时，相对目录会添加一条
+指名配置目录的警告。`config show --json` 报告同一有效路径。设置绝对 `data_dir` 可固定数据库。
 
-`LV24_SEO_DATA_DIR` 覆盖文件中的值。用 `doctor --json` 和 `config show --json` 验证。
-桌面不得静默覆盖 `LV24_SEO_DATA_DIR`。
+## 写令牌重放
+
+带 `--confirm` 的写入应用在工作区已初始化时使用 SQLite 幂等账本。重放同一令牌返回
+`status: skipped` 和 `reason: duplicate`，提供商只被调用一次。试运行不打开账本，也不创建
+数据库。没有数据目录时仍会应用，但信封会警告：在令牌五分钟有效期内没有重放保护。崩溃留下
+的 pending 声明没有 TTL，会被视为进行中，直到操作员释放。
 
 ## Sitemap `too_large`
 
@@ -94,7 +99,7 @@ sitemap 50,000 个 URL；索引遍历限制为 20 个文档、深度 2。
 
 内存有界：页面响应体上限 5 MB，保留的页面文本上限 20,000 字符，请求预算为
 `1 + max_urls * (max_redirects + 1)`。`word_count` 仍使用完整可见文本。如果抓取太大
-或太慢，降低 `--max-urls` 并分段抓取。`0.5.1` 没有恢复或任务队列；桌面抓取超时为
+或太慢，降低 `--max-urls` 并分段抓取。`0.5.2` 没有恢复或任务队列；桌面抓取超时为
 600 秒，没有取消按钮。
 
 ## `--days` 限制
@@ -139,7 +144,7 @@ lv24-seo install --client vscode --print
 | 症状 | 原因 | 修复 |
 |---|---|---|
 | 文件看起来有效，却提示 “not valid JSON” | UTF-8 BOM，常见于 PowerShell 5.1 | 重写为无 BOM，或删除文件后重试 |
-| `No such command 'mcp'` | 旧构建没有 `mcp serve` | 升级到 0.5.1 |
+| `No such command 'mcp'` | 旧构建没有 `mcp serve` | 升级到 0.5.2 |
 | GUI 客户端无法启动服务器 | 应用不继承 shell 的 `PATH` | 在 `command` 中写绝对 `uvx` 路径 |
 | VS Code 什么都不显示 | `install` 写入 `mcpServers`；VS Code 使用 `servers` | 重命名键或使用 VS Code 专用块 |
 
@@ -154,7 +159,7 @@ npm 包是薄启动器。它把参数转发给已安装的 `lv24-seo` 二进制�
 `uvx --from lv24-seo==<version> lv24-seo`。在 Windows 上，Node 无法用
 `shell: false` 启动 `.cmd` shim；会以 `EINVAL` 失败。
 
-0.5.1 忽略 `lv24-seo.cmd` 和 `.bat` shim，优先使用 `lv24-seo.exe` 或无扩展名二进制，
+0.5.2 忽略 `lv24-seo.cmd` 和 `.bat` shim，优先使用 `lv24-seo.exe` 或无扩展名二进制，
 然后才回退到 `uvx`。如果启动器仍选错二进制，请设置绝对覆盖：
 
 ```bash
@@ -169,14 +174,14 @@ PowerShell 中先设置 `$env:LV24_SEO_BIN`。`LV24_SEO_PIN=0` 会恢复未固�
 外壳按以下顺序解析引擎：`LV24_SEO_BIN`（仅绝对路径）、内置 `engine/lv24-seo/`、扁平
 `lv24-seo/`、同级 `lv24-seo/`，最后仅当 `LV24_SEO_ALLOW_PATH_ENGINE=1` 时使用
 `PATH`。它运行 `lv24-seo version --json`，并与 `MIN_ENGINE_VERSION` 比较；当前源码中
-该值为 `0.5.1`。
+该值为 `0.5.2`。
 
 旧引擎标记为 `compatible: false`；UI 将其视为离线，不运行命令。不会自动下载任何内容。
 
 | 症状 | 修复 |
 |---|---|
 | 找不到引擎 | 重新安装，或把 `LV24_SEO_BIN` 设为绝对可执行路径 |
-| 引擎太旧 | 安装 0.5.1 或更新版本 |
+| 引擎太旧 | 安装 0.5.2 或更新版本 |
 | 显示 external engine | 设置 `LV24_SEO_BIN` 时属正常 |
 
 除非设置 `LV24_SEO_ALLOW_PATH_ENGINE=1`，否则 `PATH` 中偶然出现的 `lv24-seo` 会被
@@ -233,10 +238,22 @@ Windows 构建没有 Authenticode 签名。SmartScreen、Smart App Control 或�
 才选择 **More info → Run anyway**。不要全局关闭这些保护。如果环境要求签名构建，请从
 源码构建并用你自己的证书签名。
 
+## 更新器显示 `UPDATE_ENGINE_BUSY`
+
+引擎 sidecar 位于已安装的资源目录中。应用内更新前，外壳只停止它登记的 sidecar PID；从
+终端或另一个应用副本启动的引擎不会被杀死。如果该进程占用已安装文件，安装会被
+`UPDATE_ENGINE_BUSY` 阻止。
+
+关闭占用 `lv24-seo` 的终端或应用运行，等待其退出，然后再次点击 **Download and install**。
+该错误可重试；不要删除已安装资源目录中的文件。
+
 ## 日志与诊断
 
-`0.5.1` 的引擎不安装日志处理器，`LV24_SEO_LOG_LEVEL` 被配置层忽略。稳定的诊断接口是
-`--json` 信封，而不是日志文件。
+日志是可选项。`LV24_SEO_LOG_LEVEL=INFO`（或 `DEBUG`、`WARNING` 等）会让 CLI 和
+`lv24-seo mcp serve` 安装脱敏处理器。未设置变量时不会改变调用方的日志配置；导入库或调用
+`create_server()` 绝不替换根处理器。当 stderr 不是终端（管道、调度器日志、MCP 宿主）时，
+每条记录输出一行 JSON；否则输出普通行。MCP 传输只写 stderr；stdout 保持协议输出。稳定的
+诊断接口仍是 `--json` 信封，而不是日志文件。
 
 桌面有日志目录、数据目录和导出目录。确切路径由 `shell_status` 报告，并显示在
 Configuration 屏幕；不要根据包标识符猜测。诊断包由用户触发，包含版本、路径、doctor
@@ -258,4 +275,4 @@ actual (redacted --json envelope):
 
 写入门禁见[安全与隐私](/zh/security/)，更新器行为见[发布与更新](/zh/release/)。
 
-Source: `_source/engine-troubleshooting.md`, `_source/engine-releases-0.5.1.md`, `_source/desktop-releases-0.2.1.md`, `_source/desktop-releases-0.2.0.md`, `_source/desktop-security.md`, `_source/desktop-architecture.md`.
+Source: `_source/engine-troubleshooting.md`, `_source/engine-releases-0.5.2.md`, `_source/desktop-releases-0.2.2.md`, `_source/desktop-releases-0.2.1.md`, `_source/desktop-releases-0.2.0.md`, `_source/desktop-security.md`, `_source/desktop-architecture.md`.

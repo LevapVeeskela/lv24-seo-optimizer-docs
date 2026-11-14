@@ -26,8 +26,11 @@ CAPTCHAs or automates Yandex Business. See [Data sources and quotas](/providers/
 ## Where is my data stored?
 
 In the local SQLite database under `storage.data_dir` (`data/seo.sqlite3` by default), plus report
-files you request with `--out`. There is no telemetry endpoint. Data leaves the machine only through
-provider API calls and the delivery channels you enable. See [Security and privacy](/security/).
+files you request with `--out`. A relative `data_dir` written in `seo.toml` is anchored to that file,
+so the same config uses the same database from any working directory; the built-in default and
+`LV24_SEO_DATA_DIR` remain process-scoped. There is no telemetry endpoint. Data leaves the machine
+only through provider API calls and the delivery channels you enable. See
+[Security and privacy](/security/).
 
 ## CLI or MCP — which should I use?
 
@@ -45,7 +48,9 @@ and a recommendations page. The CLI remains the scriptable surface, and both rea
 
 Yes, for Windows NSIS, macOS `.app` and Linux AppImage: the app checks `latest.json`, verifies a
 minisign signature and installs only after you confirm. deb, rpm and the portable ZIP are
-manual-only. The 0.1.0 build predates the updater and needs one manual upgrade. See
+manual-only. Before the installer starts, the app stops only the engine sidecar PIDs it started; if
+one cannot be stopped, the update is blocked with `UPDATE_ENGINE_BUSY` and can be retried after that
+run exits. The 0.1.0 build predates the updater and needs one manual upgrade. See
 [Releases and update](/release/).
 
 ## Why are the builds unsigned?
@@ -104,8 +109,16 @@ because no raw archives are written. Back up the database before upgrading. See
 ## Why is my weekly report incomplete?
 
 Providers lag and cap data. Check `data_age_days`, `truncated`, `limitations[]` and `warnings[]` in
-the envelope, and raise `--lag-days` if the newest days are still filling. `report diff` also needs
+the envelope, and raise `--lag-days` if the newest days are still filling. A GSC final page that
+exactly fills the 50,000-row cap is reported as truncated, not complete. `report diff` also needs
 two stored weekly runs. See [Troubleshooting](/troubleshooting/).
+
+## Can I get logs?
+
+Yes, but logging is opt-in. Set `LV24_SEO_LOG_LEVEL=INFO` (or `DEBUG`, `WARNING`, …) for the CLI or
+`lv24-seo mcp serve`; the redacting handler is installed only at those entry points. When stderr is
+not a terminal, each record is one JSON line. The `--json` envelope remains the stable diagnostic
+interface. See [Configuration reference](/reference/config/).
 
 ## Can I run it in CI?
 
@@ -139,4 +152,4 @@ No. There is no telemetry endpoint and no `[privacy]` section to disable. The to
 the providers you query and the delivery channels you enable; the desktop contacts GitHub only for
 update metadata.
 
-Source: `_source/engine-cli.md`, `_source/engine-config.md`, `_source/engine-data-sources.md`, `_source/engine-security.md`, `_source/desktop-README.md`, `_source/desktop-security.md`.
+Source: `_source/engine-cli.md`, `_source/engine-config.md`, `_source/engine-data-sources.md`, `_source/engine-security.md`, `_source/engine-releases-0.5.2.md`, `_source/desktop-README.md`, `_source/desktop-security.md`, `_source/desktop-releases-0.2.2.md`.

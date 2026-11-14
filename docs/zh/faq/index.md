@@ -26,8 +26,9 @@ Yandex Business。参见[数据源与配额](/zh/providers/)。
 ## 我的数据存储在哪里？
 
 存储在 `storage.data_dir` 下的本地 SQLite 数据库（默认 `data/seo.sqlite3`），以及你用 `--out`
-请求的报告文件。没有遥测端点。数据只会通过提供方 API 调用和你启用的投递渠道离开本机。参见
-[安全与隐私](/zh/security/)。
+请求的报告文件。`seo.toml` 中写入的相对 `data_dir` 锚定到配置文件，因此同一配置从任何工作目录
+都使用同一数据库；内置默认值和 `LV24_SEO_DATA_DIR` 保持进程作用域。没有遥测端点。数据只会通过
+提供方 API 调用和你启用的投递渠道离开本机。参见[安全与隐私](/zh/security/)。
 
 ## 应该用 CLI 还是 MCP？
 
@@ -42,8 +43,9 @@ HTTP 向编码智能体提供 11 个工具。参见 [MCP 与智能体技能](/zh
 ## 桌面应用会自动更新吗？
 
 Windows NSIS、macOS `.app` 和 Linux AppImage 会：应用检查 `latest.json`，验证 minisign 签名，
-并且只在你确认后安装。deb、rpm 和 portable ZIP 只能手动更新。0.1.0 构建早于更新器，需要手动
-升级一次。参见[发布与更新](/zh/release/)。
+并且只在你确认后安装。deb、rpm 和 portable ZIP 只能手动更新。安装器启动前，应用只停止它启动的
+引擎 sidecar PID；如果无法停止，更新会以 `UPDATE_ENGINE_BUSY` 阻止，并在该运行退出后重试。
+0.1.0 构建早于更新器，需要手动升级一次。参见[发布与更新](/zh/release/)。
 
 ## 为什么构建没有签名？
 
@@ -95,8 +97,14 @@ Windows NSIS、macOS `.app` 和 Linux AppImage 会：应用检查 `latest.json`�
 ## 为什么周报不完整？
 
 提供方有延迟和数据上限。检查信封中的 `data_age_days`、`truncated`、`limitations[]` 和
-`warnings[]`，如果最近几天仍在填充，请增大 `--lag-days`。`report diff` 还需要两个已保存的周报
-运行。参见[故障排查](/zh/troubleshooting/)。
+`warnings[]`，如果最近几天仍在填充，请增大 `--lag-days`。恰好填满 50,000 行上限的 GSC 最后一页
+会报告为截断，而不是完整。`report diff` 还需要两个已保存的周报运行。参见[故障排查](/zh/troubleshooting/)。
+
+## 可以获取日志吗？
+
+可以，但日志是可选项。为 CLI 或 `lv24-seo mcp serve` 设置 `LV24_SEO_LOG_LEVEL=INFO`（或
+`DEBUG`、`WARNING` 等）；脱敏处理器只在那些入口安装。当 stderr 不是终端时，每条记录是一行
+JSON。稳定的诊断接口仍是 `--json` 信封。参见[配置参考](/zh/reference/config/)。
 
 ## 可以在 CI 中运行吗？
 
@@ -127,4 +135,4 @@ uv run ruff check . && uv run ruff format --check . && uv run mypy src && uv run
 不会。没有遥测端点，也没有可关闭的 `[privacy]` 部分。工具只向你查询的提供方和启用的投递渠道
 发送数据；桌面应用只联系 GitHub 获取更新元数据。
 
-Source: `_source/engine-cli.md`, `_source/engine-config.md`, `_source/engine-data-sources.md`, `_source/engine-security.md`, `_source/desktop-README.md`, `_source/desktop-security.md`.
+Source: `_source/engine-cli.md`, `_source/engine-config.md`, `_source/engine-data-sources.md`, `_source/engine-security.md`, `_source/engine-releases-0.5.2.md`, `_source/desktop-README.md`, `_source/desktop-security.md`, `_source/desktop-releases-0.2.2.md`.

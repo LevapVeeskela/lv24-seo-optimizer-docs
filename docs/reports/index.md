@@ -63,7 +63,7 @@ lv24-seo report weekly --out reports/
 - `report.json` — canonical English, stable enough to diff between runs.
 - `report.html` — rendered in `report.locale`.
 
-The weekly run also saves a snapshot in `data/seo.sqlite3` when the data directory exists. `lv24-seo init` creates it; without a store the command warns that the snapshot was not saved. The default data directory is `./data` and can be changed with `[storage] data_dir` or `LV24_SEO_DATA_DIR`.
+The weekly run also saves a snapshot in `data/seo.sqlite3` when the data directory exists. `lv24-seo init` creates `<config dir>/data`; a relative `[storage] data_dir` is anchored to the config file, while `LV24_SEO_DATA_DIR` remains a process-scoped override. Without a store the command warns that the snapshot was not saved.
 
 Snapshots are keyed by kind, property and period. They feed `report diff`; the sends ledger lives in the same SQLite file. MCP keeps the latest report in memory for `seo://report/latest`. `report.json`, `--json` envelopes and `report diff --markdown` stay canonical English even when the display locale is Russian or Chinese; machine codes are never translated.
 
@@ -76,7 +76,7 @@ Before drawing a conclusion, check the envelope in this order:
 3. `meta.data_age_days` — how old is the window relative to the fetch?
 4. `meta.limitations[]` and `warnings[]` — what is unknown or approximated?
 
-A metric present in only one window is unknown, not zero. A truncated response is not complete. A provider failure does not fail the report: the email names the missing source, the envelope sets `complete: false`, and the remaining engines still return their data.
+A metric present in only one window is unknown, not zero. A truncated response is not complete. A GSC final page that exactly fills the 50,000-row cap is reported as truncated, not complete: a full page is not proof that no further row exists. A provider failure does not fail the report: the email names the missing source, the envelope sets `complete: false`, and the remaining engines still return their data.
 
 ## Localization
 
@@ -115,4 +115,4 @@ A metric present in only one snapshot is listed in `unknown_metrics`, never as z
 
 The command needs `lv24-seo init` and two `report weekly` runs for different periods. Without a store it fails with `CONFIG_INVALID`; with fewer than two snapshots it fails with `INVALID_INPUT`. Both carry a `next_action`.
 
-Source: `_source/engine-cli.md`, `_source/engine-scheduling.md`, `_source/engine-releases-0.5.1.md`.
+Source: `_source/engine-cli.md`, `_source/engine-scheduling.md`, `_source/engine-releases-0.5.2.md`.

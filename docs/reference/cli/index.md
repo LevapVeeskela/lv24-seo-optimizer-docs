@@ -26,13 +26,13 @@ version.
 With `--json`, a command prints exactly one JSON document and nothing else:
 
 ```json
-{ "ok": true, "data": {}, "meta": { "version": "0.5.1", "duration_ms": 812 }, "warnings": [] }
+{ "ok": true, "data": {}, "meta": { "version": "0.5.2", "duration_ms": 812 }, "warnings": [] }
 ```
 
 A failed command uses the same shape with `ok: false` and an `error` object instead of `data`:
 
 ```json
-{ "ok": false, "error": { "code": "AUTH_REQUIRED", "message": "Google Search Console token is missing", "retryable": false, "next_action": "lv24-seo auth login --provider gsc" }, "meta": { "version": "0.5.1" }, "warnings": ["gsc: token missing"] }
+{ "ok": false, "error": { "code": "AUTH_REQUIRED", "message": "Google Search Console token is missing", "retryable": false, "next_action": "lv24-seo auth login --provider gsc" }, "meta": { "version": "0.5.2" }, "warnings": ["gsc: token missing"] }
 ```
 
 - `data` is command-specific. `meta` always carries `version` and often adds `duration_ms`,
@@ -55,19 +55,24 @@ A failed command uses the same shape with `ok: false` and an `error` object inst
 | `5` | Partial result: truncated output. | `TRUNCATED` |
 
 `WRITE_DISABLED` exits `2`, not `4`: a write was refused before any provider call. Exit `5` is
-reserved for a successful envelope that is both truncated and marked `meta.strict`; no 0.5.1 flag
+reserved for a successful envelope that is both truncated and marked `meta.strict`; no 0.5.2 flag
 sets strict mode, so scripts should treat `5` as a partial result rather than a hard failure.
 Branch on the exit code and `error.code`, never on the human-readable text.
 
 ### Configuration and flags
 
 - `--config PATH` selects a specific `seo.toml`. The path must exist; a missing file is
-  `CONFIG_INVALID`, not a silent fallback.
+  `CONFIG_INVALID`, not a silent fallback. The resolved path is absolute and normalised, so scheduler
+  artifacts and relative settings do not depend on the process working directory.
 - Without `--config`, the engine looks for `./seo.toml`, then the platform user config file
   (`%APPDATA%\lv24-seo\config.toml` on Windows, `~/.config/lv24-seo/config.toml` on Linux).
 - `LV24_SEO_*` environment variables override values from the file. `.env` files are not loaded
   automatically; export the variables in the shell or the service unit that runs the command.
 - `mcp serve` is a long-running server and takes neither `--json` nor `--config`.
+
+`doctor --json` reports `meta.data_dir` and `meta.data_dir_source` (`config` when the effective
+directory is absolute, `working directory` when it is relative) and adds a warning when a relative
+directory is ambiguous next to a config file. A relative directory does not fail the check.
 
 The full key list, defaults and secret handling live in the [configuration reference](/reference/config/).
 
@@ -82,9 +87,20 @@ two-step flow:
    `--allow-write --confirm TOKEN` within five minutes.
 
 The token is an HMAC over the action, target, full plan hash and expiry, so changing any input
-invalidates it. The CLI does not attach the idempotency ledger, so treat a token as single-use.
+invalidates it. With an initialised workspace the CLI attaches the SQLite idempotency ledger, so a
+replayed token returns `status: skipped` with `reason: duplicate` and the provider is called once.
+Without a data directory the apply still runs, but the envelope warns that replay protection is off
+for the token's five-minute lifetime; a dry run opens no ledger and creates no database.
 IndexNow actually submits URLs. GSC sitemap submit and Yandex recrawl currently return
 `WRITE_DISABLED` instead of pretending the provider call happened.
+
+### Logging
+
+Logging is opt-in. `LV24_SEO_LOG_LEVEL=INFO` (or `DEBUG`, `WARNING`, …) installs the redacting
+handler in the CLI and `lv24-seo mcp serve`; an unset variable leaves the caller's logging
+configuration untouched. Output is one JSON line per record when stderr is not a terminal and a
+plain line otherwise. The MCP transport logs to stderr only; stdout stays the protocol. The `--json`
+envelope remains the stable diagnostic interface.
 
 ### Determinism and honesty
 
@@ -217,4 +233,4 @@ packaged `SKILL.md` files and their manifest. Both write local files only.
 - [MCP and agent skills](/mcp/)
 - [Troubleshooting](/troubleshooting/)
 
-Source: `_source/engine-cli.md`, `_source/engine-mcp.md`, `_source/engine-releases-0.5.1.md`; 0.5.1 `--help` output in the engine repository.
+Source: `_source/engine-cli.md`, `_source/engine-mcp.md`, `_source/engine-releases-0.5.2.md`; 0.5.2 `--help` output in the engine repository.

@@ -63,7 +63,7 @@ lv24-seo report weekly --out reports/
 - `report.json` — 规范英语，足够稳定，可在多次运行之间做差异比较。
 - `report.html` — 按 `report.locale` 渲染。
 
-数据目录存在时，周度运行还会把快照保存到 `data/seo.sqlite3`。`lv24-seo init` 会创建该目录；没有存储时命令会警告快照未保存。默认数据目录是 `./data`，可通过 `[storage] data_dir` 或 `LV24_SEO_DATA_DIR` 修改。
+数据目录存在时，周度运行还会把快照保存到 `data/seo.sqlite3`。`lv24-seo init` 创建 `<config dir>/data`；相对 `[storage] data_dir` 锚定到配置文件，而 `LV24_SEO_DATA_DIR` 仍是进程作用域覆盖。没有存储时命令会警告快照未保存。
 
 快照按类型、属性和周期作为键。它们供 `report diff` 使用；发送账本位于同一个 SQLite 文件中。MCP 在内存中保留最新报告供 `seo://report/latest` 使用。即使显示语言是俄语或中文，`report.json`、`--json` 信封和 `report diff --markdown` 仍保持规范英语；机器码从不翻译。
 
@@ -76,7 +76,7 @@ lv24-seo report weekly --out reports/
 3. `meta.data_age_days` — 窗口相对抓取时间有多旧？
 4. `meta.limitations[]` 和 `warnings[]` — 哪些是未知或近似的？
 
-只出现在一个窗口中的指标是未知，不是零。被截断的响应不完整。单个提供商失败不会让报告失败：email 会指出缺失来源，信封设置 `complete: false`，其余引擎仍返回数据。
+只出现在一个窗口中的指标是未知，不是零。被截断的响应不完整。恰好填满 50,000 行上限的 GSC 最后一页会报告为截断，而不是完整：完整一页不能证明不存在下一行。单个提供商失败不会让报告失败：email 会指出缺失来源，信封设置 `complete: false`，其余引擎仍返回数据。
 
 ## 本地化
 
@@ -115,4 +115,4 @@ lv24-seo report diff --base 2026-11-02..2026-11-08 --head 2026-11-09..2026-11-15
 
 该命令需要 `lv24-seo init` 和两次针对不同周期的 `report weekly` 运行。没有存储时以 `CONFIG_INVALID` 失败；少于两个快照时以 `INVALID_INPUT` 失败。两者都带有 `next_action`。
 
-Source: `_source/engine-cli.md`, `_source/engine-scheduling.md`, `_source/engine-releases-0.5.1.md`.
+Source: `_source/engine-cli.md`, `_source/engine-scheduling.md`, `_source/engine-releases-0.5.2.md`.

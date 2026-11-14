@@ -13,8 +13,8 @@ description: LV24 SEO Optimizer 的提供商能力矩阵、认证、配额、数
 
 | 来源 | 读取 | 写入（需确认） | 认证 | 免费配额 | 数据延迟 |
 |---|---|---|---|---|---|
-| Google Search Console | 搜索分析、站点、站点地图、URL Inspection | 提交站点地图；0.5.1 中返回 `WRITE_DISABLED` | Bearer 访问令牌（读取用 `webmasters.readonly`，站点地图用 `webmasters`） | 每个站点和每个用户 1,200 次/分钟；每天每站点每类型 50,000 行；URL Inspection 每天 2,000 次、每分钟 600 次 | 2–3 天 |
-| Yandex Webmaster | 摘要、SQI 历史、索引、搜索中的 URL 与事件、查询、诊断、失效链接、站点地图 | 重新抓取队列；0.5.1 中返回 `WRITE_DISABLED` | OAuth 令牌，scope `webmaster:hostinfo` | 免费；未公布全局 RPD/RPS；查询分析在约每小时 1 万次请求以上不稳定 | 约 4 天 |
+| Google Search Console | 搜索分析、站点、站点地图、URL Inspection | 提交站点地图；0.5.2 中返回 `WRITE_DISABLED` | Bearer 访问令牌（读取用 `webmasters.readonly`，站点地图用 `webmasters`） | 每个站点和每个用户 1,200 次/分钟；每天每站点每类型 50,000 行；URL Inspection 每天 2,000 次、每分钟 600 次 | 2–3 天 |
+| Yandex Webmaster | 摘要、SQI 历史、索引、搜索中的 URL 与事件、查询、诊断、失效链接、站点地图 | 重新抓取队列；0.5.2 中返回 `WRITE_DISABLED` | OAuth 令牌，scope `webmaster:hostinfo` | 免费；未公布全局 RPD/RPS；查询分析在约每小时 1 万次请求以上不稳定 | 约 4 天 |
 | Yandex Metrika | 会话、流量来源、搜索词、落地页、目标 | 无 | OAuth 令牌，scope `metrika:read` | 每天每用户 5,000 次请求；30 rps/IP；3 个并发；`/stat/v1/data` 每 5 分钟 200 次；每次请求最多 10 万行、20 个指标、10 个维度 | Reporting API；会报告抽样 |
 | Bing Webmaster | 查询统计、排名与流量、抓取问题 | IndexNow 提交（可用）；站点地图提交路径未接通 | 每个用户一个 API 密钥 | 免费；每域名每天约 1 万次 URL 提交，每批 500 条 | API 中没有按时间窗口的统计 |
 | Chrome UX Report (CrUX) | 字段 p75 LCP、INP 和 CLS | 无 | API 密钥 | 每个项目每分钟 150 次，无法提高 | 28 天滚动窗口 |
@@ -23,7 +23,7 @@ description: LV24 SEO Optimizer 的提供商能力矩阵、认证、配额、数
 | 自有抓取 | 页面、问题、链接图、站点地图覆盖 | 无 | 无 | 本地 | 当前运行 |
 | 日志 | 对 nginx JSON 访问日志按 User-Agent 做机器人分诊；不能证明是已验证的爬虫 | 无 | 本地文件 | 本地 | 日志窗口 |
 
-GA4 是可选的集成点，不在默认路径中。随版本提供的提供商是 GSC、Yandex Webmaster、Yandex Metrika、Bing、CrUX 和 PSI。付费 SERP 或外链适配器（DataForSEO、SerpApi 等）仅处于计划或文档阶段；0.5.1 不随版本提供任何此类适配器。
+GA4 是可选的集成点，不在默认路径中。随版本提供的提供商是 GSC、Yandex Webmaster、Yandex Metrika、Bing、CrUX 和 PSI。付费 SERP 或外链适配器（DataForSEO、SerpApi 等）仅处于计划或文档阶段；0.5.2 不随版本提供任何此类适配器。
 
 ## 认证
 
@@ -63,7 +63,7 @@ pip install "lv24-seo[secrets]"
 
 提供商配额在发送请求前由保守的客户端令牌桶限制。429 或耗尽的配额会变成类型化错误，而不是部分成功。需要提前规划的主要限制：
 
-- GSC 搜索分析每天、每站点、每搜索类型上限为 50,000 行。分页持续到短页；只有当上限之后确实还有一行时 `truncated` 才为 `true`。恰好填满上限的最后一页视为完整。
+- GSC 搜索分析每天、每站点、每搜索类型上限为 50,000 行。恰好填满上限的最后一页会报告 `truncated: true` 和 `rows_cap_50000`；调用方设置更小上限时会产生指名该行数限制的警告。完整一页不能证明上限后没有更多行。
 - GSC 分组会丢行。不要把按 `page` 分组的总和与按 `query` 分组的总和相比较，也不要同时请求两个维度再与未分组总数比较。
 - Yandex Webmaster 每个周期只提供前 3,000 个查询，每页最多 500 条，并且不支持查询与页面的关联。缺失的行是未知，不是零。
 - Yandex Metrika 默认抽样（`accuracy=medium`）。抽样响应会带上 `sampled` 限制和警告；请把准确度标志与数值一起保存。
@@ -77,7 +77,7 @@ pip install "lv24-seo[secrets]"
 
 | 代码 | 含义 |
 |---|---|
-| `rows_cap_50000` | GSC 停在 50,000 行上限，且后面还有一行 |
+| `rows_cap_50000` | GSC 达到 50,000 行上限；完整最后一页可能被截断 |
 | `no_query_page_join` | 提供商无法在同一数据集中关联查询与页面 |
 | `top_3000_queries` | Yandex 查询数据仅限前 3,000 个 |
 | `sampled` | Metrika 返回了抽样数据 |
@@ -101,4 +101,4 @@ pip install "lv24-seo[secrets]"
 
 调度器生成器在后端支持时应用同一时区。Cron 依赖 `CRON_TZ`，systemd 把时区写入 `OnCalendar`，Task Scheduler XML 携带固定偏移并给出 DST 警告。参见[自动化与投递](/zh/automation/)。
 
-Source: `_source/engine-data-sources.md`, `_source/engine-cli.md`, `_source/engine-config.md`.
+Source: `_source/engine-data-sources.md`, `_source/engine-cli.md`, `_source/engine-config.md`, `_source/engine-releases-0.5.2.md`.
