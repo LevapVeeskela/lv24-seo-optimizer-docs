@@ -4,7 +4,9 @@ Static documentation portal for LV24 SEO Optimizer (engine: Apache-2.0).
 VitePress 1.6.4 + TypeScript config, npm, static build, no server runtime, no
 external fonts, CDNs, analytics, or paid services.
 
-Live at <https://seo.lv24.by/>. The site ships English at `/`, Russian at
+Deployment target: <https://seo.lv24.by/> (DNS, the certificate and the edge
+vhost are provisioned at deploy time; see [`deploy/README.md`](deploy/README.md)).
+The site ships English at `/`, Russian at
 `/ru/`, and Simplified Chinese at `/zh/`. Every page exists in all three
 locales with identical commands and code blocks (`npm test` enforces this), and
 the pages carry `hreflang` alternates.
