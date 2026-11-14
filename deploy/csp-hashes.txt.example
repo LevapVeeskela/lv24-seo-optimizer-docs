@@ -1,0 +1,12 @@
+# Expected CSP hashes for the stable VitePress inline scripts.
+#
+# Copy this file to deploy/csp-hashes.txt after the first production build and
+# paste the values printed by scripts/deploy-prod.sh, one per line. Lines
+# starting with # and blank lines are ignored.
+#
+# Put the same values into the Content-Security-Policy in
+# deploy/nginx.seo.lv24.by.conf.example (and the installed vhost), then reload
+# nginx. If this file is absent, the deploy script warns and continues.
+#
+# sha256-<base64 of the theme bootstrap script>=
+# sha256-<base64 of the macOS detection script>=

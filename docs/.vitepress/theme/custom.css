@@ -1,0 +1,819 @@
+/*
+ * LV24 SEO Optimizer docs theme.
+ * Identity: deep blue accent, warm-cool neutrals, hairline borders, system
+ * fonts, always-dark code. No external fonts, no remote assets.
+ */
+
+:root {
+  --lv24-font-sans: ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto,
+    'Helvetica Neue', Arial, 'Noto Sans', 'Liberation Sans', 'Noto Sans SC',
+    'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', 'Microsoft YaHei UI',
+    sans-serif;
+  --lv24-font-mono: ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas,
+    'Liberation Mono', 'Courier New', monospace;
+
+  --lv24-bg: #f6f8fa;
+  --lv24-bg-soft: #eef3f7;
+  --lv24-surface: #ffffff;
+  --lv24-surface-2: #edf2f6;
+  --lv24-text: #101820;
+  --lv24-text-muted: #4b5a68;
+  --lv24-border: #d3dde6;
+  --lv24-border-strong: #7a8896;
+  --lv24-accent: #1d4ed8;
+  --lv24-accent-hover: #1a43b8;
+  --lv24-accent-weak: #e3ebff;
+  --lv24-accent-contrast: #ffffff;
+  --lv24-danger: #b42318;
+  --lv24-code-bg: #0b141c;
+  --lv24-code-text: #e6f1f7;
+  --lv24-code-muted: #93a9ba;
+  --lv24-code-border: #1d2c39;
+  --lv24-shadow-sm: 0 1px 2px rgb(16 24 32 / 8%);
+  --lv24-shadow: 0 1px 2px rgb(16 24 32 / 6%), 0 16px 40px rgb(16 24 32 / 7%);
+  --lv24-radius: 14px;
+  --lv24-radius-lg: 22px;
+
+  /* VitePress tokens */
+  --vp-font-family-base: var(--lv24-font-sans);
+  --vp-font-family-mono: var(--lv24-font-mono);
+  --vp-c-bg: var(--lv24-bg);
+  --vp-c-bg-alt: var(--lv24-bg-soft);
+  --vp-c-bg-soft: var(--lv24-bg-soft);
+  --vp-c-bg-elv: var(--lv24-surface);
+  --vp-c-text-1: var(--lv24-text);
+  --vp-c-text-2: #3c4a57;
+  --vp-c-text-3: #566472;
+  --vp-c-divider: var(--lv24-border);
+  --vp-c-gutter: var(--lv24-border);
+  --vp-c-border: var(--lv24-border);
+  --vp-c-brand-1: var(--lv24-accent);
+  --vp-c-brand-2: var(--lv24-accent-hover);
+  --vp-c-brand-3: var(--lv24-accent);
+  --vp-c-brand-soft: rgb(29 78 216 / 12%);
+  --vp-button-brand-border: var(--lv24-accent);
+  --vp-button-brand-bg: var(--lv24-accent);
+  --vp-button-brand-text: var(--lv24-accent-contrast);
+  --vp-button-brand-hover-border: var(--lv24-accent-hover);
+  --vp-button-brand-hover-bg: var(--lv24-accent-hover);
+  --vp-button-brand-hover-text: var(--lv24-accent-contrast);
+  --vp-button-brand-active-border: var(--lv24-accent-hover);
+  --vp-button-brand-active-bg: var(--lv24-accent-hover);
+  --vp-button-brand-active-text: var(--lv24-accent-contrast);
+  --vp-code-block-bg: var(--lv24-code-bg);
+  --vp-code-copy-code-bg: rgb(255 255 255 / 8%);
+  --vp-code-copy-code-hover-bg: rgb(255 255 255 / 14%);
+  --vp-code-copy-code-active-text: #ffffff;
+  --vp-custom-block-tip-border: var(--lv24-accent);
+  --vp-custom-block-tip-text: var(--vp-c-text-1);
+  --vp-custom-block-tip-bg: var(--vp-c-brand-soft);
+  --vp-custom-block-info-border: #5b7c99;
+  --vp-custom-block-info-bg: rgb(91 124 153 / 10%);
+  --vp-custom-block-warning-border: #946300;
+  --vp-custom-block-warning-bg: rgb(148 99 0 / 10%);
+  --vp-custom-block-danger-border: var(--lv24-danger);
+  --vp-custom-block-danger-bg: rgb(180 35 24 / 9%);
+  --vp-custom-block-important-border: #6f42c1;
+  --vp-custom-block-important-bg: rgb(111 66 193 / 9%);
+  --vp-custom-block-note-border: #5b7c99;
+  --vp-custom-block-note-bg: rgb(91 124 153 / 10%);
+  --vp-local-search-bg: var(--lv24-surface);
+  --vp-local-search-result-bg: var(--lv24-surface);
+  --vp-local-search-result-border: transparent;
+  --vp-local-search-result-selected-bg: var(--lv24-accent-weak);
+  --vp-local-search-highlight-bg: var(--lv24-accent);
+  --vp-local-search-highlight-text: var(--lv24-accent-contrast);
+  --vp-nav-height: 64px;
+  --vp-sidebar-width: 280px;
+  --vp-layout-max-width: 1504px;
+}
+
+.dark {
+  --lv24-bg: #080d12;
+  --lv24-bg-soft: #0b1219;
+  --lv24-surface: #0f161d;
+  --lv24-surface-2: #151f28;
+  --lv24-text: #e9f1f7;
+  --lv24-text-muted: #a4b5c4;
+  --lv24-border: #22303c;
+  --lv24-border-strong: #5d6e7d;
+  --lv24-accent: #7ea6ff;
+  --lv24-accent-hover: #a3bdff;
+  --lv24-accent-weak: #101c3a;
+  --lv24-accent-contrast: #06122e;
+  --lv24-danger: #ff9b92;
+  --lv24-code-bg: #060b10;
+  --lv24-code-text: #dbe9f2;
+  --lv24-code-muted: #8ea3b5;
+  --lv24-code-border: #1a2732;
+  --lv24-shadow-sm: 0 1px 2px rgb(0 0 0 / 45%);
+  --lv24-shadow: 0 1px 2px rgb(0 0 0 / 40%), 0 18px 44px rgb(0 0 0 / 35%);
+
+  --vp-c-text-2: #b6c4d0;
+  --vp-c-text-3: #93a4b3;
+  --vp-c-brand-1: var(--lv24-accent);
+  --vp-c-brand-2: var(--lv24-accent-hover);
+  --vp-c-brand-3: var(--lv24-accent);
+  --vp-c-brand-soft: rgb(126 166 255 / 14%);
+  --vp-button-brand-text: var(--lv24-accent-contrast);
+  --vp-button-brand-hover-text: var(--lv24-accent-contrast);
+  --vp-button-brand-active-text: var(--lv24-accent-contrast);
+  --vp-code-copy-code-active-text: #ffffff;
+  --vp-custom-block-info-border: #7ea3c4;
+  --vp-custom-block-warning-border: #d6a23a;
+  --vp-custom-block-important-border: #a98be0;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';
+}
+
+::selection {
+  background: var(--lv24-accent);
+  color: var(--lv24-accent-contrast);
+}
+
+/* ---------- Focus ---------- */
+
+:focus-visible {
+  outline: 3px solid var(--lv24-accent);
+  outline-offset: 2px;
+  border-radius: 2px;
+}
+
+/* ---------- Navigation ---------- */
+
+.VPNavBar {
+  background: color-mix(in srgb, var(--lv24-bg) 86%, transparent) !important;
+  backdrop-filter: saturate(140%) blur(12px);
+  border-bottom: 1px solid var(--lv24-border);
+}
+
+.VPNavBar .divider {
+  display: none;
+}
+
+.VPNavBarTitle .title {
+  font-weight: 750;
+  letter-spacing: -0.02em;
+  font-size: 1.02rem;
+}
+
+.VPNavBarTitle .logo {
+  height: 26px;
+  width: 26px;
+}
+
+.VPNavBarMenuLink {
+  font-size: 0.9rem;
+  font-weight: 560;
+  color: var(--vp-c-text-2);
+  border-radius: 999px;
+  padding: 0.35rem 0.7rem !important;
+  line-height: 1.2 !important;
+}
+
+.VPNavBarMenuLink:hover,
+.VPNavBarMenuLink.active {
+  color: var(--lv24-accent);
+  background: var(--lv24-accent-weak);
+}
+
+/* The built-in translations menu is replaced by the explicit switcher on
+   desktop; below 1280 it remains available in the extra menu. */
+@media (min-width: 1280px) {
+  .VPNavBar .VPNavBarTranslations,
+  .VPNavBar .VPNavBarAppearance {
+    display: none !important;
+  }
+}
+
+/* Search button */
+.DocSearch-Button {
+  border: 1px solid var(--lv24-border) !important;
+  border-radius: 999px !important;
+  background: var(--lv24-surface) !important;
+  height: 2.25rem !important;
+  padding: 0 0.85rem !important;
+}
+
+.DocSearch-Button:hover {
+  border-color: var(--lv24-accent) !important;
+  box-shadow: none !important;
+}
+
+.DocSearch-Button .DocSearch-Search-Icon {
+  width: 15px;
+  height: 15px;
+  color: var(--vp-c-text-3);
+}
+
+.DocSearch-Button-Placeholder {
+  font-size: 0.85rem !important;
+  color: var(--vp-c-text-3);
+}
+
+.DocSearch-Button-Keys {
+  display: flex !important;
+  gap: 3px;
+  margin-left: auto;
+}
+
+.DocSearch-Button-Key {
+  min-width: 1.25rem;
+  height: 1.25rem;
+  padding: 0;
+  border: 1px solid var(--lv24-border);
+  border-radius: 4px;
+  background: var(--lv24-bg-soft) !important;
+  box-shadow: none !important;
+  color: var(--vp-c-text-3) !important;
+  font-family: var(--lv24-font-mono);
+  font-size: 0.62rem;
+  top: 0;
+}
+
+@media (max-width: 768px) {
+  .DocSearch-Button-Keys {
+    display: none !important;
+  }
+}
+
+/* Appearance switch */
+.VPSwitchAppearance {
+  border: 1px solid var(--lv24-border-strong);
+}
+
+/* ---------- Sidebar ---------- */
+
+.VPSidebar {
+  background: var(--lv24-bg-soft) !important;
+  border-right: 1px solid var(--lv24-border);
+}
+
+.VPSidebar .group + .group {
+  border-top: 0;
+  padding-top: 0;
+}
+
+.VPSidebarItem.level-0 {
+  padding-bottom: 0.85rem;
+}
+
+.VPSidebarItem.level-0 > .item {
+  margin-top: 1.35rem;
+}
+
+.VPSidebarItem.level-0 > .item > .text {
+  font-family: var(--lv24-font-mono);
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--vp-c-text-3);
+}
+
+.VPSidebarItem .link {
+  border-radius: 8px;
+  padding: 0.22rem 0.55rem;
+  margin: 0.05rem -0.55rem;
+  position: relative;
+  transition: background-color 140ms ease;
+}
+
+.VPSidebarItem .link:hover {
+  background: color-mix(in srgb, var(--lv24-accent) 8%, transparent);
+}
+
+.VPSidebarItem .link:hover .text {
+  color: var(--lv24-accent);
+}
+
+.VPSidebarItem.is-active > .item {
+  background: none;
+}
+
+.VPSidebarItem.is-active > .item > .link {
+  background: var(--lv24-accent-weak);
+  border-radius: 4px;
+  box-shadow: inset 3px 0 0 var(--lv24-accent);
+  margin-inline: -0.55rem;
+  padding-inline: 0.55rem;
+}
+
+.VPSidebarItem.is-active > .item > .link .text {
+  color: var(--lv24-accent);
+  font-weight: 650;
+}
+
+.VPSidebarItem .text {
+  font-size: 0.875rem;
+  line-height: 1.5;
+}
+
+/* ---------- Doc content ---------- */
+
+.vp-doc h1 {
+  font-size: clamp(2.1rem, 2.6vw + 1rem, 2.9rem);
+  letter-spacing: -0.038em;
+  line-height: 1.1;
+  color: var(--vp-c-text-1);
+}
+
+.vp-doc h2 {
+  margin-top: 2.75rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid var(--lv24-border);
+  font-size: clamp(1.4rem, 1vw + 1rem, 1.75rem);
+  letter-spacing: -0.022em;
+  border-bottom: none;
+}
+
+.vp-doc h3 {
+  margin-top: 2rem;
+  font-size: 1.16rem;
+  letter-spacing: -0.012em;
+}
+
+.vp-doc h4 {
+  font-size: 1rem;
+  letter-spacing: 0;
+}
+
+.vp-doc p,
+.vp-doc li {
+  color: var(--vp-c-text-2);
+}
+
+.vp-doc strong {
+  color: var(--vp-c-text-1);
+}
+
+.vp-doc a {
+  color: var(--lv24-accent);
+  font-weight: 500;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 3px;
+}
+
+.vp-doc a:hover {
+  color: var(--lv24-accent-hover);
+}
+
+.vp-doc :not(pre) > code {
+  background: var(--vp-c-brand-soft);
+  color: var(--lv24-accent);
+  border-radius: 5px;
+  padding: 0.14em 0.42em;
+  font-size: 0.86em;
+  font-weight: 500;
+}
+
+.vp-doc blockquote {
+  border-left: 3px solid var(--lv24-accent);
+  background: var(--vp-c-brand-soft);
+  border-radius: 0 10px 10px 0;
+  padding: 0.9rem 1.1rem;
+}
+
+.vp-doc blockquote > p {
+  color: var(--vp-c-text-1);
+  font-size: 0.94rem;
+}
+
+/* Lists */
+.vp-doc ul,
+.vp-doc ol {
+  padding-left: 1.35rem;
+}
+
+.vp-doc li + li {
+  margin-top: 0.3rem;
+}
+
+/* Tables */
+.vp-doc table {
+  display: block;
+  width: 100%;
+  overflow-x: auto;
+  border: 1px solid var(--lv24-border);
+  border-radius: 10px;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+}
+
+.vp-doc tr {
+  border-top: 1px solid var(--lv24-border);
+  background: transparent;
+}
+
+.vp-doc tr:nth-child(2n) {
+  background: color-mix(in srgb, var(--lv24-bg-soft) 55%, transparent);
+}
+
+.vp-doc th {
+  background: var(--lv24-bg-soft);
+  font-family: var(--lv24-font-mono);
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--vp-c-text-3);
+  text-align: left;
+}
+
+.vp-doc th,
+.vp-doc td {
+  border: none;
+  border-bottom: 1px solid var(--lv24-border);
+  padding: 0.65rem 0.9rem;
+}
+
+.vp-doc tr:last-child td {
+  border-bottom: none;
+}
+
+/* Desktop: let columns fill the content width instead of leaving an empty
+   strip inside the bordered table. Phones keep the horizontal scroll. */
+@media (min-width: 960px) {
+  .vp-doc table {
+    display: table;
+    width: 100%;
+    overflow: visible;
+  }
+}
+
+/* The CLI tables live inside their own scroll wrapper; keep the table a real
+   table so the wrapper, not the page, scrolls on narrow screens. */
+.vp-doc .table-wrap > table {
+  display: table;
+  min-width: 620px;
+  overflow: visible;
+  border: none;
+  border-radius: 0;
+}
+
+/* Phones: each command becomes a card instead of a horizontally scrolling table. */
+@media (max-width: 700px) {
+  .vp-doc .cli-tables .table-wrap {
+    border: none;
+    border-radius: 0;
+    background: transparent;
+    overflow: visible;
+  }
+
+  .vp-doc .cli-tables table,
+  .vp-doc .cli-tables thead,
+  .vp-doc .cli-tables tbody,
+  .vp-doc .cli-tables tr,
+  .vp-doc .cli-tables td {
+    display: block;
+    width: 100%;
+    min-width: 0;
+  }
+
+  .vp-doc .cli-tables table {
+    min-width: 0;
+    border: none;
+  }
+
+  .vp-doc .cli-tables thead {
+    display: none;
+  }
+
+  .vp-doc .cli-tables tbody tr {
+    margin-bottom: 0.6rem;
+    padding: 0.75rem 0.85rem;
+    border: 1px solid var(--lv24-border);
+    border-radius: 10px;
+    background: var(--lv24-surface);
+  }
+
+  .vp-doc .cli-tables tbody tr:last-child {
+    margin-bottom: 0;
+  }
+
+  .vp-doc .cli-tables td {
+    border: none;
+    padding: 0;
+  }
+
+  .vp-doc .cli-tables td code {
+    display: block;
+    white-space: normal;
+    overflow-wrap: anywhere;
+    font-size: 0.8rem;
+  }
+
+  .vp-doc .cli-tables .desc {
+    min-width: 0;
+    margin-top: 0.4rem;
+    font-size: 0.85rem;
+  }
+
+  .vp-doc .cli-tables .cell-copy {
+    width: auto;
+    margin-top: 0.55rem;
+    text-align: left;
+  }
+}
+
+/* Code blocks: a slim header strip holds the language label and copy button. */
+.vp-doc div[class*='language-'] {
+  position: relative;
+  border: 1px solid var(--lv24-code-border);
+  border-radius: 12px;
+  background: var(--lv24-code-bg);
+  margin: 1.25rem 0;
+}
+
+.vp-doc div[class*='language-']::before {
+  content: '';
+  position: absolute;
+  inset: 0 0 auto;
+  height: 2.35rem;
+  border-bottom: 1px solid var(--lv24-code-border);
+  border-radius: 12px 12px 0 0;
+  background: rgb(255 255 255 / 3%);
+  pointer-events: none;
+}
+
+.vp-doc div[class*='language-'] > span.lang {
+  left: 1rem;
+  right: auto;
+  top: 0.72rem;
+  color: var(--lv24-code-muted);
+  font-family: var(--lv24-font-mono);
+  font-size: 0.68rem;
+  letter-spacing: 0.06em;
+}
+
+.vp-doc div[class*='language-'] pre {
+  padding: 3.05rem 1.1rem 1rem;
+  scrollbar-width: thin;
+  scrollbar-color: var(--lv24-code-border) transparent;
+}
+
+.vp-doc div[class*='language-'] pre::-webkit-scrollbar {
+  height: 8px;
+}
+
+.vp-doc div[class*='language-'] pre::-webkit-scrollbar-thumb {
+  background: var(--lv24-code-border);
+  border-radius: 999px;
+}
+
+.vp-doc div[class*='language-'] code {
+  font-size: 0.84rem;
+  line-height: 1.65;
+}
+
+/* Copy button on code blocks */
+.vp-doc div[class*='language-'] > button.copy {
+  top: 0.42rem;
+  right: 0.5rem;
+  width: 30px;
+  height: 30px;
+  border: 1px solid rgb(255 255 255 / 12%);
+  border-radius: 7px;
+  background-color: rgb(255 255 255 / 6%);
+  background-size: 16px;
+  opacity: 0.75;
+}
+
+.vp-doc div[class*='language-']:hover > button.copy,
+.vp-doc div[class*='language-'] > button.copy:focus {
+  opacity: 1;
+}
+
+.vp-doc div[class*='language-'] > button.copy:hover {
+  background-color: rgb(255 255 255 / 14%);
+}
+
+/* Callouts */
+.vp-doc .custom-block {
+  border: 1px solid var(--lv24-border);
+  border-left-width: 3px;
+  border-radius: 10px;
+  padding: 1rem 1.15rem;
+}
+
+.vp-doc .custom-block .custom-block-title {
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+
+.vp-doc .custom-block.tip {
+  border-left-color: var(--lv24-accent);
+}
+
+.vp-doc .custom-block.info,
+.vp-doc .custom-block.note {
+  border-left-color: #5b7c99;
+}
+
+.vp-doc .custom-block.warning {
+  border-left-color: #946300;
+}
+
+.vp-doc .custom-block.danger {
+  border-left-color: var(--lv24-danger);
+}
+
+/* Outline */
+.VPDocAsideOutline:has(ul:empty) {
+  display: none;
+}
+
+.VPDocAsideOutline .outline-title {
+  font-size: 0.95rem;
+  font-weight: 650;
+  letter-spacing: -0.01em;
+  color: var(--vp-c-text-1);
+}
+
+.VPDocAsideOutline .outline-link {
+  font-size: 0.8rem;
+  color: var(--vp-c-text-3);
+  padding-left: 0.75rem;
+  border-left: 2px solid transparent;
+}
+
+.VPDocAsideOutline .outline-link:hover,
+.VPDocAsideOutline .outline-link.active {
+  color: var(--lv24-accent);
+  border-left-color: var(--lv24-accent);
+}
+
+/* Content width */
+.VPDoc .content,
+.VPDoc .content-container,
+.VPDoc .main,
+.vp-doc {
+  min-width: 0;
+}
+
+.VPDoc .content-container {
+  max-width: 800px !important;
+}
+
+@media (max-width: 959px) {
+  .VPDoc .content-container {
+    max-width: 100% !important;
+  }
+}
+
+/* Pages without an outline (the CLI reference) use the free space and center. */
+@media (min-width: 1280px) {
+  .VPDoc:not(.has-aside) .container {
+    max-width: 1104px;
+    justify-content: center;
+  }
+
+  .VPDoc:not(.has-aside) .content {
+    margin: 0 auto;
+    min-width: 0;
+  }
+
+  .VPDoc:not(.has-aside) .content-container {
+    max-width: 900px !important;
+  }
+}
+
+/* Prev / next */
+.VPDocFooter .pager-link {
+  position: relative;
+  border: 1px solid var(--lv24-border);
+  border-radius: 12px;
+  background: var(--lv24-surface);
+  padding: 0.9rem 1rem;
+  transition:
+    border-color 150ms ease,
+    transform 150ms ease;
+}
+
+.VPDocFooter .pager-link.prev {
+  padding-left: 2.4rem;
+}
+
+.VPDocFooter .pager-link.next {
+  padding-right: 2.4rem;
+  text-align: right;
+}
+
+.VPDocFooter .pager-link.prev::before,
+.VPDocFooter .pager-link.next::after {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 1rem;
+  color: var(--vp-c-text-3);
+}
+
+.VPDocFooter .pager-link.prev::before {
+  content: '←';
+  left: 1rem;
+}
+
+.VPDocFooter .pager-link.next::after {
+  content: '→';
+  right: 1rem;
+}
+
+.VPDocFooter .pager-link:hover {
+  border-color: var(--lv24-accent);
+  transform: translateY(-1px);
+}
+
+.VPDocFooter .pager-link:hover::before,
+.VPDocFooter .pager-link:hover::after {
+  color: var(--lv24-accent);
+}
+
+.VPDocFooter .pager-link .desc {
+  font-family: var(--lv24-font-mono);
+  font-size: 0.64rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--vp-c-text-3);
+}
+
+.VPDocFooter .pager-link .title {
+  color: var(--vp-c-text-1);
+  font-weight: 620;
+}
+
+/* Last updated + footer meta */
+.VPDocFooter .last-updated .text {
+  font-size: 0.78rem;
+  color: var(--vp-c-text-3);
+}
+
+/* ---------- Home shell ---------- */
+
+.VPHome {
+  margin-bottom: 0 !important;
+}
+
+/* ---------- Search modal ---------- */
+
+.VPLocalSearchBox .shell {
+  border: 1px solid var(--lv24-border);
+  border-radius: 14px;
+  box-shadow: var(--lv24-shadow);
+}
+
+.VPLocalSearchBox .search-bar {
+  border: 1px solid var(--lv24-border);
+  border-radius: 10px;
+}
+
+.VPLocalSearchBox .result {
+  border-radius: 10px;
+  border: 1px solid transparent;
+}
+
+.VPLocalSearchBox .result.selected {
+  border-color: var(--lv24-accent);
+}
+
+/* ---------- Site footer ---------- */
+
+.VPFooter {
+  border-top: 1px solid var(--lv24-border);
+  background: var(--lv24-bg-soft);
+  padding: 2.25rem 1.5rem;
+}
+
+.VPFooter .message {
+  font-family: var(--lv24-font-mono);
+  font-size: 0.76rem;
+  letter-spacing: 0.04em;
+  color: var(--vp-c-text-3);
+}
+
+.VPFooter .copyright {
+  font-size: 0.8rem;
+  color: var(--vp-c-text-2);
+}
+
+/* ---------- Reduced motion ---------- */
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

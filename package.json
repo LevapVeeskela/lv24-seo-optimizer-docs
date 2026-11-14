@@ -1,0 +1,21 @@
+{
+  "name": "lv24-seo-optimizer-docs",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Documentation portal for LV24 SEO Optimizer (VitePress, static build)",
+  "type": "module",
+  "scripts": {
+    "docs:dev": "vitepress dev docs",
+    "docs:build": "vitepress build docs && node scripts/postbuild.mjs",
+    "docs:preview": "vitepress preview docs",
+    "lint": "markdownlint-cli2 \"docs/**/*.md\"",
+    "test": "node ./scripts/check.mjs"
+  },
+  "devDependencies": {
+    "markdownlint-cli2": "0.18.1",
+    "vitepress": "1.6.4"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

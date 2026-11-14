@@ -1,0 +1,5 @@
+# Inline-script hashes allowed by the seo.lv24.by CSP.
+# Generated from the VitePress 1.6.4 build; re-run scripts/deploy-prod.sh after
+# a VitePress upgrade and update both this file and the nginx vhost.
+sha256-DQUgNM9X0iH2019NkUxeBvnBoEoRKkHBc/I0iLqPNPA=
+sha256-La1r0VSk0Po4KFI0duEKhmPu+u0I416JW3oONqtdf4M=

@@ -1,0 +1,136 @@
+# Edge vhost for the LV24 SEO Optimizer documentation site (static, no
+# upstream).
+#
+# Install on the VPS:
+#   sudo cp deploy/nginx.seo.lv24.by.conf.example \
+#     /etc/nginx/conf.d/seo.lv24.by.conf
+#   # replace the TLS paths; the CSP hashes are already set for VitePress 1.6.4
+#   sudo nginx -t && sudo systemctl reload nginx
+#
+# The site root is swapped atomically by scripts/deploy-prod.sh:
+#   /opt/lv24-sites/lv24-seo-site/root             current build
+#   /opt/lv24-sites/lv24-seo-site/root.prev-<ts>   previous build (rollback)
+#
+# DNS: seo.lv24.by -> the VPS address.
+# Cert: certbot certonly --webroot -w /var/www/certbot -d seo.lv24.by
+#       (adjust the ssl_certificate paths if the edge nginx runs in a
+#       container; brain.lv24.by mounts its certs under /etc/nginx/certs).
+#
+# CSP: VitePress emits two stable inline scripts (theme bootstrap and macOS
+# detection). The hashes below match deploy/csp-hashes.txt and VitePress 1.6.4.
+# Re-run scripts/deploy-prod.sh after a VitePress upgrade and update both files
+# if the hashes change (see deploy/README.md). If a hash is wrong the page still
+# renders, but the theme bootstrap is blocked and the first paint may flash.
+
+server {
+    listen 80;
+    listen [::]:80;
+    server_name seo.lv24.by;
+    server_tokens off;
+
+    location ^~ /.well-known/acme-challenge/ {
+        root /var/www/certbot;
+        default_type "text/plain";
+        access_log off;
+        try_files $uri =404;
+    }
+
+    location / {
+        return 301 https://seo.lv24.by$request_uri;
+    }
+}
+
+server {
+    listen 443 ssl;
+    listen [::]:443 ssl;
+    # nginx >= 1.25.1. On older versions use `listen 443 ssl http2;` instead.
+    http2 on;
+    server_name seo.lv24.by;
+    server_tokens off;
+
+    ssl_certificate     /etc/letsencrypt/live/seo.lv24.by/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/seo.lv24.by/privkey.pem;
+    ssl_session_timeout 1d;
+    ssl_session_cache shared:SSL:10m;
+    ssl_session_tickets off;
+    ssl_protocols TLSv1.2 TLSv1.3;
+    ssl_prefer_server_ciphers off;
+
+    # `expires` below sets Cache-Control without add_header, so these
+    # server-level headers are inherited by every location that does not
+    # define its own add_header.
+    add_header Strict-Transport-Security "max-age=31536000" always;
+    add_header X-Content-Type-Options nosniff always;
+    add_header X-Frame-Options DENY always;
+    add_header Referrer-Policy strict-origin-when-cross-origin always;
+    add_header Permissions-Policy "camera=(), microphone=(), geolocation=()" always;
+    add_header Content-Security-Policy "default-src 'self'; script-src 'self' 'sha256-DQUgNM9X0iH2019NkUxeBvnBoEoRKkHBc/I0iLqPNPA=' 'sha256-La1r0VSk0Po4KFI0duEKhmPu+u0I416JW3oONqtdf4M='; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'none'; frame-ancestors 'none'" always;
+
+    client_max_body_size 1k;
+    charset utf-8;
+
+    # Compression. text/html is always compressed by nginx.
+    gzip on;
+    gzip_vary on;
+    gzip_min_length 1024;
+    gzip_types text/plain text/css text/javascript application/javascript application/json application/xml image/svg+xml;
+
+    # Brotli is optional and works only when nginx was built with ngx_brotli:
+    # brotli on;
+    # brotli_comp_level 5;
+    # brotli_types text/plain text/css text/javascript application/javascript application/json application/xml image/svg+xml;
+
+    root /opt/lv24-sites/lv24-seo-site/root;
+    index index.html;
+
+    # VitePress content-hashed bundles; safe to cache for a year.
+    # Adding `immutable` needs an add_header here, which would drop the
+    # inherited security headers, so keep the simple expires form.
+    location /assets/ {
+        expires 1y;
+        access_log off;
+        try_files $uri =404;
+    }
+
+    # Build marker polled by the "documentation updated" prompt. A
+    # location-level add_header is not inherited, so repeat nosniff here;
+    # the other security headers do not apply to a JSON body.
+    location = /version.json {
+        add_header Cache-Control "no-store" always;
+        add_header X-Content-Type-Options nosniff always;
+        try_files $uri =404;
+    }
+
+    location ^~ /ru/ {
+        limit_except GET HEAD { deny all; }
+        expires epoch;
+        try_files $uri $uri.html $uri/ =404;
+        error_page 404 /ru/404.html;
+    }
+
+    location = /ru/404.html {
+        internal;
+    }
+
+    location ^~ /zh/ {
+        limit_except GET HEAD { deny all; }
+        expires epoch;
+        try_files $uri $uri.html $uri/ =404;
+        error_page 404 /zh/404.html;
+    }
+
+    location = /zh/404.html {
+        internal;
+    }
+
+    location / {
+        limit_except GET HEAD { deny all; }
+        expires epoch;
+        try_files $uri $uri.html $uri/ =404;
+        error_page 404 /404.html;
+    }
+
+    location = /404.html {
+        internal;
+    }
+}

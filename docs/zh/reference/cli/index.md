@@ -1,0 +1,210 @@
+---
+title: CLI 参考
+description: lv24-seo 命令行的命令、全局参数、JSON 信封、退出码和示例。
+---
+
+# CLI 参考
+
+`lv24-seo` 是引擎的命令行入口。它默认只读，使用 `--json` 时只输出一个机器可读信封，并且只通过
+三个显式受控的写入命令改变提供方状态。同一个可执行文件可在 Windows、macOS 和 Linux 上运行。
+
+## 命令表
+
+该表可按命令、分组或描述筛选。命令名和参数在所有语言中完全一致，只有周围的文档被翻译。
+
+<CliTables />
+
+每个命令还接受 `--help`，它会输出当前安装版本的权威参数列表。
+
+## 全局约定
+
+### 响应信封
+
+使用 `--json` 时，命令只输出一个 JSON 文档，不会输出其他内容：
+
+```json
+{ "ok": true, "data": {}, "meta": { "version": "0.5.1", "duration_ms": 812 }, "warnings": [] }
+```
+
+失败的命令使用相同结构，但 `ok: false`，并用 `error` 对象代替 `data`：
+
+```json
+{ "ok": false, "error": { "code": "AUTH_REQUIRED", "message": "Google Search Console token is missing", "retryable": false, "next_action": "lv24-seo auth login --provider gsc" }, "meta": { "version": "0.5.1" }, "warnings": ["gsc: token missing"] }
+```
+
+- `data` 因命令而异。`meta` 始终包含 `version`，通常还会加入 `duration_ms`、`truncated`、
+  `data_age_days`、`limitations`、`locale` 或 `complete`。
+- `warnings` 是简短的面向人的字符串。像 `stats` 这样的聚合命令在某个提供方失败时仍保持
+  `ok: true`：失败会计入 `coverage` 并写入 `warnings`。
+- 不带 `--json` 时，stdout 输出简洁的文本摘要，随后是警告和错误行。两种模式都不输出 ANSI 颜色。
+- `config show` 会添加 `meta.redacted: true`；看起来像凭据的键会以 `***` 掩码。
+
+### 退出码
+
+| 退出码 | 含义 | 对应错误码 |
+|---|---|---|
+| `0` | 成功。信封为 `ok: true`。 | — |
+| `1` | 未预期的内部故障。 | `INTERNAL` |
+| `2` | 用法或配置问题。 | `INVALID_INPUT`, `CONFIG_INVALID`, `CONFIRM_REQUIRED`, `WRITE_DISABLED` |
+| `3` | 认证问题。 | `AUTH_REQUIRED`, `AUTH_INVALID` |
+| `4` | 配额或上游服务故障。 | `QUOTA_EXCEEDED`, `UPSTREAM_UNAVAILABLE` |
+| `5` | 部分结果：输出被截断。 | `TRUNCATED` |
+
+`WRITE_DISABLED` 的退出码是 `2` 而不是 `4`：写入在调用提供方之前就被拒绝。退出码 `5` 保留给同时
+带有 `truncated` 和 `meta.strict` 的成功信封；0.5.1 中没有任何参数会启用严格模式，因此脚本应把
+`5` 视为部分结果而不是硬失败。请依据退出码和 `error.code` 判断，不要解析面向人的文本。
+
+### 配置与参数
+
+- `--config PATH` 选择特定的 `seo.toml`。路径必须存在；文件缺失会返回 `CONFIG_INVALID`，不会
+  静默回退。
+- 不带 `--config` 时，引擎先查找 `./seo.toml`，再查找平台用户配置
+  （Windows 为 `%APPDATA%\lv24-seo\config.toml`，Linux 为 `~/.config/lv24-seo/config.toml`）。
+- `LV24_SEO_*` 环境变量覆盖文件中的值。`.env` 文件不会自动加载；请在 shell 或运行命令的服务
+  单元中导出变量。
+- `mcp serve` 是长期运行的服务器，不接受 `--json` 和 `--config`。
+
+完整的键列表、默认值和密钥处理见[配置参考](/zh/reference/config/)。
+
+### 默认只读与写入闸门
+
+只有 `sitemap submit`、`yandex recrawl` 和 `indexnow submit` 可以改变提供方状态。它们分两步执行：
+
+1. 不带 `--confirm` 运行命令。它会返回试运行结果，包含 `data.plan`、`data.plan_hash`、
+   `data.confirm_token` 和 `meta.dry_run: true`。
+2. 在同一个 shell 中设置一个足够长的随机 `LV24_SEO_WRITE_SECRET`，然后在五分钟内使用
+   `--allow-write --confirm TOKEN` 重新运行。
+
+令牌是对操作、目标、完整计划哈希和有效期的 HMAC，因此任何输入变化都会使其失效。CLI 不接入
+幂等账本，请把令牌视为一次性使用。IndexNow 会真正提交 URL。GSC sitemap submit 和 Yandex
+recrawl 目前返回 `WRITE_DISABLED`，不会假装提供方调用已经发生。
+
+### 确定性与数据诚实
+
+- 日期为 ISO-8601（`2026-11-10`）；时间戳为 ISO-8601 UTC（`2026-11-14T12:00:00+00:00`）。
+- CLI 字段顺序稳定，保存的快照载荷按键排序，可见输出中没有随机标识符。报告和差异适合在多次
+  运行之间直接比较。
+- 有界响应在适用时携带 `truncated`、`total`、`data_age_days` 和 `limitations[]`。只出现在一个
+  窗口中的指标会标记为未知，而不是零。
+- `--days` 接受 `1..3660`；更大的值会以 `INVALID_INPUT` 失败并返回退出码 `2`。
+- 任何命令都不会输出令牌、cookie 或完整的 `Authorization` 头。
+
+## 命令分组
+
+| 分组 | 命令 | 影响范围 |
+|---|---|---|
+| Start | `version`, `doctor`, `init`, `properties`, `stats` | 本地文件和环境；`stats` 只读取提供方 KPI，不写入。 |
+| Authentication | `auth status`, `auth set`, `auth login`, `auth logout` | 本地密钥存储；`login` 只打印说明。 |
+| Configuration | `config show` | 有效配置，凭据已掩码。 |
+| Google Search Console | `gsc query`, `sitemap submit` | 查询只读；sitemap submit 是受控写入。 |
+| Yandex Webmaster | `yandex queries`, `yandex indexing`, `yandex recrawl` | 查询只读；recrawl 是受控写入。 |
+| IndexNow | `indexnow submit` | 受控写入，会真正提交 URL。 |
+| Crawl and audit | `crawl` | 与提供方无关；配置了存储时保存本地页面和问题。 |
+| Reports | `report weekly`, `report diff` | `weekly` 保存本地快照；`diff` 只读。 |
+| Scheduling | `schedule print`, `schedule install` | `print` 只渲染；`install` 写入主机计划任务文件。 |
+| Agents and MCP | `mcp serve`, `install`, `export tools`, `export skills` | 主机配置、生成文件或本地服务器。 |
+
+## 示例
+
+### 仪表盘快照
+
+```bash
+lv24-seo stats --days 7 --lag-days 2 --json
+```
+
+只读，不需要存储。服务始终按 `gsc`、`yandex_webmaster`、`yandex_metrika`、`bing`、`crux`、
+`psi` 的顺序出现；`metrics` 只包含实际返回的值，不补零，也不跨引擎求和。单个提供方失败会被
+隔离，并增加 `coverage.failed`。
+
+### Search Console
+
+```bash
+lv24-seo gsc query --start 2026-11-01 --end 2026-11-07 --dimensions query,page --limit 100 --json
+```
+
+`--start` 和 `--end` 是必填项。没有 `--days` 简写，也没有 `--property` 覆盖：资源来自
+`seo.toml` 中的 `[providers.gsc]`。维度用逗号分隔，仅限 `query`、`page`、`country`、`device`
+和 `date`。
+
+### Yandex
+
+```bash
+lv24-seo yandex queries --limit 100 --json
+lv24-seo yandex indexing --json
+```
+
+`yandex queries` 返回顶部行，而不是完整的查询与页面关联：Yandex 每个周期最多提供 3,000 个查询。
+`yandex indexing` 显示配置的 `host_id` 的索引历史、搜索中页面数、诊断和搜索 URL 事件。
+
+### 抓取
+
+```bash
+lv24-seo crawl --start https://example.com --max-urls 500 --json
+```
+
+抓取器遵守 `robots.txt`，按广度优先跟随同主机链接，运行全部规则，并在配置了存储时保存页面和
+问题。`data.sitemap_coverage` 用六个分组比较站点地图与抓取结果。当返回 `complete: false` 时，
+受影响的分组只是候选，不是已确认的发现；`limitations[]` 会指出被截断的输入。
+
+### 报告
+
+```bash
+lv24-seo report weekly --days 7 --lag-days 2 --out reports/ --json
+lv24-seo report diff --markdown
+```
+
+`report weekly` 构建并保存快照；加上 `--send` 会通过 `seo.toml` 中启用的渠道投递。`--out` 写入
+规范英文的 `report.json` 和按 `report.locale` 渲染的 `report.html`。`report diff` 比较两个已保存
+的周报快照，不调用提供方，并且需要两个不同周期的运行。`--markdown` 只在 stdout 输出 Markdown；
+警告写入 stderr。
+
+### 计划任务
+
+```bash
+lv24-seo schedule print --cron "0 6 * * 1" --target systemd --json
+lv24-seo schedule install --kind weekly --print
+```
+
+`print` 只渲染产物，不修改主机。`install` 写入 cron 块、systemd 用户单元或任务计划程序 XML，
+生成的任务会运行 `report weekly --send --json`。只有简单的 cron 表达式（`M H * * *` 和
+`M H * * DOW`）能转换为 systemd 或 Windows 计划。
+
+### MCP 与智能体客户端
+
+```bash
+lv24-seo install --client cursor --print
+lv24-seo mcp serve --transport http --port 8765
+```
+
+`install` 会把 `lv24-seo` 服务器条目合并进主机配置，而不是替换文件；`--print` 显示确切的 JSON。
+`mcp serve` 默认使用 stdio，并可通过 `--transport http` 使用可流式 HTTP。
+
+### 认证
+
+```bash
+lv24-seo auth status --json
+lv24-seo auth set --provider gsc --stdin
+```
+
+`auth set` 从 stdin 或隐藏提示读取密钥，存入系统钥匙串，或存入显式启用的 `0600` 文件后备存储。
+它只输出 `{provider, stored, source}`。`auth status` 报告存在性和来源（`env`、`keyring`、`file`、
+`missing`），从不输出值。
+
+### 导出
+
+```bash
+lv24-seo export tools --out schemas/tools.json
+lv24-seo export skills --out skills/
+```
+
+`export tools` 为不使用 MCP 的智能体写入生成的 MCP 注册表；`export skills` 复制打包的
+`SKILL.md` 文件及其清单。两者都只写本地文件。
+
+## 相关页面
+
+- [配置参考](/zh/reference/config/)
+- [数据源与配额](/zh/providers/)
+- [MCP 与智能体技能](/zh/mcp/)
+- [故障排查](/zh/troubleshooting/)
+
+Source: `_source/engine-cli.md`, `_source/engine-mcp.md`, `_source/engine-releases-0.5.1.md`; 引擎仓库中 0.5.1 的 `--help` 输出。
