@@ -180,9 +180,9 @@ including pruning old `root.prev-*` directories, is in `deploy/README.md`.
 VitePress emits two stable inline scripts (the theme bootstrap and macOS
 detection) on every page. `scripts/deploy-prod.sh` hashes them, prints the
 values and, if `deploy/csp-hashes.txt` exists, fails when a computed hash is not
-listed there. The first deploy writes that file; put the same values into the
-nginx CSP and reload nginx. A VitePress upgrade that changes either script
-requires updating both the hash file and the vhost.
+listed there. The committed `deploy/csp-hashes.txt` contains the current values;
+put the same values into the nginx CSP and reload nginx. A VitePress upgrade
+that changes either script requires updating both the hash file and the vhost.
 
 ## Zero-spend and security
 
