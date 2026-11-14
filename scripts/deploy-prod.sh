@@ -25,9 +25,9 @@ HASH_FILE=deploy/csp-hashes.txt
 cd "$(dirname "$0")/.."
 
 npm ci
-DOCS_SITE_URL="$SITE_URL" npm run docs:build
 npm run lint
 npm test
+DOCS_SITE_URL="$SITE_URL" npm run docs:build
 
 echo "inline script hashes for the CSP (unique across the built HTML):"
 hashes="$(node -e '
@@ -100,6 +100,7 @@ rm -f "/tmp/$ARCHIVE"
 
 ssh "$HOST" "sudo bash -s" <<EOF
 set -euo pipefail
+[ -d "$SITE_ROOT" ] || { echo "missing $SITE_ROOT; create it first (deploy/README.md)" >&2; exit 1; }
 rm -rf "$SITE_ROOT/root.new"
 mkdir -p "$SITE_ROOT/root.new"
 tar -C "$SITE_ROOT/root.new" -xzf /tmp/$ARCHIVE
@@ -108,7 +109,11 @@ chmod -R go-w "$SITE_ROOT/root.new"
 cd "$SITE_ROOT"
 ts=\$(date -u +%Y%m%dT%H%M%SZ)
 if [ -d root ]; then mv root "root.prev-\$ts"; fi
-mv root.new root
+if ! mv root.new root; then
+  if [ -d "root.prev-\$ts" ]; then mv "root.prev-\$ts" root; fi
+  echo "swap failed; restored the previous root" >&2
+  exit 1
+fi
 rm -f /tmp/$ARCHIVE
 echo "deployed root -> $SITE_ROOT/root (previous: root.prev-\$ts, if any)"
 EOF

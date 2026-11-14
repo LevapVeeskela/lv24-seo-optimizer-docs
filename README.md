@@ -51,19 +51,23 @@ caching.
 
 ## Deploy
 
+Production is the containerized `lv24-city-edge-nginx`; the exact vhost and
+site bind wiring is in [`deploy/vps-edge.md`](deploy/vps-edge.md). The
+bare-metal nginx steps in `deploy/README.md` are the fallback.
+
 Production build and upload (SSH host alias `lv24`, default):
 
 ```sh
 bash scripts/deploy-prod.sh
 ```
 
-The script builds at the site root with
-`DOCS_SITE_URL=https://seo.lv24.by`, runs lint and tests, prints the hashes of
-the stable inline scripts, checks them against the committed
-`deploy/csp-hashes.txt`, uploads the build to
-`/opt/lv24-sites/lv24-seo-site/root` and switches the vhost root atomically.
-The previous directory is kept as `root.prev-<ts>` for rollback. A hash mismatch
-aborts before upload; if the file is missing the script writes it and continues.
+The script runs `npm ci`, lint and tests, builds at the site root with
+`DOCS_SITE_URL=https://seo.lv24.by`, prints the hashes of the stable inline
+scripts, checks them against the committed `deploy/csp-hashes.txt`, uploads the
+build to `/opt/lv24-sites/lv24-seo-site/root` and switches the vhost root
+atomically. The previous directory is kept as `root.prev-<ts>` for rollback. A
+hash mismatch aborts before upload; if the file is missing the script writes it
+and continues. If the final root swap fails, the previous root is restored.
 
 Build for another origin (canonical URLs, `hreflang` and the sitemap):
 
@@ -89,7 +93,14 @@ not run `npm ci`, lint, tests, or the CSP hash check. Use
 
 `robots.txt` at the origin belongs to this build and points crawlers at
 `https://seo.lv24.by/sitemap.xml`. The nginx sample and the first-time VPS
-runbook live in `deploy/`.
+runbook live in `deploy/`; production uses the containerized edge, so follow
+`deploy/vps-edge.md` rather than installing a host nginx vhost.
+
+## Continuous integration
+
+`.github/workflows/ci.yml` runs on every push to `main` and every pull request:
+`npm ci`, `npm test`, `npm run lint`, `npm run docs:build` on `ubuntu-latest`
+with `contents: read`. It uploads no artifacts and uses no paid runner.
 
 ## Rollback
 
@@ -183,6 +194,19 @@ values and, if `deploy/csp-hashes.txt` exists, fails when a computed hash is not
 listed there. The committed `deploy/csp-hashes.txt` contains the current values;
 put the same values into the nginx CSP and reload nginx. A VitePress upgrade
 that changes either script requires updating both the hash file and the vhost.
+
+Containerized edge:
+
+```sh
+sudo docker exec lv24-city-edge-nginx nginx -t
+sudo docker exec lv24-city-edge-nginx nginx -s reload
+```
+
+Bare metal:
+
+```sh
+sudo nginx -t && sudo systemctl reload nginx
+```
 
 ## Zero-spend and security
 
