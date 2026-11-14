@@ -13,3 +13,4 @@
 *.conf text eol=lf
 *.example text eol=lf
 *.ps1 text eol=lf
+*.yml text eol=lf
