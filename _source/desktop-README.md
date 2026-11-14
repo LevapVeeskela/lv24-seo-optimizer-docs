@@ -430,7 +430,7 @@ build from source and sign it with your own certificate. See [`docs/release.md`]
 | React screens (dashboard, settings, configuration, reports, recommendations) | implemented |
 | Bundled onedir sidecar | all four targets built in CI; Windows x64 has a reviewed local pin, Linux/macOS pins are pending, CI records rebuild-aware hashes |
 | Published installers | `0.2.1`: Windows x64, Linux x64, macOS arm64/x64 |
-| Auto-update | Windows NSIS, macOS `.app`, Linux AppImage; deb/rpm/MSI/portable ZIP are manual |
+| Auto-update | Windows NSIS, macOS `.app`, Linux AppImage; `0.2.0 → 0.2.1` verified end-to-end on Windows NSIS; deb/rpm/MSI/portable ZIP are manual |
 | `lv24-seo stats --json` engine command | shipped in `lv24-seo 0.5.1`; fixture committed |
 
 `0.1.0` remains available as a Windows-only preview. It has no updater; install `0.2.1` manually

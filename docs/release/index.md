@@ -111,6 +111,10 @@ Manual-only is deliberate. A deb or rpm install is owned by the package database
 replace it; a portable ZIP has no installer to replace and may live on removable media. The desktop reports the installed bundle type and disables the in-app
 installer for those cases. It does not pretend that a manual package was updated.
 
+The Windows NSIS path was verified end-to-end: an installed `0.2.0` build detected `0.2.1`,
+downloaded and verified the signed package, installed it in passive mode, relaunched, and
+reported `0.2.1` with engine `0.5.1` ready.
+
 ## Release pipeline
 
 The desktop workflow is manual and owner-gated. It has no push, pull-request or tag triggers. The owner starts **Actions → Desktop build → Run workflow** and

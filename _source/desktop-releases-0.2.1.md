@@ -94,6 +94,9 @@ including signatures and `latest.json`.
 - Manual keychain check: a secret stored by the bundled sidecar was visible to a
   separate `lv24-seo[secrets]` CLI process and vice versa; the test secret was
   removed afterwards.
+- End-to-end Windows NSIS update: an installed `0.2.0` build detected `0.2.1`
+  in the update panel, downloaded and verified the signed package, installed it
+  in passive mode, relaunched, and reported `0.2.1` with engine `0.5.1` ready.
 
 ## Known limitations
 
