@@ -1,8 +1,8 @@
 # Architecture
 
-Status: **implementation contract for `0.2.1`.** The Rust command bridge and product screens are
+Status: **implementation contract for `0.2.2`.** The Rust command bridge and product screens are
 implemented in this repository. Where this document describes a control, it is the requirement that
-implementation must satisfy. The pinned engine is `lv24-seo 0.5.1`.
+implementation must satisfy. The pinned engine is `lv24-seo 0.5.2`.
 
 ## 1. Shape
 
@@ -86,7 +86,8 @@ Rules:
 - Branch on `error.code`, not the exit code. `WRITE_DISABLED`, `CONFIRM_REQUIRED` and configuration
   errors can all exit `2`.
 - Preserve unknown `meta` keys for diagnostics; tolerate additive fields.
-- `stdout` is JSON only. `stderr` is bounded and redacted before display.
+- `stdout` is JSON only. `stderr` is bounded; the configuration-validation path redacts it before
+  display (see section 7).
 - The exit code is shown in diagnostics but the envelope is authoritative.
 - Set `PYTHONUTF8=1` and `PYTHONIOENCODING=utf-8` so non-ASCII paths and text survive Windows code
   pages.
@@ -108,7 +109,8 @@ The command surface is fixed. The generic `cli_run` allow-list is:
 
 Dedicated Tauri commands cover the rest: `shell_status`, `config_read`, `config_validate`,
 `config_write`, `config_patch`, `auth_set` (secret over stdin), `auth_delete`, `write_text_file`,
-`settings_get`, `settings_set` and `open_path`. The webview cannot add a command at runtime.
+`settings_get`, `settings_set`, `prepare_update` and `open_path`. The webview cannot add a command at
+runtime.
 
 ## 5. Engine discovery and version gate
 
@@ -117,30 +119,40 @@ Resolution order:
 1. `LV24_SEO_BIN` (absolute path; development or an explicitly chosen system engine);
 2. the bundled resource `engine/lv24-seo/lv24-seo[.exe]`;
 3. a flat resource `lv24-seo/lv24-seo[.exe]` (portable layout);
-4. a sibling `lv24-seo/` directory next to the app (portable layout);
-5. `PATH`, only when `LV24_SEO_ALLOW_PATH_ENGINE=1` is set (opt-in; only the value `1` enables it,
+4. a Linux AppImage tree under `$APPDIR/usr/lib/<product>/engine/lv24-seo/` (the mounted AppImage
+   layout; the scan is one level deep so it does not depend on the bundle's product name);
+5. a sibling `lv24-seo/` directory next to the app (portable layout);
+6. `PATH`, only when `LV24_SEO_ALLOW_PATH_ENGINE=1` is set (opt-in; only the value `1` enables it,
    and a stray `lv24-seo` on `PATH` is otherwise ignored).
 
-Nothing is downloaded automatically. The shell runs `lv24-seo version --json`, records the path,
-source and version, and compares the version with `MIN_ENGINE_VERSION`. An older engine is marked
-`compatible: false`; the UI treats the engine as offline and shows the standard offline notice. It
-does not silently downgrade or run the command. A newer engine passes the gate but is not the
-release-tested pin.
+The AppImage step is the fallback that keeps an AppImage build from silently dropping to `PATH` when
+`resource_dir()` points somewhere other than the mounted engine tree.
 
-The `source` labels are `env`, `bundled`, `bundled-flat`, `sibling` and `PATH`. The portable ZIP uses
-a sibling or flat resource layout, which is how the updater recognizes that the build cannot replace
-itself.
+Nothing is downloaded automatically. The shell runs `lv24-seo version --json`, records the path,
+source and version, and compares the version with `MIN_ENGINE_VERSION` (`0.5.2`). An older engine is
+marked `compatible: false`; the UI treats the engine as offline and shows the standard offline
+notice. It does not silently downgrade or run the command. A newer engine passes the gate but is not
+the release-tested pin.
+
+The `source` labels are `env`, `bundled`, `bundled-flat`, `appimage`, `sibling` and `PATH`. The
+portable ZIP uses a sibling or flat resource layout, which is how the updater recognizes that the
+build cannot replace itself.
 
 ## 6. Configuration write model
 
 Structured Settings forms edit a draft model. The save flow is:
 
 1. build a TOML patch with `toml_edit` so comments and key order survive;
-2. write a temporary file next to the target;
+2. write a temporary `0600` file next to the target and fsync it;
 3. validate it with `lv24-seo config show --config <temp> --json`;
-4. create a timestamped backup, keeping the last five;
-5. atomically replace the target;
+4. create a timestamped `0600` backup, fsynced, keeping the last five;
+5. atomically replace the target and fsync the parent directory;
 6. re-read and show the effective redacted config.
+
+Reads are bounded (`8 MiB`) and reject a non-regular or oversized file. Settings load per field, so
+one malformed value does not discard the rest. A stale saved config path is tolerated and reported
+as missing instead of blocking startup. Windows reserved device names and trailing dots or spaces
+are rejected in every path component.
 
 Form saves are field-level patches, so comments, key order and unrelated external edits survive. If
 another process changed the file, reload before saving so the form reflects the current file; the
@@ -163,6 +175,9 @@ kills the exact child process and returns a typed error.
   an indeterminate busy state and waits for the call to finish.
 - `stdout` is capped at 4 MiB and `stderr` at 128 KiB; an oversized response is an error, not a
   truncated success.
+- Configuration validation `stderr` is redacted (`redact_secrets`) before it reaches the webview or
+  the log, because the engine can quote a config line or an argv in a traceback while validating a
+  staged draft.
 - Partial failure (`ok=true` with incomplete meta, or exit `5`) is “completed with warnings”, never
   a clean success.
 - A missing token is configuration, not an outage. A no-data report is neutral, not an error.
@@ -189,6 +204,12 @@ There is no `widgets/` layer today. The header, navigation and update badge live
   translated; unknown codes are shown raw.
 - Accessibility is a requirement: WCAG 2.2 AA, visible focus, skip link, focus restoration after
   dialogs, keyboard tables, no color-only meaning, reduced motion and 200% zoom.
+- State is scoped to the current workspace: changing the workspace or losing the engine clears
+  report, stats, doctor and secret state instead of showing the previous project's data.
+- Actions that cannot succeed are disabled, not left to fail on click: no workspace selected, engine
+  offline, engine below `MIN_ENGINE_VERSION`.
+- The en/ru/zh catalogues are at parity; a missing key is a test failure, not a silent English
+  fallback.
 
 ## 9. Contracts
 
@@ -219,7 +240,10 @@ The release sidecar is a **PyInstaller onedir** tree, not onefile:
 
 Auto-update is enabled for Windows NSIS, macOS `.app` and Linux AppImage. The updater reads a signed
 `latest.json` from GitHub Releases, verifies the package with an embedded minisign key, refuses
-downgrades and never installs without user confirmation. deb, rpm, MSI and the portable ZIP are
+downgrades and never installs without user confirmation. Immediately before the installer starts,
+`prepare_update` stops only the engine sidecar PIDs this app instance registered — the sidecar lives
+inside the installed resource directory and a live process would keep it locked — and a cleanup
+failure blocks the install with `UPDATE_ENGINE_BUSY`. deb, rpm, MSI and the portable ZIP are
 manual-only. The updater private key is scoped to the release build step and is never shipped.
 
 See [`docs/release.md`](release.md) and [`docs/security.md`](security.md).

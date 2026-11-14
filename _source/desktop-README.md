@@ -7,12 +7,12 @@ scraping.
 
 [![License: Apache-2.0](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](LICENSE)
 [![Status: pre-release](https://img.shields.io/badge/status-pre--release-orange.svg)](#public-status)
-[![Engine: lv24-seo 0.5.1](https://img.shields.io/badge/engine-lv24--seo%200.5.1-informational.svg)](docs/releases/0.2.1.md)
+[![Engine: lv24-seo 0.5.2](https://img.shields.io/badge/engine-lv24--seo%200.5.2-informational.svg)](docs/releases/0.2.2.md)
 
-> **0.2.1 patch release.** Windows, Linux and macOS installers are published. Windows NSIS,
+> **0.2.2 hardening patch.** Windows, Linux and macOS installers are published. Windows NSIS,
 > macOS `.app` and Linux AppImage can auto-update from `0.2.0` onward; deb, rpm, MSI and the portable
 > ZIP are manual-only. `0.1.0` has no updater and must be upgraded manually once. The pinned engine
-> is `lv24-seo 0.5.1`, which ships the `stats` command described by
+> is `lv24-seo 0.5.2`, which ships the `stats` command described by
 > [`contracts/stats-v1.md`](contracts/stats-v1.md). Read [Public status](#public-status) before
 > relying on anything here.
 
@@ -52,20 +52,30 @@ The desktop is one surface over the same engine. These are the tools the engine 
 | Surface | What you get |
 |---|---|
 | Desktop | Dashboard, weekly report view, config editor/diff/validation, recommendations, agent task queue, signed updates |
-| CLI | `init`, `doctor`, `auth`, `gsc`, `yandex`, `crawl`, `report`, `stats`, `schedule`, `export`, `mcp serve` |
-| MCP | 11 tools, 3 resources, 3 prompts; read-only by default |
+| CLI | 17 top-level commands (10 groups + 7 commands): `version`, `doctor`, `init`, `properties`, `stats`, `crawl`, `install`, `auth`, `config`, `gsc`, `yandex`, `sitemap`, `indexnow`, `report`, `schedule`, `export`, `mcp` |
+| MCP | 11 tools, 3 resources, 3 prompts; no provider writes by default |
 | Skills | `seo-weekly`, `seo-indexing-triage`, `seo-technical-audit` |
 | Automation | cron, systemd timer and Windows Task Scheduler generators; SMTP/Telegram delivery |
 
 MCP tools by access level:
 
-| Access | Tools |
-|---|---|
-| Read-only | `seo_properties`, `gsc_search_analytics`, `yandex_query_stats`, `yandex_indexing_state`, `seo_report_diff`, `seo_indexing_triage`, `seo_opportunities` |
-| Read + local state (`readOnlyHint: false`, not destructive) | `seo_crawl_site`, `seo_weekly_report` |
-| Gated provider write (`allow_write=true`, `destructiveHint: true`) | `seo_recrawl_request`, `seo_sitemap_submit` |
+| Tool | Access | What it does |
+|---|---|---|
+| `seo_properties` | read-only | Configured providers, targets and token presence |
+| `gsc_search_analytics` | read-only | GSC query/page/country/device rows |
+| `yandex_query_stats` | read-only | Top Yandex queries for the host |
+| `yandex_indexing_state` | read-only | Indexing history, events and problems |
+| `seo_crawl_site` | read + local state (`readOnlyHint: false`) | Bounded crawl; stores pages and issues |
+| `seo_weekly_report` | read + local state (`readOnlyHint: false`) | Weekly digest; stores a report snapshot |
+| `seo_report_diff` | read-only | Diff two stored weekly snapshots |
+| `seo_indexing_triage` | read-only | Group indexing problems into an action list |
+| `seo_opportunities` | read-only | Striking-distance and decay opportunities |
+| `seo_recrawl_request` | gated write (`destructiveHint: true`) | Yandex recrawl queue; `WRITE_DISABLED` in 0.5.2 |
+| `seo_sitemap_submit` | gated write (`destructiveHint: true`) | GSC/Bing sitemap submit/delete; `WRITE_DISABLED` in 0.5.2 |
 
-The full inputs, outputs and limits are in the engine's
+The two local-state tools never touch provider state and are not destructive. The two provider
+writes require `allow_write=true`; the pinned engine returns `WRITE_DISABLED` until the write
+adapters land. The full inputs, outputs and limits are in the engine's
 [`docs/mcp.md`](https://github.com/LevapVeeskela/lv24-seo-optimizer/blob/main/docs/mcp.md).
 
 ## What it is not
@@ -82,17 +92,17 @@ The full inputs, outputs and limits are in the engine's
 ## Install
 
 Download from [Releases](https://github.com/LevapVeeskela/lv24-seo-optimizer-desktop/releases).
-Full notes, install steps and limitations: [`docs/releases/0.2.1.md`](docs/releases/0.2.1.md).
+Full notes, install steps and limitations: [`docs/releases/0.2.2.md`](docs/releases/0.2.2.md).
 
 | Platform | Assets | Auto-update |
 |---|---|---|
-| Windows 10/11 x64 | `LV24.SEO.Optimizer_0.2.1_x64-setup.exe` (+ `.exe.sig`), `LV24-SEO-Optimizer_0.2.1_x64-portable.zip` | NSIS only; portable ZIP is manual |
-| Linux x64 | AppImage (+ `.AppImage.sig`), deb, rpm | AppImage only; deb/rpm are manual |
-| macOS 13+ arm64/x64 | DMG, `.app.tar.gz` (+ `.sig`) | `.app` only; DMG is the first install |
+| Windows 10/11 x64 | `LV24.SEO.Optimizer_0.2.2_x64-setup.exe` (+ `.exe.sig`), `LV24-SEO-Optimizer_0.2.2_x64-portable.zip` | NSIS only; portable ZIP is manual |
+| Linux x64 | `LV24.SEO.Optimizer_0.2.2_amd64.AppImage` (+ `.AppImage.sig`), `LV24.SEO.Optimizer_0.2.2_amd64.deb`, `LV24.SEO.Optimizer-0.2.2-1.x86_64.rpm` | AppImage only; deb/rpm are manual |
+| macOS 13+ arm64/x64 | `LV24.SEO.Optimizer_0.2.2_aarch64.dmg`, `LV24.SEO.Optimizer_0.2.2_x64.dmg`, `LV24.SEO.Optimizer_0.2.2_aarch64.app.tar.gz` and `LV24.SEO.Optimizer_0.2.2_x64.app.tar.gz` (+ `.sig`) | `.app` only; DMG is the first install |
 
 The `0.2.x` releases also publish `latest.json` and `SHA256SUMS.txt`. Verify the checksum before
-running an installer. `SHA256SUMS.txt` covers every published asset, including updater signatures
-and `latest.json`.
+running an installer. `SHA256SUMS.txt` covers every other published asset, including updater
+signatures and `latest.json`.
 
 ### Windows
 
@@ -166,7 +176,7 @@ assets.
 
 ### Upgrading from 0.1.0
 
-`0.1.0` has no updater, endpoint or public key. Install `0.2.1` manually once (NSIS installer or
+`0.1.0` has no updater, endpoint or public key. Install `0.2.2` manually once (NSIS installer or
 portable ZIP). Auto-update works from `0.2.0` onward when the installed bundle is Windows NSIS,
 macOS `.app` or Linux AppImage.
 
@@ -187,6 +197,11 @@ updates** in Settings.
 - **No auto-install.** Windows runs the signed NSIS setup in passive mode; macOS replaces the
   `.app`; Linux replaces the AppImage. The app restarts after installation; the NSIS installer
   handles the Windows restart.
+- **Sidecar cleanup before install.** The engine sidecar lives inside the installed resource
+  directory, so a running `lv24-seo` process would keep it locked and break the NSIS update. Before
+  the installer starts, the shell stops only the engine PIDs this app instance spawned — never a
+  process matched by name. If a sidecar cannot be stopped, the install is blocked with
+  `UPDATE_ENGINE_BUSY` and can be retried once that run exits.
 - **Manual-only bundles.** deb, rpm, MSI and the portable ZIP cannot replace the running
   installation. The Settings panel disables the in-app installer and links to the release page.
   MSI is not produced by this project.
@@ -241,7 +256,7 @@ PowerShell).
 Build the bundled sidecar (PyInstaller **onedir**) and then the platform bundles:
 
 ```bash
-python scripts/build-sidecar.py --engine-version 0.5.1 --target x86_64-pc-windows-msvc
+python scripts/build-sidecar.py --engine-version 0.5.2 --target x86_64-pc-windows-msvc
 node scripts/verify-sidecar.mjs --root src-tauri/engine --target x86_64-pc-windows-msvc --write
 npm run tauri build -- --bundles nsis
 npm run package:portable
@@ -256,10 +271,10 @@ its `.sha256` sidecar under `release/`.
 For Linux or macOS, use the matching target and bundle set, for example:
 
 ```bash
-python scripts/build-sidecar.py --engine-version 0.5.1 --target x86_64-unknown-linux-gnu
+python scripts/build-sidecar.py --engine-version 0.5.2 --target x86_64-unknown-linux-gnu
 npm run tauri build -- --target x86_64-unknown-linux-gnu --bundles appimage,deb,rpm
 
-python scripts/build-sidecar.py --engine-version 0.5.1 --target aarch64-apple-darwin
+python scripts/build-sidecar.py --engine-version 0.5.2 --target aarch64-apple-darwin
 npm run tauri build -- --target aarch64-apple-darwin --bundles dmg
 ```
 
@@ -294,13 +309,16 @@ settings, health status and presentation; it does not add provider adapters.
 | Your own site | — | crawl, robots, sitemap, JSON-LD, hreflang, links | none |
 | nginx access logs | — | Python analysis helpers (no desktop ingest yet) | none |
 
+Yandex Metrika is a separate auth provider from Yandex Webmaster: the desktop stores
+`yandex_metrika_token` under the `metrika` provider and `yandex_webmaster_token` under `yandex`.
+
 The desktop never asks for a paid provider key. Optional paid adapters in the engine are
 bring-your-own-key and are not part of the default path.
 
 ## Stats dashboard
 
 The dashboard renders the stats envelope; it is not a new metric engine. The contract is
-[`contracts/stats-v1.md`](contracts/stats-v1.md) and `lv24-seo 0.5.1` ships the command:
+[`contracts/stats-v1.md`](contracts/stats-v1.md) and `lv24-seo 0.5.2` ships the command:
 
 - one card per configured provider with the metrics the provider actually returned;
 - current values with deltas against the previous window, including CTR deltas in **percentage
@@ -382,8 +400,9 @@ action. The desktop does not apply site edits itself.
 - **One shared secret store with the CLI.** The desktop runs the same engine under the same OS user,
   so a token stored by `lv24-seo auth set` in a terminal is visible in the desktop's `auth status`
   and vice versa. The OS keychain entry uses service `lv24-seo` and the same secret name on every
-  surface; `LV24_SEO_*` environment variables are inherited by the CLI runner. The opt-in
-  `<data-dir>/secrets.json` fallback is shared only when the desktop opens the same workspace/data
+  surface; `LV24_SEO_*` environment variables are inherited by the CLI runner and are read-only in
+  the UI (the desktop cannot unset your environment). The opt-in `<data-dir>/secrets.json` fallback
+  (0600 on POSIX, ACLs on Windows) is shared only when the desktop opens the same workspace/data
   directory; it is never copied into the webview.
 - **No local HTTP API.** The desktop talks to the engine through a fixed, allow-listed process
   bridge. There is no loopback server to authenticate, proxy or expose.
@@ -393,6 +412,9 @@ action. The desktop does not apply site edits itself.
   limited to the Vite origin.
 - **Command and path allow-lists.** No shell strings, no arbitrary executables. Config paths are
   absolute and chosen through the native dialog; open/export paths are restricted to approved roots.
+  Windows reserved device names are rejected in every path component.
+- **Durable, private writes.** Config and settings writes are atomic and fsynced (file and parent
+  directory); temp drafts and backups are mode `0600`; config reads are bounded at 8 MiB.
 - **Signed updates.** The updater verifies a minisign/Ed25519 signature, binds the version to the
   signed package and refuses downgrades. A signature failure blocks the artifact.
 - **Sidecar integrity.** Release builds use a PyInstaller onedir tree with a reviewed local pin
@@ -423,17 +445,17 @@ build from source and sign it with your own certificate. See [`docs/release.md`]
 
 | Area | Status |
 |---|---|
-| Contracts (`config.schema.json`, CLI fixtures incl. `stats`) | generated from `lv24-seo 0.5.1`; drift check in CI |
+| Contracts (`config.schema.json`, CLI fixtures incl. `stats`) | generated from `lv24-seo 0.5.2`; drift check in CI |
 | CI (web, Rust matrix, contract check) | active on pull requests and `main`; standard runners only |
 | Manual desktop build workflow (NSIS, DMG, AppImage, deb, rpm) | available; owner-triggered; publish requires the updater key |
 | Tauri command bridge (config read/validate/write/patch, CLI runner, secrets, diagnostics) | implemented |
 | React screens (dashboard, settings, configuration, reports, recommendations) | implemented |
 | Bundled onedir sidecar | all four targets built in CI; Windows x64 has a reviewed local pin, Linux/macOS pins are pending, CI records rebuild-aware hashes |
-| Published installers | `0.2.1`: Windows x64, Linux x64, macOS arm64/x64 |
-| Auto-update | Windows NSIS, macOS `.app`, Linux AppImage; `0.2.0 → 0.2.1` verified end-to-end on Windows NSIS; deb/rpm/MSI/portable ZIP are manual |
-| `lv24-seo stats --json` engine command | shipped in `lv24-seo 0.5.1`; fixture committed |
+| Published installers | `0.2.2`: Windows x64, Linux x64, macOS arm64/x64 |
+| Auto-update | Windows NSIS, macOS `.app`, Linux AppImage; `0.2.0 → 0.2.1` verified end-to-end on Windows NSIS, `0.2.1 → 0.2.2` is the next in-app update; deb/rpm/MSI/portable ZIP are manual |
+| `lv24-seo stats --json` engine command | shipped in `lv24-seo 0.5.2`; fixture committed |
 
-`0.1.0` remains available as a Windows-only preview. It has no updater; install `0.2.1` manually
+`0.1.0` remains available as a Windows-only preview. It has no updater; install `0.2.2` manually
 once. Follow the [issues](https://github.com/LevapVeeskela/lv24-seo-optimizer-desktop/issues) for
 progress, or read the implementation plan in the engine repository:
 [`docs/plans/2026-11-14-seo-desktop.md`](https://github.com/LevapVeeskela/lv24-seo-optimizer/blob/main/docs/plans/2026-11-14-seo-desktop.md).

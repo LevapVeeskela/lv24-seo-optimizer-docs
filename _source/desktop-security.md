@@ -1,16 +1,17 @@
 # Security model
 
-Status: **security contract for `0.2.1`.** The Rust bridge and screens are implemented in this
+Status: **security contract for `0.2.2`.** The Rust bridge and screens are implemented in this
 repository. This page states the controls the implementation must enforce and the residual risks
-accepted for the preview; where a control is future work, the text says so. `0.2.1` adds signed
-auto-update for Windows NSIS, macOS `.app` and Linux AppImage. See [`SECURITY.md`](../SECURITY.md)
-for reporting a vulnerability.
+accepted for the preview; where a control is future work, the text says so. `0.2.2` hardens the
+updater's sidecar cleanup, secret-source reporting and the durability of configuration writes on top
+of the `0.2.1` signed auto-update for Windows NSIS, macOS `.app` and Linux AppImage. See
+[`SECURITY.md`](../SECURITY.md) for reporting a vulnerability.
 
 ## 1. Assets and adversaries
 
 | Asset | Why it matters |
 |---|---|
-| Provider credentials (GSC, Yandex, Bing, CrUX, PSI) | grant read access to the property owner's search data |
+| Provider credentials (GSC, Yandex Webmaster, Yandex Metrika, Bing, CrUX, PSI) | grant read access to the property owner's search data |
 | SMTP password and Telegram bot token | can send messages and impersonate the owner |
 | `seo.toml` | reveals property names, recipients, hosts and paths |
 | SQLite history, reports and crawl data | contains queries, URLs and traffic that may be commercially sensitive |
@@ -56,7 +57,9 @@ engine via `LV24_SEO_BIN`, and provider-side breaches.
 - After saving, the UI shows only presence and source (`keychain`, `env`, `file`, `missing`) from
   `auth status --json`.
 - Environment-provided secrets are read-only in the UI. Removing one from the file does not remove
-  the environment variable; the UI must say so.
+  the environment variable; the UI must say so and must not offer an action that cannot work.
+- `auth logout` reporting `deleted: false` is shown honestly: nothing was deleted, so nothing is
+  reported as removed.
 - On Linux the CLI runner inherits the session-bus and XDG runtime variables that Secret Service
   needs (`DBUS_SESSION_BUS_ADDRESS`, `XDG_RUNTIME_DIR`, `TMPDIR` and related paths) while still
   filtering unrelated host variables. This makes the OS keychain reachable from the desktop process;
@@ -93,15 +96,23 @@ opt-in file. The desktop must show which source is active.
   command and require an explicit confirmation dialog naming the target.
 - A timeout or dropped child handle kills the exact child process handle/PID. It never uses a
   wildcard process name; several LV24 applications can run concurrently. There is no user-facing
-  cancel button in `0.2.1`.
+  cancel button in `0.2.2`.
 
 ## 5. Configuration files
 
 - Reads and writes are limited to the approved workspace. The desktop opens the file the engine
-  would actually use, not a guessed path.
+  would actually use, not a guessed path. A stale saved config path is tolerated: a moved or deleted
+  workspace is reported as missing and can be re-selected instead of blocking startup.
+- Reads are bounded (`8 MiB`); an oversized or non-regular file is rejected instead of read.
 - Writes are atomic: temp file in the same directory, validation, backup, rename. A failed
   validation leaves the original mtime and contents unchanged.
-- Backups are timestamped and capped at five. They inherit restrictive permissions.
+- Writes are durable: the temp file is fsynced before the rename and the parent directory is
+  fsynced after it, so a crash or power loss cannot leave a truncated `seo.toml`.
+- Temp drafts are created with mode `0600`. Backups are timestamped, capped at five, written `0600`
+  and fsynced; a backup never has looser permissions than the file it copies.
+- Windows reserved device names (`CON`, `PRN`, `AUX`, `NUL`, `COM1`–`COM9`, `LPT1`–`LPT9`) and
+  trailing dots or spaces are rejected in every path component, not only the last one.
+- Settings load per field: one malformed value does not discard the rest of the settings file.
 - Source TOML is displayed read-only with secret-looking values redacted. There is no raw editor;
   edits go through the validated Settings form and a field-level patch.
 - Environment overrides are displayed as names and status only. The UI explains that the desktop's
@@ -169,6 +180,12 @@ connect-src ipc: http://ipc.localhost
 - The updater only accepts a version greater than the running one, so it cannot downgrade. It never
   downloads or installs on its own; the user presses **Download and install**. An unsaved
   configuration draft disables the install button.
+- Immediately before the installer starts, the shell stops the engine sidecar PIDs **this app
+  instance registered**. The sidecar lives inside the installed resource directory, so a live
+  process keeps it locked and breaks the NSIS update. Only exact tracked PIDs are stopped; nothing
+  is matched by image name, so another installed copy, a portable build or a terminal run is
+  untouched. A cleanup failure blocks the install with `UPDATE_ENGINE_BUSY` instead of launching an
+  installer that will fail halfway.
 - The private key (`TAURI_SIGNING_PRIVATE_KEY`, optionally with
   `TAURI_SIGNING_PRIVATE_KEY_PASSWORD`) is passed only to the release build step. It is never
   committed, logged, shipped or given to the staging, `latest.json`, checksum or upload steps.
@@ -178,7 +195,7 @@ connect-src ipc: http://ipc.localhost
 - Windows NSIS, macOS `.app` and Linux AppImage update in place. deb, rpm, MSI and the portable ZIP
   are manual-only: the UI disables the in-app installer for those bundle types and links to the
   release page.
-- `0.1.0` has no updater, endpoint or public key. Its users must install `0.2.1` manually once;
+- `0.1.0` has no updater, endpoint or public key. Its users must install `0.2.2` manually once;
   auto-update works from `0.2.0` onward.
 - OS code signing/notarization is separate. The default build is unsigned; see section 11.
 
@@ -191,6 +208,11 @@ connect-src ipc: http://ipc.localhost
   uploaded automatically.
 - Logs redact secret-looking keys and bounded stderr. Users are told to review a bundle before
   sharing it.
+- Configuration validation `stderr` is passed through `redact_secrets` before it reaches the
+  webview or a log: TOML/JSON credential assignments (`token = "…"`, `"apiKey": "…"`),
+  `--token`/`--password` argv and `Bearer` values are rewritten to `***`. Paths, URLs and engine
+  messages are preserved so diagnostics stay useful. The engine can quote a config line or an argv
+  in a traceback while validating a staged draft, so this path must not carry a credential.
 
 ## 10. Write and destructive actions
 
@@ -236,7 +258,7 @@ paid certificate, notarization or paid runner without explicit owner approval.
   rotated, not just deleted from the latest commit.
 - Release artifacts are checksummed before publication. The release job is owner-gated and manual;
   there are no push/tag triggers. The updater private key is scoped to the build step.
-- `SHA256SUMS.txt` covers every published asset, including updater signatures and `latest.json`.
+- `SHA256SUMS.txt` covers every other published asset, including updater signatures and `latest.json`.
   Sidecar checksum reports stay in CI as rebuild-aware evidence and are not published.
 
 ## 13. Residual risks

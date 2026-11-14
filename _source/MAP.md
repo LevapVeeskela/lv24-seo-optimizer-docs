@@ -16,11 +16,13 @@ to site routes.
 | `engine-skills.md` | `/mcp/` | Canonical skills and export. |
 | `engine-scheduling.md` | `/automation/` | cron/systemd/Task Scheduler generators. |
 | `engine-troubleshooting.md` | `/troubleshooting/` | Common failures and diagnostics. |
-| `engine-releases-0.5.1.md` | `/release/` | Engine release notes and limits. |
+| `engine-releases-0.5.1.md` | `/release/` | Engine 0.5.1 notes, kept for the previous bugfix release. |
+| `engine-releases-0.5.2.md` | `/release/` | Engine 0.5.2 notes: data-dir anchoring, replay-safe writes, sitemap redaction, GSC cap honesty, opt-in logging. |
 | `desktop-README.md` | `/desktop/`, `/install/` | Desktop install matrix, update, troubleshooting. |
 | `desktop-release.md` | `/release/` | Release pipeline, signing, assets, rollback. |
 | `desktop-security.md` | `/security/`, `/desktop/` | Shell boundary, secrets, updater trust. |
 | `desktop-architecture.md` | `/architecture/`, `/desktop/` | FSD layout, commands, stores, resources. |
+| `desktop-releases-0.2.2.md` | `/release/` | Desktop 0.2.2 hardening notes: sidecar cleanup, `UPDATE_ENGINE_BUSY`, secrets, durable writes, engine 0.5.2. |
 | `desktop-releases-0.2.1.md` | `/release/` | Desktop 0.2.1 patch notes: Metrika token and shared CLI keychain. |
 | `desktop-releases-0.2.0.md` | `/release/` | Desktop 0.2.0 release notes, kept for the first multi-platform release. |
 
@@ -31,5 +33,14 @@ to site routes.
   both facts separate.
 - Auto-update works for Windows NSIS, macOS `.app` and Linux AppImage only.
   deb/rpm/MSI/portable ZIP are manual-only and the UI says so.
-- Engine `0.5.1` adds `writes_local_state` to the MCP schema; clients may now
-  ask for confirmation before `seo_crawl_site` and `seo_weekly_report`.
+- Engine `0.5.2` keeps the `writes_local_state` MCP annotation from `0.5.1`;
+  clients may ask for confirmation before `seo_crawl_site` and
+  `seo_weekly_report`.
+- A GSC final page that exactly fills the 50,000-row cap is reported as
+  `truncated: true`. A full page is not proof that no further row exists.
+- CLI write replay protection needs an initialised workspace. Without a data
+  directory the apply still runs, but the envelope warns that the five-minute
+  token has no ledger behind it.
+- The desktop updater stops only sidecar PIDs it registered. A sidecar started
+  elsewhere is not killed; if it keeps the installed file locked, the update is
+  blocked with `UPDATE_ENGINE_BUSY` and can be retried after it exits.
