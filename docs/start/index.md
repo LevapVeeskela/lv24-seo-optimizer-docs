@@ -71,16 +71,16 @@ The CLI envelope is `{ok, data, meta, warnings}`. `meta.complete` is `false` whe
 
 ## Optional desktop
 
-The desktop is a preview at `0.2.0` and bundles `lv24-seo 0.5.1`. It is useful when you do not want to remember flags: choose `seo.toml` in Settings, read the dashboard, edit configuration through a validated form, open the weekly HTML report, and copy a bounded recommendation as a Markdown prompt for an agent. Windows NSIS, macOS `.app` and Linux AppImage can auto-update; portable ZIP, deb and rpm are manual-only.
+The desktop is a preview at `0.2.1` and bundles `lv24-seo 0.5.1`. It is useful when you do not want to remember flags: choose `seo.toml` in Settings, read the dashboard, edit configuration through a validated form, open the weekly HTML report, and copy a bounded recommendation as a Markdown prompt for an agent. Windows NSIS, macOS `.app` and Linux AppImage can auto-update; portable ZIP, deb and rpm are manual-only.
 
 ## Status and limits
 
-The engine is beta `0.5.1`; the desktop is a `0.2.0` preview. Known gaps before 1.0:
+The engine is beta `0.5.1`; the desktop is a `0.2.1` preview. Known gaps before 1.0:
 
 - GSC supports a manually supplied OAuth access token today; a service-account flow is planned.
 - GSC sitemap submit and Yandex recrawl return `WRITE_DISABLED`; IndexNow really submits.
 - `storage.raw_retention_days` is reserved; no raw archives are written yet.
-- The desktop has no separate Crawl screen and no job progress or cancel in `0.2.0`.
+- The desktop has no separate Crawl screen and no job progress or cancel in `0.2.1`.
 - `report indexing`, `report opportunities` and `report history` are planned, not shipped.
 
 Unknown values stay unknown instead of being filled in. That is deliberate: a bounded answer with explicit limitations is more useful than a clean-looking number with no coverage.

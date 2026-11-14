@@ -286,4 +286,4 @@ actual (redacted --json envelope):
 
 См. [Безопасность и приватность](/ru/security/) для write-гейтов и [Релизы и обновление](/ru/release/) для поведения updater.
 
-Source: `_source/engine-troubleshooting.md`, `_source/engine-releases-0.5.1.md`, `_source/desktop-releases-0.2.0.md`, `_source/desktop-security.md`, `_source/desktop-architecture.md`.
+Source: `_source/engine-troubleshooting.md`, `_source/engine-releases-0.5.1.md`, `_source/desktop-releases-0.2.1.md`, `_source/desktop-releases-0.2.0.md`, `_source/desktop-security.md`, `_source/desktop-architecture.md`.

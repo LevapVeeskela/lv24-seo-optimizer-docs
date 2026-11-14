@@ -81,8 +81,8 @@ Metrika 令牌，并明确共享系统钥匙串：在终端通过 `lv24-seo auth
 | `LV24.SEO.Optimizer_0.2.1_x64.dmg` | macOS Intel | 首次安装 |
 | `LV24.SEO.Optimizer_0.2.1_aarch64.app.tar.gz` + `.sig` | macOS Apple silicon | 已签名更新包 |
 | `LV24.SEO.Optimizer_0.2.1_x64.app.tar.gz` + `.sig` | macOS Intel | 已签名更新包 |
-| `*_amd64.AppImage` + `.AppImage.sig` | Linux x64 | AppImage；已签名更新包 |
-| `*_amd64.deb`, `LV24.SEO.Optimizer-0.2.1-1.x86_64.rpm` | Linux x64 | 包管理器安装；仅手动 |
+| `LV24.SEO.Optimizer_0.2.1_amd64.AppImage` + `.AppImage.sig` | Linux x64 | AppImage；已签名更新包 |
+| `LV24.SEO.Optimizer_0.2.1_amd64.deb`, `LV24.SEO.Optimizer-0.2.1-1.x86_64.rpm` | Linux x64 | 包管理器安装；仅手动 |
 | `latest.json` | 全部 | 已签名更新清单 |
 | `SHA256SUMS.txt` | 全部 | 每个已发布产物的 SHA-256 |
 

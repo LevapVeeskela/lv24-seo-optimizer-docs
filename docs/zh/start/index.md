@@ -71,16 +71,16 @@ CLI 信封为 `{ok, data, meta, warnings}`。当输入缺失、被截断或采�
 
 ## 可选桌面端
 
-桌面端是 `0.2.0` 预览，内置 `lv24-seo 0.5.1`。当你不想记参数时它很有用：在 Settings 中选择 `seo.toml`，查看仪表板，通过带校验的表单编辑配置，打开周报 HTML，并把有边界的建议复制为给智能体的 Markdown 提示词。Windows NSIS、macOS `.app` 和 Linux AppImage 可以自动更新；便携 ZIP、deb 和 rpm 仅手动更新。
+桌面端是 `0.2.1` 预览，内置 `lv24-seo 0.5.1`。当你不想记参数时它很有用：在 Settings 中选择 `seo.toml`，查看仪表板，通过带校验的表单编辑配置，打开周报 HTML，并把有边界的建议复制为给智能体的 Markdown 提示词。Windows NSIS、macOS `.app` 和 Linux AppImage 可以自动更新；便携 ZIP、deb 和 rpm 仅手动更新。
 
 ## 状态与限制
 
-引擎为 beta `0.5.1`；桌面端为 `0.2.0` 预览。1.0 之前的已知缺口：
+引擎为 beta `0.5.1`；桌面端为 `0.2.1` 预览。1.0 之前的已知缺口：
 
 - GSC 目前支持手动提供的 OAuth 访问令牌；服务账号流程已计划。
 - GSC sitemap 提交和 Yandex 重新抓取返回 `WRITE_DISABLED`；IndexNow 会真正提交。
 - `storage.raw_retention_days` 已保留；目前不会写入原始归档。
-- 桌面端 `0.2.0` 没有单独的 Crawl 屏幕，也没有任务进度或取消。
+- 桌面端 `0.2.1` 没有单独的 Crawl 屏幕，也没有任务进度或取消。
 - `report indexing`、`report opportunities` 和 `report history` 已计划，尚未发布。
 
 未知值保持未知，而不会被填充。这是刻意设计：带有明确限制的有边界答案，比没有覆盖情况却看起来很干净的数字更有用。

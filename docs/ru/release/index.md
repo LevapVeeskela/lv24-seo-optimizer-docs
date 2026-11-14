@@ -94,8 +94,8 @@ GitHub заменяет пробелы в именах артефактов то
 | `LV24.SEO.Optimizer_0.2.1_x64.dmg` | macOS Intel | Первая установка |
 | `LV24.SEO.Optimizer_0.2.1_aarch64.app.tar.gz` + `.sig` | macOS Apple silicon | Подписанный пакет обновления |
 | `LV24.SEO.Optimizer_0.2.1_x64.app.tar.gz` + `.sig` | macOS Intel | Подписанный пакет обновления |
-| `*_amd64.AppImage` + `.AppImage.sig` | Linux x64 | AppImage; подписанный пакет обновления |
-| `*_amd64.deb`, `LV24.SEO.Optimizer-0.2.1-1.x86_64.rpm` | Linux x64 | Установка менеджером пакетов; manual-only |
+| `LV24.SEO.Optimizer_0.2.1_amd64.AppImage` + `.AppImage.sig` | Linux x64 | AppImage; подписанный пакет обновления |
+| `LV24.SEO.Optimizer_0.2.1_amd64.deb`, `LV24.SEO.Optimizer-0.2.1-1.x86_64.rpm` | Linux x64 | Установка менеджером пакетов; manual-only |
 | `latest.json` | Все | Подписанный манифест обновлений |
 | `SHA256SUMS.txt` | Все | SHA-256 каждого опубликованного артефакта |
 

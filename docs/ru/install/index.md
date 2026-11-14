@@ -142,4 +142,4 @@ pip uninstall lv24-seo
 - [Справочник конфигурации](/ru/reference/config/) — все ключи `seo.toml`.
 - [Безопасность и приватность](/ru/security/) — хранение токенов и защита записи.
 
-Source: `_source/engine-README.md`, `_source/engine-cli.md`, `_source/engine-config.md`, `_source/desktop-README.md`, `_source/desktop-releases-0.2.0.md`.
+Source: `_source/engine-README.md`, `_source/engine-cli.md`, `_source/engine-config.md`, `_source/desktop-README.md`, `_source/desktop-releases-0.2.1.md`, `_source/desktop-releases-0.2.0.md`.

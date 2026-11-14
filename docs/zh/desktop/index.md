@@ -1,6 +1,6 @@
 ---
 title: 桌面应用
-description: LV24 SEO Optimizer 桌面外壳增加了什么、签名更新如何工作，以及 0.2.0 预览的限制。
+description: LV24 SEO Optimizer 桌面外壳增加了什么、签名更新如何工作，以及 0.2.1 补丁的限制。
 ---
 
 # 桌面应用
@@ -17,6 +17,7 @@ LV24 SEO Optimizer Desktop 是围绕 `lv24-seo` 引擎的本地、离线优先 T
 - **报告。** 在本地运行周报，将 `report.json` 和 `report.html` 写入应用数据目录，并在默认浏览器中打开 HTML。报告 HTML 从不嵌入应用 webview。
 - **建议与智能体队列。** 将报告和统计发现转换为有边界的 Markdown 提示词。你可以复制提示词、导出为 `.md`，或将其保存在带状态的本地智能体队列中。队列存储在 webview 的本地存储中；不会自动提交任何内容。
 - **通过 stdin 传递密钥。** token 输入是密码字段，只通过 IPC 发送一次。Rust 层将其传给 `lv24-seo auth set --provider <p> --stdin`，清零缓冲区，并且从不把值写入日志、MobX 存储、localStorage、剪贴板或诊断包。保存后，界面只显示是否存在及来源。
+- **Yandex Metrika 令牌。** `0.2.1` 将 `metrika` 加入 TypeScript 和 Rust 允许列表、Settings 徽章和密钥对话框，因此 Metrika 计数器使用自己的令牌，而不是 Webmaster 令牌。
 - **与 CLI 共享密钥存储。** 桌面应用在同一操作系统用户下运行同一引擎，因此在终端通过 `lv24-seo auth set` 保存的 token 在桌面应用中可见，反之亦然。系统钥匙串条目使用服务名 `lv24-seo` 和相同的密钥名；`LV24_SEO_*` 环境变量会被继承。只有两个界面使用同一 workspace/data 目录时，才共享显式启用的 `<data-dir>/secrets.json` 回退文件。
 - **更新面板。** 在启动时和按需检查已签名的 `latest.json`，显示发行说明，并且只有在你确认后才安装。
 
@@ -78,7 +79,7 @@ Windows 需要 Windows 10/11 x64 和 WebView2。Linux 仅提供 x64，基于 Ubu
 
 ## 0.2.1 中的抓取
 
-桌面端在 Settings 表单中提供抓取设置，并在报告和建议中呈现抓取发现。`0.2.0` 界面没有单独的 Crawl 屏幕，长时间引擎调用没有任务进度或取消按钮。需要完整抓取输出和 sitemap 覆盖差异时，请在终端运行 `lv24-seo crawl`。
+桌面端在 Settings 表单中提供抓取设置，并在报告和建议中呈现抓取发现。`0.2.1` 界面没有单独的 Crawl 屏幕，长时间引擎调用没有任务进度或取消按钮。需要完整抓取输出和 sitemap 覆盖差异时，请在终端运行 `lv24-seo crawl`。
 
 ## 基础故障排查
 
@@ -106,4 +107,4 @@ Windows 需要 Windows 10/11 x64 和 WebView2。Linux 仅提供 x64，基于 Ubu
 - 建议的标题、操作和验证步骤来自引擎，保持英文；只有周围界面会翻译（en/ru/zh）。
 - 这是 `0.x` 预览：配置输出、更新器行为和界面细节可能在 1.0 前变化。
 
-Source: `_source/desktop-README.md`, `_source/desktop-releases-0.2.0.md`, `_source/desktop-security.md`, `_source/desktop-architecture.md`.
+Source: `_source/desktop-README.md`, `_source/desktop-releases-0.2.1.md`, `_source/desktop-releases-0.2.0.md`, `_source/desktop-security.md`, `_source/desktop-architecture.md`.

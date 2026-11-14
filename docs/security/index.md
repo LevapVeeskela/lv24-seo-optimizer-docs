@@ -6,7 +6,7 @@ description: Threat model, secret handling, write gates, SSRF defenses, desktop 
 # Security and privacy
 
 LV24 SEO Optimizer is local-first. The engine (`lv24-seo 0.5.1`) does the provider, crawl, storage and report work. The desktop app
-(`0.2.0`) is a UI and process shell around that engine; it does not reimplement provider clients and does not proxy provider traffic.
+(`0.2.1`) is a UI and process shell around that engine; it does not reimplement provider clients and does not proxy provider traffic.
 
 This page separates the two products and the two kinds of signing:
 
@@ -157,7 +157,7 @@ Configuration writes are atomic: build a `toml_edit` patch, write a temporary fi
 `lv24-seo config show`, create a timestamped backup (keeping the last five), rename, then re-read the redacted effective config. A failed validation leaves
 the original contents and mtime unchanged. There is no raw editor; edits go through validated Settings forms and field-level patches.
 
-The production webview CSP has no remote scripts, styles, fonts, images or connect targets; it allows self-hosted assets, inline styles, app-asset/data images and IPC. `withGlobalTauri` is false, and the UI uses typed API imports. There is no local HTTP API in `0.2.0`; a future one would need its own authentication and loopback binding.
+The production webview CSP has no remote scripts, styles, fonts, images or connect targets; it allows self-hosted assets, inline styles, app-asset/data images and IPC. `withGlobalTauri` is false, and the UI uses typed API imports. There is no local HTTP API in `0.2.1`; a future one would need its own authentication and loopback binding.
 
 ## Updater trust
 
@@ -170,7 +170,7 @@ presses **Download and install**, and an unsaved configuration draft disables th
 the error as non-retryable and points to the release page; it is never downgraded to an offline warning or retried automatically.
 
 Auto-update works only for Windows NSIS, macOS `.app` and Linux AppImage. deb, rpm, MSI and the portable ZIP are manual-only: the UI
-disables the in-app installer and links to the release page. `0.1.0` has no updater, endpoint or public key, so its users install `0.2.0`
+disables the in-app installer and links to the release page. `0.1.0` has no updater, endpoint or public key, so its users install `0.2.1`
 manually once.
 
 OS package signing is separate. By default, Windows builds have no Authenticode signature, macOS builds are ad-hoc signed only, and Linux packages are

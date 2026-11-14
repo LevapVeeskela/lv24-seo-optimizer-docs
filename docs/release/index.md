@@ -86,8 +86,8 @@ authoritative for the exact Linux file names.
 | `LV24.SEO.Optimizer_0.2.1_x64.dmg` | macOS Intel | First install |
 | `LV24.SEO.Optimizer_0.2.1_aarch64.app.tar.gz` + `.sig` | macOS Apple silicon | Signed updater package |
 | `LV24.SEO.Optimizer_0.2.1_x64.app.tar.gz` + `.sig` | macOS Intel | Signed updater package |
-| `*_amd64.AppImage` + `.AppImage.sig` | Linux x64 | AppImage; signed updater package |
-| `*_amd64.deb`, `LV24.SEO.Optimizer-0.2.1-1.x86_64.rpm` | Linux x64 | Package-manager installs; manual-only |
+| `LV24.SEO.Optimizer_0.2.1_amd64.AppImage` + `.AppImage.sig` | Linux x64 | AppImage; signed updater package |
+| `LV24.SEO.Optimizer_0.2.1_amd64.deb`, `LV24.SEO.Optimizer-0.2.1-1.x86_64.rpm` | Linux x64 | Package-manager installs; manual-only |
 | `latest.json` | All | Signed updater manifest |
 | `SHA256SUMS.txt` | All | SHA-256 for every published asset |
 
