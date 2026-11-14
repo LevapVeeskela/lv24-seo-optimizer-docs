@@ -70,7 +70,15 @@ The updater reads a signed `latest.json` from the project's GitHub Releases endp
 
 Manual-only is deliberate. A deb/rpm install is owned by the distribution's package database, an MSI is not produced by this project, and a portable ZIP has no installer to replace. The desktop reports the installed bundle type and disables the in-app installer for those cases; it does not pretend a manual package was updated.
 
-The `0.2.0 → 0.2.1` update was verified end-to-end. `0.2.1 → 0.2.2` is the next in-app update and also exercises the sidecar cleanup path. `0.2.2` can update directly from `0.2.0`.
+The `0.2.0 → 0.2.1` update was verified end-to-end. The `0.2.1 → 0.2.2` update has also been verified
+on Windows: an installed `0.2.1` build detected `0.2.2`, downloaded and verified the signed package,
+installed it in passive mode, relaunched, and reported `0.2.2` with engine `0.5.2` ready. `0.2.2` can
+update directly from `0.2.0`.
+
+The `0.2.1 → 0.2.2` update runs the old `0.2.1` updater, which does not include the new tracked-PID
+cleanup. If a sidecar is active during that first update, retry after it exits or install `0.2.2`
+manually. `0.2.2 → later` uses the tracked-PID cleanup and blocks with `UPDATE_ENGINE_BUSY` if a
+tracked sidecar cannot be stopped.
 
 ## Workspace switching and stale state
 
@@ -110,6 +118,7 @@ The desktop exposes crawl settings in the Settings form and surfaces crawl findi
 - The updater only installs a newer version; rolling back requires a manual install of an older release.
 - The updater needs access to the GitHub Releases endpoint. A blocked or offline endpoint leaves the app on its current version.
 - The updater can stop only sidecars it started itself. An engine launched from a terminal or another app copy is not killed; if it holds the installed sidecar open, the install is blocked with `UPDATE_ENGINE_BUSY`.
+- The `0.2.1 → 0.2.2` update runs the old `0.2.1` updater, which does not include the tracked-PID cleanup. If a sidecar is active during that first update, retry after it exits or install `0.2.2` manually. `0.2.2 → later` uses the cleanup.
 - An external engine is version-gated rather than bundled. The UI labels it as external and checks the minimum version.
 - Recommendation titles, actions and verification steps come from the engine and stay in English; the surrounding UI is translated (en/ru/zh).
 - This is a `0.x` preview: configuration output, updater behavior and UI details may change before 1.0.

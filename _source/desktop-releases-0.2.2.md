@@ -167,10 +167,9 @@ portable ZIP remain manual-only.
 - Manual keychain behaviour is unchanged since the `0.2.1` check, where a secret
   stored by the bundled sidecar was visible to a separate `lv24-seo[secrets]` CLI
   process and vice versa.
-
-Post-publish check (not part of this commit): the in-app `0.2.1 → 0.2.2` update,
-including the sidecar cleanup path, is verified on a machine with `0.2.1`
-installed and the result is added to the release page.
+- Manual Windows check: an installed `0.2.1` build detected `0.2.2`, downloaded
+  and verified the signed package, installed it in passive mode, relaunched, and
+  reported `0.2.2` with engine `0.5.2` ready.
 
 ## Known limitations
 
@@ -180,6 +179,10 @@ installed and the result is added to the release page.
   terminal or another app copy is not killed; if it holds the installed sidecar
   open, the install is blocked with `UPDATE_ENGINE_BUSY` and must be retried
   after that run exits.
+- The `0.2.1 → 0.2.2` update runs the old `0.2.1` updater, which does not have
+  the new cleanup step. If a sidecar is active during that first update, retry
+  after it exits or install `0.2.2` manually. `0.2.2 → later` uses the tracked
+  PID cleanup.
 - The desktop has no dedicated crawl screen in `0.2.x`; crawl settings and
   findings are shown through configuration and reports.
 - A signature failure must be resolved by installing a newer release manually;

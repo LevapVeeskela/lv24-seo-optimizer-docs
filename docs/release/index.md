@@ -152,9 +152,15 @@ Manual-only is deliberate. A deb or rpm install is owned by the package database
 replace it; a portable ZIP has no installer to replace and may live on removable media. The desktop reports the installed bundle type and disables the in-app
 installer for those cases. It does not pretend that a manual package was updated.
 
-The Windows NSIS path was verified end-to-end for `0.2.0 → 0.2.1`. The next in-app update is
-`0.2.1 → 0.2.2`, which also exercises the sidecar cleanup path. `0.2.2` can update directly from
-`0.2.0`; `0.1.0` has no updater and needs one manual install.
+The Windows NSIS path has now been verified end-to-end twice: `0.2.0 → 0.2.1`, and `0.2.1 → 0.2.2`.
+For the second run, an installed `0.2.1` build detected `0.2.2`, downloaded and verified the signed
+package, installed it in passive mode, relaunched, and reported `0.2.2` with engine `0.5.2` ready.
+`0.2.2` can update directly from `0.2.0`; `0.1.0` has no updater and needs one manual install.
+
+The `0.2.1 → 0.2.2` update runs the old `0.2.1` updater, which does not include the new tracked-PID
+cleanup. If a sidecar is active during that first update, retry after it exits or install `0.2.2`
+manually. `0.2.2 → later` uses the tracked-PID cleanup and blocks with `UPDATE_ENGINE_BUSY` if a
+tracked sidecar cannot be stopped.
 
 ## Release pipeline
 
