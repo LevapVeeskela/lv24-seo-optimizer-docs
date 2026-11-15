@@ -1,6 +1,6 @@
 ---
 title: Desktop app
-description: What the LV24 SEO Optimizer desktop shell adds, how signed updates work, and the hardening changes in the 0.2.2 patch release.
+description: What the LV24 SEO Optimizer desktop shell adds, how signed updates work, and the hardening changes in the 0.2.2 release and the 0.2.3 draft.
 ---
 
 # Desktop app
@@ -19,7 +19,7 @@ The `0.2.2` hardening patch bundles `lv24-seo 0.5.2` as a PyInstaller onedir sid
 - **Secrets over stdin.** Token input is a password field sent once over IPC. The Rust layer pipes it to `lv24-seo auth set --provider <p> --stdin`, zeroizes its buffer and never writes the value to a log, MobX store, localStorage, clipboard or diagnostics bundle. After saving, the UI shows only presence and source.
 - **Yandex Metrika token.** `0.2.2` keeps the separate `metrika` provider (`yandex_metrika_token`) in the TypeScript and Rust allow-lists, the Settings badge, the secret modal and the en/ru/zh labels. The Metrika counter never borrows the Webmaster token.
 - **One secret store with the CLI.** The desktop runs the same engine under the same OS user, so a token stored by `lv24-seo auth set` in a terminal is visible in the desktop and a token stored in the desktop is visible to the CLI. The OS keychain entry uses service `lv24-seo` and the same secret name. `LV24_SEO_*` environment variables are inherited but shown as read-only in the UI: the desktop cannot remove an environment variable, and it says so instead of offering a delete button that does nothing. The opt-in `<data-dir>/secrets.json` fallback is shared only when both surfaces open the same workspace/data directory.
-- **Update panel.** Checks a signed `latest.json` at startup and on demand, shows release notes, and installs only after you confirm. Before the installer starts, it stops only the engine sidecar PIDs this app instance registered; if one cannot be stopped, the install is blocked with `UPDATE_ENGINE_BUSY`.
+- **Update panel.** Checks a signed `latest.json` at startup and on demand, shows release notes, and installs only after you confirm. Before the installer starts, it stops only the engine sidecar PIDs this app instance registered; if one cannot be stopped, the install is blocked with `UPDATE_ENGINE_BUSY`. From `0.2.3` the download and install run in Rust, not in the webview.
 
 The dashboard and Reports screen are built on the same engine commands a terminal uses:
 
@@ -49,8 +49,8 @@ Windows requires Windows 10/11 x64 and WebView2. Linux is x64 only and built on 
 The updater reads a signed `latest.json` from the project's GitHub Releases endpoint. Packages are signed with a minisign/Ed25519 key whose public key is embedded in the app. `requireSignedVersion` is enabled, so the announced version is bound to the signed package.
 
 - The app checks once at startup, silently, with a 30-second timeout, and when you press **Check for updates**.
-- Nothing is downloaded or installed automatically. The panel shows the version and notes; **Download and install** starts the update. An unsaved configuration draft disables the button.
-- Only a version greater than the running one is accepted. The updater cannot downgrade the app.
+- Nothing is downloaded or installed automatically. The panel shows the version and notes; **Download and install** starts the update. An unsaved configuration draft disables the button. From `0.2.3` the panel can cancel a download before the installer starts.
+- Only a version greater than the running one is accepted. The updater cannot downgrade the app, and the shell refuses a release whose version differs from the one the panel announced.
 - A signature failure blocks that artifact, marks the error as non-retryable and points to the release page. It is not retried and is not downgraded to an offline warning.
 - Immediately before the installer starts, `prepare_update` stops only the engine sidecar PIDs this app instance spawned. Nothing is matched by image name, so another installed copy, a portable build or a terminal run is untouched. If cleanup fails, the install is blocked with `UPDATE_ENGINE_BUSY`; close the run that holds the sidecar and retry.
 - Windows runs the signed NSIS setup in passive mode; macOS replaces the `.app`; Linux replaces the AppImage. The app restarts after installation; the NSIS installer handles the Windows restart.
@@ -86,6 +86,68 @@ cleanup. If a sidecar is active during that first update, retry after it exits o
 manually. `0.2.2 → later` uses the tracked-PID cleanup and blocks with `UPDATE_ENGINE_BUSY` if a
 tracked sidecar cannot be stopped.
 
+## 0.2.3 hardening (draft)
+
+`0.2.3` is the next patch and is not released yet. It moves the update download into Rust, makes the
+config path a dialog-approved capability, and fixes UI state that could misreport a save or a
+workspace. The bundled engine pin is unchanged until the release commit bumps it.
+
+### Updater moved into Rust
+
+The webview no longer holds the updater plugin's download-and-install permission; its capability list
+contains `updater:allow-check` only. `update_install` in the shell re-checks the endpoint, refuses a
+version that differs from the one the panel announced (`UPDATE_VERSION_MISMATCH`), downloads, verifies
+the signature and only then starts the installer. Progress arrives as `update://progress`; a failed
+progress listener is cosmetic and never blocks the install.
+
+**Cancel** now means something. While downloading, the panel calls `update_cancel`; the shell drops the
+download stream and returns `UPDATE_CANCELLED`, which returns the panel to idle without an error. Once
+the installer has started, `update_cancel` returns `false` and the panel stays as it is — a
+cancellation that did not happen is never claimed. On Windows the process exits when the installer
+starts, so the install promise may never resolve; that is expected.
+
+### Dialog-approved config path
+
+`pick_config` owns the native dialog and records the chosen file. `settings_set` accepts a config path
+only when it is the already-active path or one the dialog returned; any other `.toml` is rejected with
+`PATH_NOT_APPROVED`, so a compromised webview cannot point `config_write` or `config_patch` at an
+arbitrary file. The comparison uses the canonical path, so an equivalent spelling of the approved file
+still matches.
+
+A `storage.data_dir` that names a UNC share, a `\\?\` device path or a `\\.\` device is rejected with
+`INVALID_PATH` and `detail.reason: network_or_device_path` before it is resolved against the config
+directory. Joining it first would hide the `\\server\share` prefix and open an SMB connection on the UI
+thread.
+
+### Redaction and path timeouts
+
+Engine stderr is redacted before it reaches the webview, a log or a diagnostics bundle, and redaction
+runs before the 300-character preview is truncated: a token cut in half would no longer match the
+redaction pattern. A TOML parser error can quote the offending line, so it is redacted too. A helper
+task that exceeds its budget fails with `PATH_TIMEOUT` instead of hanging the screen.
+
+### Workspace and UI state
+
+- `shell_status` reports `configExists`. When the saved config was moved or deleted, the dashboard shows
+  a workspace-missing banner with **Choose config** instead of a generic stats error, and no stats call
+  is attempted. An absent field means unknown, not missing, so an older shell is not misread.
+- Every provider block has an explicit enable toggle. It is the only writer of `providers.<id>.present`;
+  a disabled block is removed from `seo.toml` on save and its fields stay out of reach.
+- Validation is tri-state: `valid`, `invalid` or `skipped`. A double click, a workspace switch or typing
+  during an engine validation returns `skipped`, and the UI shows no toast instead of claiming the
+  draft is invalid.
+- The skip link moves focus to the main region without changing the hash route, so it no longer renders
+  NotFound. A route-level error boundary contains a render failure, offers a reload and resets when the
+  path changes.
+
+### Release pipeline
+
+Pull-request CI now covers the release scripts themselves, the Rust matrix includes the Intel macOS
+runner the release uses, and Rust is pinned to `1.95.0` instead of `stable`. `latest.json` is validated
+against `contracts/latest.schema.json` before the draft is created. The published-asset allowlist lives
+in one tested module, and the Windows portable ZIP ships with a `.sha256` sidecar that the release gate
+recomputes and compares.
+
 ## Workspace switching and stale state
 
 The active `seo.toml` path is the workspace identity. When you switch to a different config, or the engine goes offline, the desktop clears stats, reports, doctor and secret state before any screen can show data from the previous project. The first load only records the path; a later change is treated as a switch. Unsaved configuration drafts are shared between Settings and Configuration and are session-only, so save before closing the app.
@@ -111,6 +173,11 @@ The desktop exposes crawl settings in the Settings form and surfaces crawl findi
 | Update check fails | GitHub endpoint is blocked or offline | Stay on the current version; the silent startup check stays quiet |
 | Update button is disabled | Unsaved configuration draft or manual-only bundle | Save or discard the draft, or download the package from the release page |
 | Update signature failure | Package does not match the embedded key | The artifact is blocked; download again from the release page and verify the checksum |
+| Workspace-missing banner | The saved `seo.toml` was moved or deleted | Press **Choose config** and select the file again |
+| `PATH_NOT_APPROVED` | A config path was set without the native dialog | Choose the file with **Choose config**; only a dialog-picked path may become active |
+| `INVALID_PATH` with `network_or_device_path` | `storage.data_dir` names a UNC share or a device path | Use a local directory; a network share is rejected before it is opened |
+| `UPDATE_CANCELLED` | You cancelled the download before the installer started | Expected; press **Download and install** again |
+| `UPDATE_VERSION_MISMATCH` | The announced release changed between the check and the install | Press **Check for updates**, then install the newly announced version |
 | `UPDATE_ENGINE_BUSY` | A sidecar process this app cannot stop holds the installed engine file | Close the terminal or app run that holds `lv24-seo`, then press **Download and install** again |
 | `missing_token` on a card | Provider token is absent | Run `lv24-seo auth set --provider <p> --stdin` |
 | `no_data` on a card | Provider reachable, no rows for the window | Widen the window or check the property and data lag |
@@ -129,4 +196,4 @@ The desktop exposes crawl settings in the Settings form and surfaces crawl findi
 - Recommendation titles, actions and verification steps come from the engine and stay in English; the surrounding UI is translated (en/ru/zh).
 - This is a `0.x` preview: configuration output, updater behavior and UI details may change before 1.0.
 
-Source: `_source/desktop-README.md`, `_source/desktop-releases-0.2.2.md`, `_source/desktop-releases-0.2.1.md`, `_source/desktop-releases-0.2.0.md`, `_source/desktop-security.md`, `_source/desktop-architecture.md`.
+Source: `_source/desktop-README.md`, `_source/desktop-releases-0.2.3.md`, `_source/desktop-releases-0.2.2.md`, `_source/desktop-releases-0.2.1.md`, `_source/desktop-releases-0.2.0.md`, `_source/desktop-security.md`, `_source/desktop-architecture.md`.

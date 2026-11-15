@@ -22,7 +22,32 @@ MCP 服务器提供一个小而明确的能力面：11 个工具、3 个资源�
 
 它们保存抓取或周报快照，但从不改变提供商状态，也不需要确认令牌。依据 `readOnlyHint` 分支的 MCP 客户端可能会在调用前请求确认；这是有意为之。
 
-两个写入工具带有 `destructiveHint: true`，并要求 `allow_write=true`。在 0.5.2 中它们的提供商处理器尚未接通，因此返回 `WRITE_DISABLED`，而不是假装成功。CLI 写入路径还有试运行和 HMAC 确认令牌流程，见[自动化与投递](/zh/automation/)。
+两个写入工具带有 `destructiveHint: true`，并且需要显式开启：`allow_write` 默认为 `false`，任何不带它的调用都会在构建计划之前返回 `WRITE_DISABLED`。它们遵循与 CLI 相同的两阶段契约，见下文。
+
+## 两阶段写入
+
+写入是先计划、再应用，而不是一次猜测式调用。
+
+1. **计划。** 以 `allow_write=true` 且不带 `confirm_token` 调用工具。不会向提供商发送任何内容。响应为 `ok: true`，带 `meta.dry_run: true` 以及 `data.plan`、`data.plan_hash`、`data.confirm_token`、`data.ttl_seconds`。
+2. **应用。** 用相同参数加上 `allow_write=true`、返回的 `plan_hash` 和 `confirm_token` 再次调用同一工具。与当前计划不匹配的 `plan_hash` 会在任何声明之前以 `CONFIRM_REQUIRED` 失败。
+
+dry run 的 `data` 对象：
+
+```json
+{
+  "status": "dry_run",
+  "plan": {"action": "recrawl", "target": "https:example.com:443", "summary": "queue 2 URL(s) for recrawl on https:example.com:443"},
+  "plan_hash": "6f1c…",
+  "confirm_token": "1794…:9ab3…",
+  "ttl_seconds": 300
+}
+```
+
+令牌是对动作、目标、完整计划哈希和过期时间的 HMAC，有效期为 300 秒。更改 URL、主机、属性或动作都会使其失效。必须在服务器环境中设置 `LV24_SEO_WRITE_SECRET`；空密钥会得到 `WRITE_DISABLED`，绝不会使用弱默认值。
+
+服务器把工作区存储交给写入闸门，因此重放的令牌返回 `status: skipped` 和 `reason: duplicate`，提供商只被调用一次。没有存储时应用仍会运行，但响应会警告：在令牌有效期内没有重放保护。提供商失败会释放声明，因此真正的重试被允许，失败的写入绝不会被记录为已发送。
+
+契约已在服务器中实现，但随附的 `SeoService` 还没有 Yandex 重新抓取或 GSC 站点地图写入适配器：即使 `allow_write=true` 且有密钥，两个工具仍返回 `WRITE_DISABLED`。CLI 的 IndexNow 路径是唯一到达提供商的写入。不会模拟任何结果。
 
 ## 工具
 
@@ -37,8 +62,8 @@ MCP 服务器提供一个小而明确的能力面：11 个工具、3 个资源�
 | `seo_report_diff` | `base`、`head`，格式 `START..END` | 标题变化、问题数量、机会变动、限制、Markdown |
 | `seo_indexing_triage` | 无 | 带原因、数量、示例和 `next_action` 的桶 |
 | `seo_opportunities` | `days` 1–90（默认 28）、`limit` 1–500、`min_impressions` | 带证据和 `expected_gain` 的排序机会 |
-| `seo_recrawl_request` | `host_id`、`urls`、`allow_write` | 写入受限；0.5.2 返回 `WRITE_DISABLED` |
-| `seo_sitemap_submit` | `property`、`sitemap_url`、`action`、`allow_write` | 写入受限；0.5.2 返回 `WRITE_DISABLED` |
+| `seo_recrawl_request` | `host_id`（默认：已配置主机）、`urls`、`allow_write`（默认 `false`）、`plan_hash`、`confirm_token` | 两阶段受限写入；未接通提供商适配器时返回 `WRITE_DISABLED` |
+| `seo_sitemap_submit` | `property`、`sitemap_url`、`action`、`allow_write`（默认 `false`）、`plan_hash`、`confirm_token` | 两阶段受限写入；未接通提供商适配器时返回 `WRITE_DISABLED` |
 
 `gsc_search_analytics` 默认使用 `report.timezone` 中最近七个完整天。`seo_weekly_report` 不接受属性参数：属性、时区和默认延迟来自配置。`seo_opportunities` 返回 `expected_gain`，这是优先级估计，不是流量承诺。
 
@@ -76,6 +101,8 @@ lv24-seo mcp serve --transport http --port 8765
 `stdio` 是默认值：本地进程，凭据在用户机器上。`http` 表示用于 VPS 或多客户端场景的流式 HTTP；已弃用的 HTTP+SSE 传输会被有意拒绝。端口必须为 1–65535，默认 8765。
 
 同步核心在事件循环线程上串行运行。MCP 2 在工作线程中派发同步处理器，因此工具注册为异步 owner-loop 适配器，并发 `tools/call` 请求会被串行化，而不是在 SQLite 中竞争。连接有意保留 `check_same_thread=True`。
+
+`seo_crawl_site` 是唯一的例外：抓取数千个 URL 过去会让其他所有客户端阻塞数分钟。现在它在工作线程上运行，使用自己的短生命周期存储（`sqlite3` 连接属于打开它的线程），并有 600 秒硬预算。预算耗尽后，客户端会收到可重试的 `UPSTREAM_UNAVAILABLE` 信封，其 `next_action` 建议减小 `max_urls`；线程无法被杀死，因此抓取会在后台完成并关闭自己的连接，同时服务器继续服务其他工具。其余所有工具仍留在 owner loop 上。
 
 ## 客户端注册
 
@@ -145,7 +172,7 @@ lv24-seo export skills --out .opencode/skills
 }
 ```
 
-代码：`AUTH_REQUIRED`、`AUTH_INVALID`、`PROPERTY_NOT_FOUND`、`QUOTA_EXCEEDED`、`UPSTREAM_UNAVAILABLE`、`TRUNCATED`、`WRITE_DISABLED`、`CONFIRM_REQUIRED`、`INVALID_INPUT`。错误携带代码和 `next_action`，绝不包含 traceback 或令牌。
+代码：`AUTH_REQUIRED`、`AUTH_INVALID`、`PROPERTY_NOT_FOUND`、`QUOTA_EXCEEDED`、`UPSTREAM_UNAVAILABLE`、`TRUNCATED`、`WRITE_DISABLED`、`CONFIRM_REQUIRED`、`INVALID_INPUT`、`CONFIG_INVALID`、`INTERNAL`、`STORE_LOCKED`、`STORE_CORRUPT`、`STORE_UNAVAILABLE`。错误携带代码和 `next_action`，绝不包含 traceback 或令牌。`STORE_LOCKED` 可重试；`STORE_CORRUPT` 会在 `detail.backup_path` 中给出保留的备份副本。
 
 ## 智能体提示示例
 
@@ -154,4 +181,4 @@ lv24-seo export skills --out .opencode/skills
 - **技术审计。** 用 `seo_crawl_site` 抓取最多 500 个 URL，按规则 id 汇总 critical 和 high 问题。不要把未抓取的 URL 说成失效。
 - **写入请求。** 为这些 URL 准备重新抓取计划，先显示配额。在我批准计划前不要写入任何内容。
 
-Source: `_source/engine-mcp.md`, `_source/engine-skills.md`, `_source/engine-cli.md`, `_source/engine-releases-0.5.2.md`.
+Source: `_source/engine-mcp.md`, `_source/engine-skills.md`, `_source/engine-cli.md`, `_source/engine-releases-0.5.2.md`, `_source/engine-releases-0.5.3.md`.

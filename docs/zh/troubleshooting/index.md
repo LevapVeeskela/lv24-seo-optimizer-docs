@@ -25,14 +25,15 @@ lv24-seo config show --json
 ```
 
 `doctor` 检查 Python、平台、配置路径、当前目录可写性、有效数据目录及其作用域，以及令牌
-是否存在，不进行网络调用。它的顶层 `ok` 只取决于致命检查：Python 和当前目录可写性。其余
-内容查看 `checks[]`。
+是否存在，不进行网络调用。它的顶层 `ok` 只取决于致命检查：Python、当前目录可写性，以及
+配置文件或 `LV24_SEO_DATA_DIR` 声明数据目录时的该目录。其余内容查看 `checks[]`；
+`meta.data_dir_declared` 说明数据目录是否属于契约的一部分。
 
 常见退出码：`AUTH_REQUIRED` 和 `AUTH_INVALID`（3）、`PROPERTY_NOT_FOUND`（1）、
 `QUOTA_EXCEEDED` 和 `UPSTREAM_UNAVAILABLE`（4）、`WRITE_DISABLED`（2）、
-`CONFIRM_REQUIRED`（1）、`INVALID_INPUT` 和 `CONFIG_INVALID`（2）、`INTERNAL`（1）。
-`TRUNCATED` 是保留码，不会发出：截断由 `meta.truncated` 或 `limitations` 表示，命令
-退出 `0`。
+`CONFIRM_REQUIRED`（2）、`INVALID_INPUT` 和 `CONFIG_INVALID`（2）、`INTERNAL`（1）、
+`STORE_LOCKED`、`STORE_CORRUPT` 和 `STORE_UNAVAILABLE`（1）。截断本身不是错误：截断的响应
+退出 `0`，只有带 `--strict` 的命令在保持 `ok: true` 的同时退出 `5`。
 
 ## 缺少令牌和数据源认证
 
@@ -77,10 +78,26 @@ printf '%s' "$TOKEN" | lv24-seo auth set --provider gsc --stdin
 
 ## 写令牌重放
 
-带 `--confirm` 的写入应用在工作区已初始化时使用 SQLite 幂等账本。重放同一令牌返回
-`status: skipped` 和 `reason: duplicate`，提供商只被调用一次。试运行不打开账本，也不创建
-数据库。没有数据目录时仍会应用，但信封会警告：在令牌五分钟有效期内没有重放保护。崩溃留下
-的 pending 声明没有 TTL，会被视为进行中，直到操作员释放。
+带 `--confirm` 的写入应用在工作区已初始化时使用 SQLite 幂等账本。账本从所选工作区的数据目录
+打开，因此 `--config /srv/site/seo.toml` 会把声明记录在 `/srv/site/data`，即使 shell 在别处。
+重放同一令牌返回 `status: skipped` 和 `reason: duplicate`，提供商只被调用一次。试运行不打开
+账本，也不创建数据库。没有数据目录时仍会应用，但信封会警告：在令牌五分钟有效期内没有重放
+保护。崩溃留下的 pending 声明没有 TTL，会被视为进行中，直到操作员释放。
+
+## 存储错误 `STORE_*`
+
+SQLite 故障会被类型化，而不是表现为通用的 `INTERNAL`：
+
+| 代码 | 原因 | 处理方式 |
+|---|---|---|
+| `STORE_LOCKED` | 另一个进程持有写锁超过 busy timeout | 等待另一个 `lv24-seo` 运行结束再重试；没有写入任何内容 |
+| `STORE_CORRUPT` | 文件不是有效的 SQLite 数据库 | 查看 `detail.backup_path`，然后移动或删除数据库并重跑 |
+| `STORE_UNAVAILABLE` | 权限、父目录缺失或磁盘已满 | 修复目录或释放空间，然后运行 `lv24-seo doctor` |
+
+`STORE_CORRUPT` 会在做任何其他事情之前把不可用文件复制到自身旁边，名为
+`seo.sqlite3.corrupt-20260101T101010Z`。原文件绝不会被移动或删除，复制失败也不会掩盖错误。
+三个代码都没有专用退出状态；它们退出 `1`，因此请依据 `error.code`。归档副本后删除
+`data/seo.sqlite3` 是安全的：会创建新的空数据库，写入账本也会重置。
 
 ## Sitemap `too_large`
 
@@ -168,6 +185,24 @@ LV24_SEO_BIN=/absolute/path/to/lv24-seo npx @lv24/seo version --json
 
 PowerShell 中先设置 `$env:LV24_SEO_BIN`。`LV24_SEO_PIN=0` 会恢复未固定的 `latest`
 查找。启动器拒绝执行自己的 shim，因此 PATH 遮蔽不会递归。
+
+## 桌面路径与更新错误
+
+shell 报告自己的代码，绝不重用引擎代码。
+
+| 代码 | 含义 | 处理方式 |
+|---|---|---|
+| `INVALID_PATH` | 路径不是绝对路径、不是 `.toml`、父目录不存在，或指向 UNC/设备路径（`detail.reason: network_or_device_path`） | 选择父目录存在的本地 `.toml` |
+| `PATH_NOT_ALLOWED` | 路径被保留、超出批准根目录、扩展名不允许，或不是活动项目配置 | 使用应用自己的目录和 Settings 中选择的配置 |
+| `PATH_NOT_APPROVED` | 配置路径未经原生对话框设置 | 通过 **Choose config** 选择文件；只有对话框选中的路径才能成为活动路径 |
+| `PATH_TIMEOUT` | 辅助任务未在预算内完成 | 重试；若重复出现，检查引擎和文件大小 |
+| `UPDATE_IN_PROGRESS` | 已有另一个安装在进行 | 等待其完成 |
+| `UPDATE_NOT_AVAILABLE` | 公告的发布在安装前消失 | 点击 **Check for updates** |
+| `UPDATE_VERSION_MISMATCH` | 发布在检查与安装之间发生变化 | 再次检查并安装新公告的版本 |
+| `UPDATE_CANCELLED` | 下载在安装器启动前被取消 | 预期行为；重新开始安装 |
+| `UPDATE_UNAVAILABLE` | 此构建未配置更新器 | 保持当前版本，或从发行页面下载 |
+
+`UPDATE_ENGINE_BUSY` 是另一回事：受跟踪的 sidecar 无法停止，待其退出后安装可重试。
 
 ## 桌面引擎离线或版本门禁
 
@@ -275,4 +310,4 @@ actual (redacted --json envelope):
 
 写入门禁见[安全与隐私](/zh/security/)，更新器行为见[发布与更新](/zh/release/)。
 
-Source: `_source/engine-troubleshooting.md`, `_source/engine-releases-0.5.2.md`, `_source/desktop-releases-0.2.2.md`, `_source/desktop-releases-0.2.1.md`, `_source/desktop-releases-0.2.0.md`, `_source/desktop-security.md`, `_source/desktop-architecture.md`.
+Source: `_source/engine-troubleshooting.md`, `_source/engine-releases-0.5.2.md`, `_source/engine-releases-0.5.3.md`, `_source/desktop-releases-0.2.2.md`, `_source/desktop-releases-0.2.3.md`, `_source/desktop-releases-0.2.1.md`, `_source/desktop-releases-0.2.0.md`, `_source/desktop-security.md`, `_source/desktop-architecture.md`.

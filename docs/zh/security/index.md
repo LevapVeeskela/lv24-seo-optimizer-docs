@@ -83,7 +83,8 @@ stdout 保持协议输出。脱敏是纵深防御，调用方仍不得记录原�
 
 1. **计划** — dry run 显示目标、动作和完整计划哈希，然后返回短期的
    `confirm_token`。
-2. **确认** — 调用方审阅计划，并用 `--allow-write` 和该令牌重新运行。
+2. **确认** — 调用方审阅计划，并用 `--allow-write`（CLI）或 `allow_write=true`（MCP）、该令牌以及
+   （MCP 下）`plan_hash` 重新运行。
 3. **占位** — 存储在幂等账本中把槽位标记为 `pending`。
 4. **应用** — 调用数据源；成功把占位提升为 `sent`，数据源异常则释放占位。
 
@@ -98,11 +99,14 @@ SQLite 幂等账本，因此重放同一令牌返回 `status: skipped` 和 `reas
 | IndexNow 提交 | 已接通；需要 `--allow-write`、确认令牌和 `LV24_SEO_WRITE_SECRET` |
 | GSC sitemap 提交 | `WRITE_DISABLED` — 适配器未接通 |
 | Yandex recrawl | `WRITE_DISABLED` — 适配器未接通 |
-| MCP 写入工具 | 即使 `allow_write=true` 也返回 `WRITE_DISABLED`；尚无确认令牌路径 |
+| MCP 写入工具 | 已实现两阶段 `plan_hash` + `confirm_token` 契约；未接通数据源适配器时返回 `WRITE_DISABLED` |
 
 当前构建中只有 CLI 能执行数据源写入，且只有 IndexNow 会到达数据源。MCP 写入工具
-（`seo_recrawl_request`、`seo_sitemap_submit`）带有 `destructiveHint: true`，但仍返回
-`WRITE_DISABLED`。
+（`seo_recrawl_request`、`seo_sitemap_submit`）带有 `destructiveHint: true`，且 `allow_write`
+默认为 `false`。它们从服务器环境读取 `LV24_SEO_WRITE_SECRET`；空密钥会得到 `WRITE_DISABLED`，
+绝不是弱默认值。不带 `confirm_token` 的调用是 dry run，返回 `plan_hash`、`confirm_token` 和
+`ttl_seconds`；应用必须回传 `plan_hash` 和令牌，哈希不匹配会得到 `CONFIRM_REQUIRED`，工作区
+存储会占用幂等槽位，因此重放返回 `skipped`，而不是第二次调用数据源。
 
 本地状态工具不同。`seo_crawl_site` 和 `seo_weekly_report` 会保存抓取和周报快照，因此
 标记为 `writes_local_state: true` 和 `readOnlyHint: false`。它们不改变数据源状态，也
@@ -176,6 +180,13 @@ PID；没有通配符进程清理，因为多个 LV24 应用可以同时运行�
 在每个路径组件中都会被拒绝。没有原始编辑器；编辑通过已验证的 Settings 表单和字段级
 补丁完成。
 
+新配置路径只能通过原生对话框成为活动路径：`pick_config` 记录所选文件，`settings_set`
+拒绝任何其他 `.toml` 并返回 `PATH_NOT_APPROVED`，因此被攻破的 webview 无法把
+`config_write` 或 `config_patch` 重定向到任意文件。`storage.data_dir` 若指向 UNC 共享或
+`\\?\`/`\\.\` 设备，会在解析之前以 `INVALID_PATH` 拒绝，因为拼接会隐藏共享前缀并在 UI
+线程上打开 SMB 连接。在 Windows 上，配置草稿和备份获得显式的仅所有者 DACL，而不是继承
+可能让其他用户读取含令牌文件的目录 ACL。
+
 工作区、报告、doctor 和密钥状态会在工作区变化或引擎离线时清除，因此不会在新工作区显示
 上一个项目的数据。无法执行的操作会被禁用，而不是点击后失败。en/ru/zh 消息目录保持一致；
 缺少键是测试失败。
@@ -196,6 +207,11 @@ PID；没有通配符进程清理，因为多个 LV24 应用可以同时运行�
 资源目录中，运行中的进程会锁定它并破坏 NSIS 更新。只停止确切跟踪的 PID；不会按映像
 名称匹配，因此另一个已安装副本、便携构建或终端运行不会被触碰。清理失败会以
 `UPDATE_ENGINE_BUSY` 阻止安装，而不是启动一个会在中途失败的安装器。
+
+webview 不能自行下载或安装更新。其能力列表只包含 `updater:allow-check`；shell 中的
+`update_install` 会重新检查端点，拒绝与用户所见版本不同的版本（`UPDATE_VERSION_MISMATCH`），
+下载、验证签名，然后才启动安装器。`update_cancel` 在安装器启动前丢弃下载并返回
+`UPDATE_CANCELLED`；安装开始后它返回 `false`，因此面板绝不会声称发生了并未发生的取消。
 
 自动更新仅适用于 Windows NSIS、macOS `.app` 和 Linux AppImage。deb、rpm、MSI 和
 portable ZIP 只能手动更新：UI 禁用应用内安装器并链接到发布页。`0.1.0` 没有更新器、
@@ -233,4 +249,4 @@ cookie、`Authorization` 头、`LV24_SEO_WRITE_SECRET`、`.env` 内容、`data/s
 
 信任边界见[架构](/zh/architecture/)，已签名更新的矩阵见[发布与更新](/zh/release/)。
 
-Source: `_source/engine-security.md`, `_source/desktop-security.md`, `_source/engine-architecture.md`, `_source/desktop-architecture.md`, `_source/engine-releases-0.5.2.md`, `_source/desktop-releases-0.2.2.md`.
+Source: `_source/engine-security.md`, `_source/desktop-security.md`, `_source/engine-architecture.md`, `_source/desktop-architecture.md`, `_source/engine-releases-0.5.2.md`, `_source/engine-releases-0.5.3.md`, `_source/desktop-releases-0.2.2.md`, `_source/desktop-releases-0.2.3.md`.

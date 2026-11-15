@@ -13,10 +13,10 @@ description: LV24 SEO Optimizer 的提供商能力矩阵、认证、配额、数
 
 | 来源 | 读取 | 写入（需确认） | 认证 | 免费配额 | 数据延迟 |
 |---|---|---|---|---|---|
-| Google Search Console | 搜索分析、站点、站点地图、URL Inspection | 提交站点地图；0.5.2 中返回 `WRITE_DISABLED` | Bearer 访问令牌（读取用 `webmasters.readonly`，站点地图用 `webmasters`） | 每个站点和每个用户 1,200 次/分钟；每天每站点每类型 50,000 行；URL Inspection 每天 2,000 次、每分钟 600 次 | 2–3 天 |
+| Google Search Console | 搜索分析、站点、站点地图、URL Inspection | 提交站点地图；0.5.2 中返回 `WRITE_DISABLED` | Bearer 访问令牌（读取用 `webmasters.readonly`，站点地图用 `webmasters`） | 每个站点和每个用户 1,200 次/分钟；每天每站点每类型 50,000 行；URL Inspection 每天 2,000 次、每分钟 600 次 | 2–3 天；`data_age_days` 下限为 3 |
 | Yandex Webmaster | 摘要、SQI 历史、索引、搜索中的 URL 与事件、查询、诊断、失效链接、站点地图 | 重新抓取队列；0.5.2 中返回 `WRITE_DISABLED` | OAuth 令牌，scope `webmaster:hostinfo` | 免费；未公布全局 RPD/RPS；查询分析在约每小时 1 万次请求以上不稳定 | 约 4 天 |
 | Yandex Metrika | 会话、流量来源、搜索词、落地页、目标 | 无 | OAuth 令牌，scope `metrika:read` | 每天每用户 5,000 次请求；30 rps/IP；3 个并发；`/stat/v1/data` 每 5 分钟 200 次；每次请求最多 10 万行、20 个指标、10 个维度 | Reporting API；会报告抽样 |
-| Bing Webmaster | 查询统计、排名与流量、抓取问题 | IndexNow 提交（可用）；站点地图提交路径未接通 | 每个用户一个 API 密钥 | 免费；每域名每天约 1 万次 URL 提交，每批 500 条 | API 中没有按时间窗口的统计 |
+| Bing Webmaster | 查询统计、排名与流量、抓取问题 | IndexNow 提交（可用）；站点地图提交路径未接通 | 每个用户一个 API 密钥 | 免费；每域名每天约 1 万次 URL 提交，每批 500 条 | API 中没有按时间窗口的统计；年龄取最新行的日期 |
 | Chrome UX Report (CrUX) | 字段 p75 LCP、INP 和 CLS | 无 | API 密钥 | 每个项目每分钟 150 次，无法提高 | 28 天滚动窗口 |
 | PageSpeed Insights (PSI) | Lighthouse 实验室诊断、已弃用的字段数据块 | 无 | API 密钥可选；无密钥也能用，但配额较低 | 每天约 2.5 万次请求 | 实时实验室运行 |
 | GA4（可选） | 自然搜索落地页、会话、关键事件 | 无 | Google Analytics Data API 凭据 | 适用提供商配额 | 方向性；阈值处理可能隐藏行 |
@@ -64,12 +64,17 @@ pip install "lv24-seo[secrets]"
 提供商配额在发送请求前由保守的客户端令牌桶限制。429 或耗尽的配额会变成类型化错误，而不是部分成功。需要提前规划的主要限制：
 
 - GSC 搜索分析每天、每站点、每搜索类型上限为 50,000 行。恰好填满上限的最后一页会报告 `truncated: true` 和 `rows_cap_50000`；调用方设置更小上限时会产生指名该行数限制的警告。完整一页不能证明上限后没有更多行。
+- 被截断的 GSC 结果完全省略 `total`。精确行数配上 `truncated: true` 会被读成完整答案，因此只有以短页结束的遍历才报告总数。
+- GSC 数据比当前日期滞后 2–3 天，因此 `data_age_days` 下限为 3。结束于今天的窗口绝不会被呈现为最新数据。
 - GSC 分组会丢行。不要把按 `page` 分组的总和与按 `query` 分组的总和相比较，也不要同时请求两个维度再与未分组总数比较。
 - Yandex Webmaster 每个周期只提供前 3,000 个查询，每页最多 500 条，并且不支持查询与页面的关联。缺失的行是未知，不是零。
+- Webmaster 响应中的普通 `count` 是当前页的大小，不是总计，因此它不再提前终止分页而隐藏行。
+- 已加载的 Yandex 主机若索引历史或搜索 URL 事件为空，就是空答案：`total: 0` 加 `empty_history` 限制，而不是 `degraded_host`。只有 `404` 或显式的 `HOST_NOT_LOADED` 负载才算降级。
 - Yandex Metrika 默认抽样（`accuracy=medium`）。抽样响应会带上 `sampled` 限制和警告；请把准确度标志与数值一起保存。
+- Metrika 的 `limit` 是页大小，不是结果大小。客户端用 `offset` 遍历 `stat/v1/data`，直到 `total_rows`、短页或上限；单次调用上限为 10,000 行和 100 页，即使调用方页大小很小也仍在该 5 分钟 200 次请求的配额内。没有 `total_rows` 的完整页会标记为 `truncated`，而不是看起来完整；无维度的聚合调用只有一行，绝不翻页。
 - CrUX 在 URL 流量不足时返回 404；这会变成 `low_traffic`，而不是零分。
 - PSI 是实验室数据。不要平均实验室运行结果，也不要与 CrUX 字段数据合并。
-- Bing 统计 API 没有日期窗口，因此报告不会为 Bing 显示上一周期对比。
+- Bing 统计 API 没有日期窗口，因此报告不会为 Bing 显示上一周期对比。`data_age_days` 改为取最新一行的日期——查询统计用 `Date`，抓取问题用 `DateDetected`——并解析 WCF `/Date(ms)/`、ISO 或 epoch。空数据源报告 0。
 
 每个有界响应都带有相同的诚实性字段：`truncated`、`total`、以天为单位的数据年龄（`data_age_days`）以及 `limitations[]`。`rows` 是返回的行数，不是总数。只有提供商或存储能够报告时才会出现 `total`。
 
@@ -83,11 +88,16 @@ pip install "lv24-seo[secrets]"
 | `sampled` | Metrika 返回了抽样数据 |
 | `low_traffic` | CrUX 对某个 URL 或 origin 的流量不足 |
 | `degraded_host` | Yandex 报告主机未完全加载 |
+| `empty_history` | 已加载的 Yandex 主机在该窗口没有索引或搜索 URL 历史 |
 | `one_url_per_call` | URL Inspection 每次调用只处理一个 URL，不能批量 |
 | `no_per_url_sitemap_errors` | Yandex 不暴露按 URL 的站点地图错误详情 |
 | `token_expiring` | 凭据即将过期 |
 | `paid_provider` | 该行来自付费适配器 |
 | `partial_response` | 提供商返回了不完整的响应 |
+
+## 站点地图范围
+
+站点地图的 `<loc>` 只有在其 origin 处于范围内时才会被抓取：起始站点地图的 origin，加上每个实际读取文档的最终 origin。因此重定向到 CDN 镜像仍在范围内，而指向无关主机的 loc 则不在。被拒绝的 loc 会被丢弃并一次性报告为 `off_origin_loc`，所以没有外部受限抓取器的读取器也绝不会沿着站点地图走到另一个站点。索引中的子站点地图也应用同样的 origin 检查。
 
 ## 不抓取 SERP
 
@@ -101,4 +111,4 @@ pip install "lv24-seo[secrets]"
 
 调度器生成器在后端支持时应用同一时区。Cron 依赖 `CRON_TZ`，systemd 把时区写入 `OnCalendar`，Task Scheduler XML 携带固定偏移并给出 DST 警告。参见[自动化与投递](/zh/automation/)。
 
-Source: `_source/engine-data-sources.md`, `_source/engine-cli.md`, `_source/engine-config.md`, `_source/engine-releases-0.5.2.md`.
+Source: `_source/engine-data-sources.md`, `_source/engine-cli.md`, `_source/engine-config.md`, `_source/engine-releases-0.5.2.md`, `_source/engine-releases-0.5.3.md`.

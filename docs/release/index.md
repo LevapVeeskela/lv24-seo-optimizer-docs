@@ -1,6 +1,6 @@
 ---
 title: Releases and updates
-description: Engine 0.5.2 changes, desktop 0.2.2 assets, signed auto-update matrix, release pipeline, version pinning and rollback.
+description: Engine 0.5.2 changes and the draft 0.5.3 notes, desktop 0.2.2 assets and the draft 0.2.3 hardening, signed auto-update matrix, release pipeline, version pinning and rollback.
 ---
 
 # Releases and updates
@@ -13,6 +13,81 @@ The current releases are:
 | Desktop | `0.2.2` | Hardening patch: updater sidecar cleanup, durable writes, secrets and stale-state fixes; bundles engine 0.5.2 |
 
 The desktop version and the engine version are independent, but the desktop pins an exact engine and refuses one below its minimum.
+
+The next wave is not released yet: engine `0.5.3` and desktop `0.2.3` are drafted below. The versions in the table above are what a user can install today.
+
+## Engine 0.5.3 (draft)
+
+This is the next engine patch. It makes agent writes two-phase, moves the crawl off the MCP event loop, adds a CI-facing
+`--strict` exit code, and replaces generic storage failures with typed codes. No schema migration and no new CLI command
+or MCP tool: the surface stays at eleven tools, and the changes are inputs, exit codes and error codes.
+
+What changed:
+
+- **Two-phase MCP writes.** `seo_recrawl_request` and `seo_sitemap_submit` take `allow_write` (default `false`), `plan_hash` and
+  `confirm_token`. A call without a token is a dry run that returns the plan, its hash and a 300-second token; an apply must echo
+  the hash and token. A mismatched hash fails with `CONFIRM_REQUIRED`, a replay returns `status: skipped` with
+  `reason: duplicate`, and a provider failure releases the claim so a retry is allowed. `LV24_SEO_WRITE_SECRET` is required;
+  an empty secret is `WRITE_DISABLED`. The shipped `SeoService` still has no recrawl or sitemap write adapter, so both tools
+  return `WRITE_DISABLED` even with `allow_write=true` — the contract is in place, the provider call is not.
+- **Crawl off the event loop.** `seo_crawl_site` runs on a worker thread with its own short-lived store and a hard 600-second
+  budget. After the budget the client gets a retryable `UPSTREAM_UNAVAILABLE` naming a smaller `max_urls`; the worker finishes in
+  the background and the server keeps answering other tools. Every other tool stays serialized on the owner loop.
+- **`--strict` and exit 5.** `stats`, `gsc query`, `yandex queries`, `yandex indexing`, `crawl`, `report weekly` and `report diff`
+  accept `--strict`. `meta.strict` is always set; a truncated response stays `ok: true` but exits `5`, and `meta.limitations`
+  explains what is missing. Without the flag, truncation still exits `0`. `report diff --markdown` honours the same code.
+- **The write ledger follows `--config`.** A write apply opens the idempotency ledger from the selected workspace data directory,
+  so `--config /srv/site/seo.toml` records the claim under `/srv/site/data` even when the shell is elsewhere. Previously the ledger
+  was resolved from the working directory, which silently disabled replay protection.
+- **Typed storage errors.** `STORE_LOCKED` (retryable), `STORE_CORRUPT` (with `detail.backup_path`) and `STORE_UNAVAILABLE`
+  replace the generic `INTERNAL` envelope. A corrupt file is copied next to itself before anything else happens; the original is
+  never moved or deleted. The three codes exit `1`, like `INTERNAL`.
+- **Honest provider data.** A capped GSC result omits `total` instead of pairing an exact count with `truncated: true`, and
+  `data_age_days` is floored at the documented 3-day lag. Metrika `limit` is a page size: the client walks `offset` up to 10,000
+  rows and 100 pages, marks a full page with no `total_rows` as truncated, and never pages an aggregate call. Bing derives
+  `data_age_days` from the newest row date instead of a hardcoded zero. A loaded Yandex host with an empty history returns
+  `total: 0` with `empty_history` instead of `degraded_host`, and a bare Webmaster `count` is no longer mistaken for a grand total.
+- **Sitemap scope.** A `<loc>` outside the sitemap's own origins (seed origin plus the final origin of each document read) is
+  dropped and reported once as `off_origin_loc`, so an index can never walk a reader to another site.
+- **`doctor` treats a declared data directory as fatal.** When the config file or `LV24_SEO_DATA_DIR` names a directory, a missing
+  or unusable one fails the check; `meta.data_dir_declared` reports which case applies.
+- **Smaller fixes.** A crontab with an unterminated managed block is repaired conservatively: only lines that look like lv24-seo
+  entries are removed, and a warning asks the operator to review `crontab -l`. A crawl honours one `429` `Retry-After` instead of
+  treating a throttle as a page answer.
+
+Verification is recorded when the release is cut; this section is a draft on the `wave/0.2.3-p0` branch.
+
+## Desktop 0.2.3 (draft)
+
+`0.2.3` is the next desktop patch and is not released yet. It moves the update download into Rust, makes the config path a
+dialog-approved capability, rejects network paths before they are opened, and fixes UI state that could misreport a save or a
+workspace. The bundled engine pin is unchanged until the release commit bumps it.
+
+What changed:
+
+- **Updater moved into Rust.** The webview capability list contains `updater:allow-check` only. `update_install` re-checks the
+  endpoint, refuses a version that differs from the one the panel announced (`UPDATE_VERSION_MISMATCH`), downloads, verifies the
+  signature and starts the installer; progress arrives as `update://progress`. `update_cancel` drops the download before the
+  installer starts and returns `UPDATE_CANCELLED`; once installation has begun the panel stays as it is instead of claiming a
+  cancellation that did not happen.
+- **Dialog-approved config path.** `pick_config` records the file the native dialog returned; `settings_set` accepts only the active
+  path or an approved one and rejects anything else with `PATH_NOT_APPROVED`. A UNC share, `\\?\` device or `\\.\` device in
+  `storage.data_dir` is rejected with `INVALID_PATH` and `detail.reason: network_or_device_path` before it is resolved.
+- **Redaction and timeouts.** Engine stderr is redacted before it reaches the webview, a log or a diagnostics bundle, and redaction
+  runs before the 300-character preview is truncated. A TOML parser error is redacted too. A helper task over its budget fails with
+  `PATH_TIMEOUT` instead of hanging the screen.
+- **Workspace and UI state.** `shell_status` reports `configExists`; a moved or deleted config shows a workspace-missing banner with
+  **Choose config** instead of a generic stats error. Provider blocks have an explicit enable toggle that is the only writer of
+  `providers.<id>.present`. Validation is tri-state (`valid`, `invalid`, `skipped`), so a double click or a workspace switch no
+  longer reports a valid draft as invalid. The skip link keeps the hash route intact, and a route-level error boundary contains a
+  render failure and offers a reload.
+- **Release pipeline.** Pull-request CI runs the release-script tests; the Rust matrix includes the Intel macOS runner the release
+  uses; Rust is pinned to `1.95.0`. `latest.json` is validated against `contracts/latest.schema.json` before the draft is created.
+  One tested allowlist drives the checksum file and the upload list, and the Windows portable ZIP ships with a `.sha256` sidecar that
+  the release gate recomputes and compares.
+
+Asset names follow the `0.2.2` pattern with `0.2.3` substituted. Verification is recorded when the release is cut; this section is a
+draft on the `wave/0.2.3-p0` branch.
 
 ## Engine 0.5.2
 
@@ -298,4 +373,4 @@ those protections system-wide.
 
 See [Security and privacy](/security/) for updater trust and [Architecture](/architecture/) for the sidecar layout.
 
-Source: `_source/engine-releases-0.5.2.md`, `_source/desktop-releases-0.2.2.md`, `_source/desktop-releases-0.2.1.md`, `_source/desktop-releases-0.2.0.md`, `_source/desktop-release.md`, `_source/desktop-security.md`.
+Source: `_source/engine-releases-0.5.3.md`, `_source/engine-releases-0.5.2.md`, `_source/desktop-releases-0.2.3.md`, `_source/desktop-releases-0.2.2.md`, `_source/desktop-releases-0.2.1.md`, `_source/desktop-releases-0.2.0.md`, `_source/desktop-release.md`, `_source/desktop-security.md`.

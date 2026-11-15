@@ -24,11 +24,11 @@ lv24-seo config show --json
 ```
 
 `doctor` checks Python, platform, config path, current-directory writability, the effective data directory and its scope, and token presence, with no network calls. Its top-level `ok`
-is fatal-only: Python and current-directory writability. Read `checks[]` for the rest.
+is fatal-only: Python, current-directory writability and — when the config file or `LV24_SEO_DATA_DIR` declares one — the data directory. Read `checks[]` for the rest; `meta.data_dir_declared` says whether the data directory was part of the contract.
 
 Common exits: `AUTH_REQUIRED` and `AUTH_INVALID` (3), `PROPERTY_NOT_FOUND` (1), `QUOTA_EXCEEDED` and `UPSTREAM_UNAVAILABLE` (4), `WRITE_DISABLED` (2),
-`CONFIRM_REQUIRED` (1), `INVALID_INPUT` and `CONFIG_INVALID` (2), `INTERNAL` (1). `TRUNCATED` is reserved and not emitted: truncation is `meta.truncated` or
-`limitations`, and the command exits `0`.
+`CONFIRM_REQUIRED` (2), `INVALID_INPUT` and `CONFIG_INVALID` (2), `INTERNAL` (1), `STORE_LOCKED`, `STORE_CORRUPT` and `STORE_UNAVAILABLE` (1).
+Truncation is not an error by itself: a truncated response exits `0`, and only a command run with `--strict` exits `5` while keeping `ok: true`.
 
 ## Missing tokens and provider authentication
 
@@ -68,10 +68,22 @@ config's folder. `config show --json` reports the same effective path. Set an ab
 
 ## Write token replay
 
-A write apply with `--confirm` uses the workspace SQLite idempotency ledger when the workspace is initialised. Replaying the same token
+A write apply with `--confirm` uses the workspace SQLite idempotency ledger when the workspace is initialised. The ledger is opened from the selected workspace data directory, so `--config /srv/site/seo.toml` records the claim under `/srv/site/data` even when the shell is elsewhere. Replaying the same token
 returns `status: skipped` with `reason: duplicate` and the provider is called once. A dry run opens no ledger and creates no database.
 Without a data directory the apply still runs, but the envelope warns that replay protection is off for the token's five-minute lifetime.
 A `pending` claim left by a crash has no TTL and is treated as in-flight until an operator releases it.
+
+## Storage errors `STORE_*`
+
+A SQLite failure is typed instead of surfacing as a generic `INTERNAL`:
+
+| Code | Cause | Fix |
+|---|---|---|
+| `STORE_LOCKED` | Another process holds the write lock past the busy timeout | Wait for the other `lv24-seo` run to finish, then retry; nothing was written |
+| `STORE_CORRUPT` | The file is not a valid SQLite database | Inspect `detail.backup_path`, then move or delete the database and rerun |
+| `STORE_UNAVAILABLE` | Permissions, a missing parent directory or a full disk | Fix the directory or free space, then run `lv24-seo doctor` |
+
+`STORE_CORRUPT` copies the unusable file next to itself as `seo.sqlite3.corrupt-20260101T101010Z` before anything else happens. The original is never moved or deleted, and a copy that fails does not hide the error. None of the three has a dedicated exit status; they exit `1`, so branch on `error.code`. Once the copy is archived, deleting `data/seo.sqlite3` is safe: a new empty database is created and the write ledger resets.
 
 ## Sitemap `too_large`
 
@@ -154,6 +166,24 @@ LV24_SEO_BIN=/absolute/path/to/lv24-seo npx @lv24/seo version --json
 
 On PowerShell, set `$env:LV24_SEO_BIN` before running the launcher. `LV24_SEO_PIN=0` opts back into the unpinned `latest` lookup. The launcher refuses to exec
 its own shim, so a PATH shadow cannot recurse.
+
+## Desktop path and update errors
+
+The shell reports its own codes; it never reuses an engine code.
+
+| Code | Meaning | Fix |
+|---|---|---|
+| `INVALID_PATH` | A path is not absolute, is not a `.toml`, has no existing parent, or names a UNC/device path (`detail.reason: network_or_device_path`) | Pick a local `.toml` whose folder exists |
+| `PATH_NOT_ALLOWED` | The path is reserved, outside the approved roots, has a disallowed extension, or is not the active project config | Use the app's own directories and the config selected in Settings |
+| `PATH_NOT_APPROVED` | A config path was set without the native dialog | Choose the file with **Choose config**; only a dialog-picked path may become active |
+| `PATH_TIMEOUT` | A helper task did not finish within its budget | Retry; if it repeats, check the engine and the size of the file |
+| `UPDATE_IN_PROGRESS` | Another install is already running | Wait for it to finish |
+| `UPDATE_NOT_AVAILABLE` | The announced release disappeared before the install | Press **Check for updates** |
+| `UPDATE_VERSION_MISMATCH` | The release changed between the check and the install | Check again and install the newly announced version |
+| `UPDATE_CANCELLED` | The download was cancelled before the installer started | Expected; start the install again |
+| `UPDATE_UNAVAILABLE` | The updater is not configured for this build | Stay on the current version, or download from the release page |
+
+`UPDATE_ENGINE_BUSY` is separate: a tracked sidecar could not be stopped, and the install is retryable after it exits.
 
 ## Desktop engine is offline or version-gated
 
@@ -254,5 +284,5 @@ Report security problems through the private advisory described in `SECURITY.md`
 
 See [Security and privacy](/security/) for the write gates and [Releases and updates](/release/) for updater behaviour.
 
-Source: `_source/engine-troubleshooting.md`, `_source/engine-releases-0.5.2.md`, `_source/desktop-releases-0.2.2.md`, `_source/desktop-releases-0.2.1.md`, `_source/desktop-releases-0.2.0.md`, `_source/desktop-security.md`,
+Source: `_source/engine-troubleshooting.md`, `_source/engine-releases-0.5.2.md`, `_source/engine-releases-0.5.3.md`, `_source/desktop-releases-0.2.2.md`, `_source/desktop-releases-0.2.3.md`, `_source/desktop-releases-0.2.1.md`, `_source/desktop-releases-0.2.0.md`, `_source/desktop-security.md`,
 `_source/desktop-architecture.md`.

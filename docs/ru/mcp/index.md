@@ -22,7 +22,32 @@ MCP-сервер предоставляет небольшую, продуман
 
 Они сохраняют снимки обхода или недельного отчёта, но никогда не меняют состояние провайдера и не требуют токен подтверждения. MCP-клиенты, которые смотрят на `readOnlyHint`, могут запросить подтверждение перед их вызовом; это намеренно.
 
-Два инструмента записи несут `destructiveHint: true` и требуют `allow_write=true`. В 0.5.2 их обработчики провайдеров не подключены, поэтому они возвращают `WRITE_DISABLED`, а не делают вид, что запись произошла. Путь записи CLI имеет дополнительный сухой прогон и HMAC-токен подтверждения, описанные в [Автоматизации и доставке](/ru/automation/).
+Два инструмента записи несут `destructiveHint: true` и включаются явно: `allow_write` по умолчанию `false`, и любой вызов без него возвращает `WRITE_DISABLED` до построения плана. Они следуют тому же двухфазному контракту, что и CLI, — он описан ниже.
+
+## Двухфазная запись
+
+Запись — это план и затем применение, а не один вызов, который угадывает.
+
+1. **План.** Вызовите инструмент с `allow_write=true` и без `confirm_token`. Ничего не уходит провайдеру. Ответ — `ok: true` с `meta.dry_run: true` и `data.plan`, `data.plan_hash`, `data.confirm_token`, `data.ttl_seconds`.
+2. **Применение.** Вызовите тот же инструмент с теми же аргументами плюс `allow_write=true`, полученные `plan_hash` и `confirm_token`. `plan_hash`, не совпадающий с текущим планом, даёт `CONFIRM_REQUIRED` до того, как что-либо будет заявлено.
+
+Объект `data` пробного прогона:
+
+```json
+{
+  "status": "dry_run",
+  "plan": {"action": "recrawl", "target": "https:example.com:443", "summary": "queue 2 URL(s) for recrawl on https:example.com:443"},
+  "plan_hash": "6f1c…",
+  "confirm_token": "1794…:9ab3…",
+  "ttl_seconds": 300
+}
+```
+
+Токен — это HMAC по действию, цели, полному хешу плана и сроку действия; он живёт 300 секунд. Изменение URL, хоста, свойства или действия делает его недействительным. `LV24_SEO_WRITE_SECRET` должен быть задан в окружении сервера; пустой секрет — это `WRITE_DISABLED`, а не слабое значение по умолчанию.
+
+Сервер передаёт в ворота записи хранилище рабочей области, поэтому повторный токен возвращает `status: skipped` с `reason: duplicate`, и провайдер вызывается один раз. Без хранилища применение всё равно выполняется, но ответ предупреждает, что защита от повторов выключена на время жизни токена. Ошибка провайдера освобождает заявку, поэтому честный повтор разрешён, а неудачная запись никогда не помечается отправленной.
+
+Контракт реализован в сервере, но в поставляемом `SeoService` пока нет адаптера записи для переобхода Yandex или карты сайта GSC: оба инструмента возвращают `WRITE_DISABLED` даже с `allow_write=true` и секретом. Путь IndexNow в CLI — единственная запись, доходящая до провайдера. Ничего не имитируется.
 
 ## Инструменты
 
@@ -37,8 +62,8 @@ MCP-сервер предоставляет небольшую, продуман
 | `seo_report_diff` | `base`, `head` в формате `START..END` | Изменения заголовка, количество проблем, движение возможностей, ограничения, Markdown |
 | `seo_indexing_triage` | Нет | Корзины с причиной, количеством, примерами и `next_action` |
 | `seo_opportunities` | `days` 1–90 (по умолчанию 28), `limit` 1–500, `min_impressions` | Ранжированные возможности с доказательствами и `expected_gain` |
-| `seo_recrawl_request` | `host_id`, `urls`, `allow_write` | С воротами записи; в 0.5.2 возвращает `WRITE_DISABLED` |
-| `seo_sitemap_submit` | `property`, `sitemap_url`, `action`, `allow_write` | С воротами записи; в 0.5.2 возвращает `WRITE_DISABLED` |
+| `seo_recrawl_request` | `host_id` (по умолчанию настроенный хост), `urls`, `allow_write` (по умолчанию `false`), `plan_hash`, `confirm_token` | Двухфазная запись с воротами; `WRITE_DISABLED`, пока адаптер провайдера не подключён |
+| `seo_sitemap_submit` | `property`, `sitemap_url`, `action`, `allow_write` (по умолчанию `false`), `plan_hash`, `confirm_token` | Двухфазная запись с воротами; `WRITE_DISABLED`, пока адаптер провайдера не подключён |
 
 `gsc_search_analytics` по умолчанию берёт последние семь полных дней в `report.timezone`. `seo_weekly_report` не принимает свойство: свойство, часовой пояс и задержка по умолчанию берутся из конфигурации. `seo_opportunities` возвращает `expected_gain` — оценку приоритета, а не обещание трафика.
 
@@ -76,6 +101,8 @@ lv24-seo mcp serve --transport http --port 8765
 `stdio` — по умолчанию: локальный процесс с учётными данными на машине пользователя. `http` означает streamable HTTP для VPS или многоклиентской схемы; устаревший транспорт HTTP+SSE намеренно отклоняется. Порт должен быть 1–65535, по умолчанию 8765.
 
 Синхронное ядро выполняется последовательно в потоке event loop. MCP 2 запускает синхронные обработчики в рабочих потоках, поэтому инструменты зарегистрированы как async-адаптеры owner-loop, а параллельные запросы `tools/call` сериализуются, а не соревнуются в SQLite. Соединение намеренно сохраняет `check_same_thread=True`.
+
+`seo_crawl_site` — единственное исключение: обход тысяч URL раньше блокировал всех остальных клиентов на минуты. Теперь он идёт в рабочем потоке с собственным короткоживущим хранилищем (соединение `sqlite3` принадлежит потоку, который его открыл) и жёстким бюджетом 600 секунд. Когда бюджет исчерпан, клиент получает повторяемый конверт `UPSTREAM_UNAVAILABLE`, чей `next_action` предлагает меньший `max_urls`; поток нельзя убить, поэтому обход завершается в фоне и закрывает своё соединение, пока сервер продолжает обслуживать другие инструменты. Все остальные инструменты остаются на owner loop.
 
 ## Регистрация клиента
 
@@ -145,7 +172,7 @@ lv24-seo export skills --out .opencode/skills
 }
 ```
 
-Коды: `AUTH_REQUIRED`, `AUTH_INVALID`, `PROPERTY_NOT_FOUND`, `QUOTA_EXCEEDED`, `UPSTREAM_UNAVAILABLE`, `TRUNCATED`, `WRITE_DISABLED`, `CONFIRM_REQUIRED`, `INVALID_INPUT`. Ошибки несут код и `next_action`, никогда — traceback или токен.
+Коды: `AUTH_REQUIRED`, `AUTH_INVALID`, `PROPERTY_NOT_FOUND`, `QUOTA_EXCEEDED`, `UPSTREAM_UNAVAILABLE`, `TRUNCATED`, `WRITE_DISABLED`, `CONFIRM_REQUIRED`, `INVALID_INPUT`, `CONFIG_INVALID`, `INTERNAL`, `STORE_LOCKED`, `STORE_CORRUPT`, `STORE_UNAVAILABLE`. Ошибки несут код и `next_action`, никогда — traceback или токен. Ошибка `STORE_LOCKED` повторяема; `STORE_CORRUPT` называет сохранённую резервную копию в `detail.backup_path`.
 
 ## Примеры промптов для агента
 
@@ -154,4 +181,4 @@ lv24-seo export skills --out .opencode/skills
 - **Технический аудит.** Обойди до 500 URL через `seo_crawl_site` и суммируй критические и высокие проблемы по id правила. Не называй необойдённый URL битым.
 - **Запрос записи.** Подготовь план переобхода для этих URL и сначала покажи квоту. Ничего не записывай, пока я не утвержу план.
 
-Source: `_source/engine-mcp.md`, `_source/engine-skills.md`, `_source/engine-cli.md`, `_source/engine-releases-0.5.2.md`.
+Source: `_source/engine-mcp.md`, `_source/engine-skills.md`, `_source/engine-cli.md`, `_source/engine-releases-0.5.2.md`, `_source/engine-releases-0.5.3.md`.

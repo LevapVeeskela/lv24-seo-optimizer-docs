@@ -1,6 +1,6 @@
 ---
 title: 发行与更新
-description: 引擎 0.5.2 变更、桌面 0.2.2 产物、签名自动更新矩阵、发布流水线、版本固定与回滚。
+description: 引擎 0.5.2 变更与 0.5.3 草稿说明、桌面 0.2.2 产物与 0.2.3 草稿加固、签名自动更新矩阵、发布流水线、版本固定与回滚。
 ---
 
 # 发行与更新
@@ -13,6 +13,45 @@ description: 引擎 0.5.2 变更、桌面 0.2.2 产物、签名自动更新矩�
 | 桌面 | `0.2.2` | 加固补丁：更新前清理 sidecar、持久写入、密钥与过期状态修复；捆绑引擎 0.5.2 |
 
 桌面版本与引擎版本相互独立，但桌面固定精确引擎，并拒绝低于最低版本的引擎。
+
+下一波尚未发布：引擎 `0.5.3` 和桌面 `0.2.3` 在下方作为草稿列出。上表中的版本是用户今天可以安装的版本。
+
+## 引擎 0.5.3（草稿）
+
+这是下一个引擎补丁。它让代理写入变成两阶段，把抓取移出 MCP 事件循环，为 CI 增加 `--strict`
+退出码，并用类型化代码替换通用存储故障。没有模式迁移，也没有新的 CLI 命令或 MCP 工具：接口仍为
+十一个工具，变化在于输入、退出码和错误码。
+
+变更内容：
+
+- **两阶段 MCP 写入。** `seo_recrawl_request` 和 `seo_sitemap_submit` 接受 `allow_write`（默认 `false`）、`plan_hash` 和 `confirm_token`。不带令牌的调用是 dry run，返回计划、计划哈希和 300 秒令牌；应用必须回传哈希和令牌。哈希不匹配返回 `CONFIRM_REQUIRED`，重放返回 `status: skipped` 和 `reason: duplicate`，数据源失败会释放声明以便重试。`LV24_SEO_WRITE_SECRET` 必需；空密钥返回 `WRITE_DISABLED`。随附的 `SeoService` 仍没有重新抓取或站点地图写入适配器，因此即使 `allow_write=true`，两个工具仍返回 `WRITE_DISABLED`：契约已就位，数据源调用尚未接通。
+- **抓取移出事件循环。** `seo_crawl_site` 在工作线程上运行，使用自己的短生命周期存储，并有 600 秒硬预算。预算耗尽后，客户端收到可重试的 `UPSTREAM_UNAVAILABLE`，建议减小 `max_urls`；工作线程在后台结束，服务器继续响应其他工具。其余工具仍在 owner loop 上串行。
+- **`--strict` 与退出码 5。** `stats`、`gsc query`、`yandex queries`、`yandex indexing`、`crawl`、`report weekly` 和 `report diff` 接受 `--strict`。总会设置 `meta.strict`；截断响应保持 `ok: true` 但退出 `5`，并由 `meta.limitations` 说明缺失内容。不带该标志时截断仍退出 `0`。`report diff --markdown` 遵循同一退出码。
+- **写入账本跟随 `--config`。** 写入应用从所选工作区的数据目录打开幂等账本，因此 `--config /srv/site/seo.toml` 会把声明记录在 `/srv/site/data`，即使 shell 在别处。此前账本从工作目录解析，会静默关闭重放保护。
+- **类型化存储错误。** `STORE_LOCKED`（可重试）、`STORE_CORRUPT`（带 `detail.backup_path`）和 `STORE_UNAVAILABLE` 取代通用 `INTERNAL` 信封。损坏文件会在任何其他操作之前复制到自身旁边；原文件绝不会被移动或删除。三个代码都像 `INTERNAL` 一样退出 `1`。
+- **诚实的数据源数据。** 被截断的 GSC 结果完全省略 `total`，而不是把精确计数与 `truncated: true` 并列；`data_age_days` 不低于文档所述 3 天延迟。Metrika 的 `limit` 是页大小：客户端用 `offset` 遍历到 10,000 行和 100 页，把没有 `total_rows` 的完整页标记为截断，并且绝不翻页聚合调用。Bing 从最新行日期推导 `data_age_days`，而不是硬编码 0。已加载的 Yandex 主机若历史为空，返回 `total: 0` 和 `empty_history`，而不是 `degraded_host`；Webmaster 的普通 `count` 不再被当作总计。
+- **站点地图范围。** 站点地图自身 origin 之外的 `<loc>`（起始地图 origin 加上每个已读文档的最终 origin）会被丢弃并一次性报告为 `off_origin_loc`，因此索引绝不会把读取器带到另一个站点。
+- **`doctor` 把已声明数据目录视为致命项。** 当配置或 `LV24_SEO_DATA_DIR` 指定目录时，缺失或不可用的目录会导致检查失败；`meta.data_dir_declared` 说明属于哪种情况。
+- **较小修复。** 含未终止托管块的 crontab 会被保守修复：只删除看起来像 lv24-seo 条目的行，并警告操作员检查 `crontab -l`。抓取会遵守一次 `429` `Retry-After`，而不是把限流当成页面答案。
+
+发布时会记录验证结果；本节是 `wave/0.2.3-p0` 分支上的草稿。
+
+## 桌面 0.2.3（草稿）
+
+`0.2.3` 是下一个桌面补丁，尚未发布。它把更新下载移入 Rust，让配置路径成为由对话框批准的权限，
+在打开之前拒绝网络路径，并修复可能误报保存或工作区状态的 UI。在发布提交提升版本之前，捆绑引擎
+的固定版本保持不变。
+
+变更内容：
+
+- **更新器移入 Rust。** webview 能力列表只保留 `updater:allow-check`。`update_install` 重新检查端点，拒绝与面板公告不同的版本（`UPDATE_VERSION_MISMATCH`），下载、验证签名并启动安装器；进度以 `update://progress` 到达。`update_cancel` 在安装器启动前丢弃下载并返回 `UPDATE_CANCELLED`；安装开始后面板保持原状，不会声称发生了并未发生的取消。
+- **由对话框批准的配置路径。** `pick_config` 记录原生对话框返回的文件；`settings_set` 只接受活动路径或已批准路径，其他一律以 `PATH_NOT_APPROVED` 拒绝。`storage.data_dir` 中的 UNC 共享、`\\?\` 或 `\\.\` 设备会在解析前以 `INVALID_PATH` 和 `detail.reason: network_or_device_path` 拒绝。
+- **脱敏与超时。** 引擎 stderr 在到达 webview、日志或诊断包之前会被脱敏，且发生在 300 字符预览截断之前。TOML 解析器错误也会脱敏。超过预算的辅助任务以 `PATH_TIMEOUT` 失败，而不是让屏幕挂起。
+- **工作区与 UI 状态。** `shell_status` 报告 `configExists`；被移动或删除的配置显示带 **Choose config** 的工作区缺失横幅，而不是通用统计错误。提供商区块有显式启用开关，它是 `providers.<id>.present` 的唯一写入者。校验是三态的（`valid`、`invalid`、`skipped`），因此双击或切换工作区不再把有效草稿报为无效。跳过链接保持 hash 路由不变，路由级错误边界隔离渲染失败并提供重新加载。
+- **发布流水线。** 拉取请求 CI 运行发布脚本测试；Rust 矩阵包含发布所用的 Intel macOS runner；Rust 固定为 `1.95.0`。`latest.json` 在创建草稿之前按 `contracts/latest.schema.json` 校验。一个经过测试的允许列表同时驱动校验和文件与上传列表，Windows 便携 ZIP 附带 `.sha256` sidecar，由发布闸门重新计算并比较。
+
+产物名称沿用 `0.2.2` 模式并替换为 `0.2.3`。发布时会记录验证结果；本节是 `wave/0.2.3-p0`
+分支上的草稿。
 
 ## 引擎 0.5.2
 
@@ -276,4 +315,4 @@ sha256sum -c SHA256SUMS.txt --ignore-missing
 
 更新信任见[安全与隐私](/zh/security/)，sidecar 布局见[架构](/zh/architecture/)。
 
-Source: `_source/engine-releases-0.5.2.md`, `_source/desktop-releases-0.2.2.md`, `_source/desktop-releases-0.2.1.md`, `_source/desktop-releases-0.2.0.md`, `_source/desktop-release.md`, `_source/desktop-security.md`.
+Source: `_source/engine-releases-0.5.3.md`, `_source/engine-releases-0.5.2.md`, `_source/desktop-releases-0.2.3.md`, `_source/desktop-releases-0.2.2.md`, `_source/desktop-releases-0.2.1.md`, `_source/desktop-releases-0.2.0.md`, `_source/desktop-release.md`, `_source/desktop-security.md`.

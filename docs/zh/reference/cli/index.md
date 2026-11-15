@@ -49,25 +49,57 @@ description: lv24-seo 命令行的命令、全局参数、JSON 信封、退出�
 | `2` | 用法或配置问题。 | `INVALID_INPUT`, `CONFIG_INVALID`, `CONFIRM_REQUIRED`, `WRITE_DISABLED` |
 | `3` | 认证问题。 | `AUTH_REQUIRED`, `AUTH_INVALID` |
 | `4` | 配额或上游服务故障。 | `QUOTA_EXCEEDED`, `UPSTREAM_UNAVAILABLE` |
-| `5` | 部分结果：输出被截断。 | `TRUNCATED` |
+| `5` | 部分结果：严格模式下输出被截断。 | `TRUNCATED`，或任何带 `meta.truncated` 和 `meta.strict` 的 `ok: true` 信封 |
 
-`WRITE_DISABLED` 的退出码是 `2` 而不是 `4`：写入在调用提供方之前就被拒绝。退出码 `5` 保留给同时
-带有 `truncated` 和 `meta.strict` 的成功信封；0.5.2 中没有任何参数会启用严格模式，因此脚本应把
-`5` 视为部分结果而不是硬失败。请依据退出码和 `error.code` 判断，不要解析面向人的文本。
+`WRITE_DISABLED` 的退出码是 `2` 而不是 `4`：写入在调用提供方之前就被拒绝。退出码 `5` 是部分结果，
+不是硬失败：数据真实，但覆盖不完整。请依据退出码和 `error.code` 判断，不要解析面向人的文本。
+
+### `--strict` 与退出码 5
+
+`--strict` 把截断变成 CI 闸门。它适用于 `stats`、`gsc query`、`yandex queries`、`yandex indexing`、
+`crawl`、`report weekly` 和 `report diff`：
+
+```bash
+lv24-seo gsc query --start 2026-11-01 --end 2026-11-07 --strict --json
+lv24-seo report weekly --days 7 --strict --json
+```
+
+- 传入该参数时总会设置 `meta.strict`，因此消费者能区分严格运行与普通运行。
+- 完整响应仍返回 `0`。
+- 截断的响应保持 `ok: true`（数据是真实的），但返回 `5`，并由 `meta.limitations` 说明缺失了什么。如果提供方设置了 `truncated` 却没有限制说明，CLI 会补上。
+- 不带 `--strict` 时，截断的响应返回 `0`，且不包含 `meta.strict`。
+
+`report diff --markdown` 遵循同一退出码：Markdown 仍打印到 stdout，严格模式下 diff 被截断时进程返回 `5`。
+
+### 存储故障
+
+SQLite 问题不再表现为通用的 `INTERNAL`，而是三个稳定代码：
+
+| 代码 | 含义 | 可重试 | 处理方式 |
+|---|---|---|---|
+| `STORE_LOCKED` | 另一个进程持有写锁超过 busy timeout | 是 | 等待另一个 `lv24-seo` 运行结束再重试；没有写入任何内容 |
+| `STORE_CORRUPT` | 文件不是可用的 SQLite 数据库 | 否 | 查看 `detail.backup_path`，然后移动或删除数据库并重跑 |
+| `STORE_UNAVAILABLE` | 权限、父目录缺失或磁盘已满 | 否 | 修复数据目录，然后运行 `lv24-seo doctor` |
+
+损坏文件会先被复制到自身旁边，名为 `seo.sqlite3.corrupt-20260101T101010Z`；原文件绝不会被移动或删除，
+复制失败也不会掩盖错误。三个代码的退出码都是 `1`，与 `INTERNAL` 相同；请依据 `error.code` 判断。
 
 ### 配置与参数
 
 - `--config PATH` 选择特定的 `seo.toml`。路径必须存在；文件缺失会返回 `CONFIG_INVALID`，不会
-  静默回退。解析后的路径是绝对且规范化的，因此调度器产物和相对设置不依赖进程工作目录。
+  静默回退。解析后的路径是绝对且规范化的，因此调度器产物和相对设置不依赖进程工作目录。同一路径
+  也决定哪个工作区的数据目录保存写入账本，因此写入会把声明记录在配置指定的位置，而不是 shell 的
+  工作目录。
 - 不带 `--config` 时，引擎先查找 `./seo.toml`，再查找平台用户配置
   （Windows 为 `%APPDATA%\lv24-seo\config.toml`，Linux 为 `~/.config/lv24-seo/config.toml`）。
 - `LV24_SEO_*` 环境变量覆盖文件中的值。`.env` 文件不会自动加载；请在 shell 或运行命令的服务
   单元中导出变量。
 - `mcp serve` 是长期运行的服务器，不接受 `--json` 和 `--config`。
 
-`doctor --json` 报告 `meta.data_dir` 和 `meta.data_dir_source`（有效目录为绝对时是 `config`，
-为相对时是 `working directory`），并在相对目录与配置文件并存时添加警告。相对目录不会导致
-检查失败。
+`doctor --json` 报告 `meta.data_dir`、`meta.data_dir_source`（有效目录为绝对时是 `config`，
+为相对时是 `working directory`）和 `meta.data_dir_declared`（配置文件或 `LV24_SEO_DATA_DIR`
+指定目录时为 true）。已声明的数据目录是硬性要求：缺失或不可用会导致检查失败。相对目录本身不是
+错误，但与配置文件并存时会添加一条指明配置文件夹的警告。
 
 完整的键列表、默认值和密钥处理见[配置参考](/zh/reference/config/)。
 
@@ -82,8 +114,11 @@ description: lv24-seo 命令行的命令、全局参数、JSON 信封、退出�
 
 令牌是对操作、目标、完整计划哈希和有效期的 HMAC，因此任何输入变化都会使其失效。工作区初始化
 后，CLI 会附加 SQLite 幂等账本：重放同一令牌返回 `status: skipped` 和 `reason: duplicate`，
-提供商只被调用一次。没有数据目录时仍会应用，但信封会警告：在令牌五分钟有效期内没有重放保护；
-试运行不打开账本，也不创建数据库。IndexNow 会真正提交 URL。GSC sitemap submit 和 Yandex
+提供商只被调用一次。账本从所选工作区的数据目录打开：`--config /srv/site/seo.toml` 会把声明记录在
+`/srv/site/data`，即使 shell 在别处。没有数据目录时仍会应用，但信封会警告：在令牌五分钟有效期内
+没有重放保护；试运行不打开账本，也不创建数据库。
+
+IndexNow 会真正提交 URL。GSC sitemap submit 和 Yandex
 recrawl 目前返回 `WRITE_DISABLED`，不会假装提供方调用已经发生。
 
 ### 日志
@@ -221,4 +256,4 @@ lv24-seo export skills --out skills/
 - [MCP 与智能体技能](/zh/mcp/)
 - [故障排查](/zh/troubleshooting/)
 
-Source: `_source/engine-cli.md`, `_source/engine-mcp.md`, `_source/engine-releases-0.5.2.md`; 引擎仓库中 0.5.2 的 `--help` 输出。
+Source: `_source/engine-cli.md`, `_source/engine-mcp.md`, `_source/engine-releases-0.5.2.md`, `_source/engine-releases-0.5.3.md`; 引擎仓库中 0.5.2 的 `--help` 输出。

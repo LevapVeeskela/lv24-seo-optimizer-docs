@@ -95,8 +95,8 @@ CLI-раннер наследует переменные session bus и XDG, н�
 
 1. **План** — dry run показывает цель, действие и полный хеш плана, затем возвращает
    короткоживущий `confirm_token`.
-2. **Подтверждение** — вызывающий проверяет план и повторяет запуск с `--allow-write` и
-   этим токеном.
+2. **Подтверждение** — вызывающий проверяет план и повторяет запуск с `--allow-write` (CLI)
+   или `allow_write=true` (MCP), этим токеном и, по MCP, `plan_hash`.
 3. **Заявка** — хранилище занимает слот идемпотентности со статусом `pending`.
 4. **Применение** — вызов провайдера; успех переводит заявку в `sent`, исключение
    провайдера освобождает её.
@@ -114,11 +114,16 @@ CLI подключает SQLite-журнал идемпотентности, п�
 | IndexNow submit | Подключён; нужны `--allow-write`, confirm-токен и `LV24_SEO_WRITE_SECRET` |
 | GSC sitemap submit | `WRITE_DISABLED` — адаптер не подключён |
 | Yandex recrawl | `WRITE_DISABLED` — адаптер не подключён |
-| MCP write-инструменты | `WRITE_DISABLED` даже с `allow_write=true`; confirm-токена пока нет |
+| MCP write-инструменты | Двухфазный контракт `plan_hash` + `confirm_token` реализован; `WRITE_DISABLED`, пока адаптер провайдера не подключён |
 
 В этой сборке запись у провайдера умеет выполнять только CLI, и только IndexNow доходит до
 провайдера. MCP write-инструменты (`seo_recrawl_request`, `seo_sitemap_submit`) несут
-`destructiveHint: true`, но всё равно возвращают `WRITE_DISABLED`.
+`destructiveHint: true` и по умолчанию `allow_write: false`. Они читают `LV24_SEO_WRITE_SECRET`
+из окружения сервера; пустой секрет — это `WRITE_DISABLED`, а не слабое значение по умолчанию.
+Вызов без `confirm_token` — это dry run, возвращающий `plan_hash`, `confirm_token` и
+`ttl_seconds`; применение должно повторить `plan_hash` и токен, несовпадающий хеш даёт
+`CONFIRM_REQUIRED`, а хранилище рабочей области занимает слот идемпотентности, поэтому повтор
+возвращает `skipped`, а не второй вызов провайдера.
 
 Инструменты локального состояния — другое дело. `seo_crawl_site` и `seo_weekly_report`
 сохраняют снимки обхода и недельного отчёта, поэтому помечены `writes_local_state: true`
@@ -211,6 +216,15 @@ Webview может вызывать только фиксированную та
 завершающие точки/пробелы отклоняются в каждом компоненте пути. Сырого редактора нет;
 правки идут через валидируемые формы Settings и field-level патчи.
 
+Новый путь конфигурации может стать активным только через нативный диалог: `pick_config`
+записывает выбранный файл, а `settings_set` отклоняет любой другой `.toml` с
+`PATH_NOT_APPROVED`, поэтому скомпрометированный webview не может перенаправить
+`config_write` или `config_patch` на произвольный файл. `storage.data_dir`, указывающий на
+UNC-шару или устройство `\\?\`/`\\.\`, отклоняется с `INVALID_PATH` до разрешения, потому что
+соединение скрыло бы префикс шары и открыло SMB-соединение в потоке UI. В Windows черновики
+конфигурации и резервные копии получают явный DACL только для владельца, а не наследуют ACL
+каталога, который может дать другим пользователям доступ на чтение к файлу с токенами.
+
 Состояние workspace, отчёта, doctor и секретов очищается при смене workspace или переходе
 движка в offline, поэтому данные предыдущего проекта не показываются в новом workspace.
 Действия, которые не могут выполниться, отключаются, а не падают по клику. Каталоги en/ru/zh
@@ -240,6 +254,13 @@ Production CSP webview не разрешает удалённые скрипты
 поэтому другая установленная копия, portable-сборка или запуск в терминале не затрагиваются.
 Сбой очистки блокирует установку с `UPDATE_ENGINE_BUSY`, а не запускает установщик, который
 сломается на середине.
+
+Webview не может сам скачать или установить обновление. В его списке возможностей только
+`updater:allow-check`; `update_install` в оболочке заново проверяет endpoint, отказывается от
+версии, отличной от той, что видел пользователь (`UPDATE_VERSION_MISMATCH`), скачивает,
+проверяет подпись и только затем запускает установщик. `update_cancel` отбрасывает загрузку до
+запуска установщика и возвращает `UPDATE_CANCELLED`; после начала установки он возвращает `false`,
+поэтому панель никогда не заявляет отмену, которой не было.
 
 Автообновление работает только для Windows NSIS, macOS `.app` и Linux AppImage. deb, rpm,
 MSI и portable ZIP — manual-only: UI отключает встроенный установщик и ссылается на
@@ -284,4 +305,4 @@ Sidecar — это дерево PyInstaller **onedir**, а не onefile. `script
 
 См. [Архитектура](/ru/architecture/) для границ доверия и [Релизы и обновление](/ru/release/) для матрицы подписанных обновлений.
 
-Source: `_source/engine-security.md`, `_source/desktop-security.md`, `_source/engine-architecture.md`, `_source/desktop-architecture.md`, `_source/engine-releases-0.5.2.md`, `_source/desktop-releases-0.2.2.md`.
+Source: `_source/engine-security.md`, `_source/desktop-security.md`, `_source/engine-architecture.md`, `_source/desktop-architecture.md`, `_source/engine-releases-0.5.2.md`, `_source/engine-releases-0.5.3.md`, `_source/desktop-releases-0.2.2.md`, `_source/desktop-releases-0.2.3.md`.

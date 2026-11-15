@@ -22,7 +22,32 @@ Two tools persist local state and are no longer advertised as read-only:
 
 They save crawl or weekly snapshots but never mutate provider state and need no confirm token. MCP clients that branch on `readOnlyHint` may ask for confirmation before calling them; that is intentional.
 
-The two write tools carry `destructiveHint: true` and require `allow_write=true`. In 0.5.2 their provider handlers are not wired, so they return `WRITE_DISABLED` instead of pretending. The CLI write path has the additional dry-run and HMAC confirm-token flow described in [Automation and delivery](/automation/).
+The two write tools carry `destructiveHint: true` and are opt-in: `allow_write` defaults to `false` and every call without it returns `WRITE_DISABLED` before a plan is built. They follow the same two-phase contract as the CLI, described below.
+
+## Two-phase writes
+
+A write is a plan followed by an apply, never a single call that guesses.
+
+1. **Plan.** Call the tool with `allow_write=true` and no `confirm_token`. Nothing reaches the provider. The response is `ok: true` with `meta.dry_run: true` and `data.plan`, `data.plan_hash`, `data.confirm_token` and `data.ttl_seconds`.
+2. **Apply.** Call the same tool again with the same arguments plus `allow_write=true`, the returned `plan_hash` and `confirm_token`. A `plan_hash` that does not match the current plan fails with `CONFIRM_REQUIRED` before anything is claimed.
+
+The `data` object of a dry run:
+
+```json
+{
+  "status": "dry_run",
+  "plan": {"action": "recrawl", "target": "https:example.com:443", "summary": "queue 2 URL(s) for recrawl on https:example.com:443"},
+  "plan_hash": "6f1c…",
+  "confirm_token": "1794…:9ab3…",
+  "ttl_seconds": 300
+}
+```
+
+The token is an HMAC over the action, target, full plan hash and expiry, and lives for 300 seconds. Changing the URLs, host, property or action invalidates it. `LV24_SEO_WRITE_SECRET` must be set in the server environment; an empty secret is `WRITE_DISABLED`, never a weak default.
+
+The server passes its workspace store to the write gate, so a replayed token returns `status: skipped` with `reason: duplicate` and the provider is called once. Without a store the apply still runs, but the response warns that replay protection is off for the token's lifetime. A provider failure releases the claim, so a genuine retry is allowed and a failed write is never recorded as sent.
+
+The contract is implemented in the server, but the shipped `SeoService` has no Yandex recrawl or GSC sitemap write adapter yet: both tools return `WRITE_DISABLED` even with `allow_write=true` and a secret. The CLI IndexNow path is the only write that reaches a provider. Nothing is simulated.
 
 ## Tools
 
@@ -37,8 +62,8 @@ The two write tools carry `destructiveHint: true` and require `allow_write=true`
 | `seo_report_diff` | `base`, `head` as `START..END` | Headline changes, issue counts, opportunity churn, limitations, Markdown |
 | `seo_indexing_triage` | None | Buckets with reason, count, examples and `next_action` |
 | `seo_opportunities` | `days` 1–90 (default 28), `limit` 1–500, `min_impressions` | Ranked opportunities with evidence and `expected_gain` |
-| `seo_recrawl_request` | `host_id`, `urls`, `allow_write` | Gated; returns `WRITE_DISABLED` in 0.5.2 |
-| `seo_sitemap_submit` | `property`, `sitemap_url`, `action`, `allow_write` | Gated; returns `WRITE_DISABLED` in 0.5.2 |
+| `seo_recrawl_request` | `host_id` (default: configured host), `urls`, `allow_write` (default `false`), `plan_hash`, `confirm_token` | Two-phase gated write; `WRITE_DISABLED` while no provider adapter is wired |
+| `seo_sitemap_submit` | `property`, `sitemap_url`, `action`, `allow_write` (default `false`), `plan_hash`, `confirm_token` | Two-phase gated write; `WRITE_DISABLED` while no provider adapter is wired |
 
 `gsc_search_analytics` defaults to the last seven full days in `report.timezone`. `seo_weekly_report` takes no property argument: the property, timezone and lag defaults come from config. `seo_opportunities` returns `expected_gain`, a prioritisation estimate, never a traffic promise.
 
@@ -76,6 +101,8 @@ lv24-seo mcp serve --transport http --port 8765
 `stdio` is the default: a local process with credentials on the user's machine. `http` means streamable HTTP for a VPS or multi-client setup; the deprecated HTTP+SSE transport is intentionally rejected. The port must be 1–65535 and defaults to 8765.
 
 The sync core runs serially on the event-loop thread. MCP 2 dispatches sync handlers in worker threads, so tools are registered as async owner-loop adapters and concurrent `tools/call` requests are serialized instead of racing in SQLite. The connection deliberately keeps `check_same_thread=True`.
+
+`seo_crawl_site` is the one exception: a crawl of thousands of URLs used to block every other client for minutes. It now runs on a worker thread with its own short-lived store — a `sqlite3` connection belongs to the thread that opened it — under a hard 600-second budget. When the budget expires the client receives a retryable `UPSTREAM_UNAVAILABLE` envelope whose `next_action` suggests a smaller `max_urls`; the worker cannot be killed, so the crawl finishes in the background and closes its own connection while the server keeps serving other tools. Every other tool stays on the owner loop.
 
 ## Client registration
 
@@ -145,7 +172,7 @@ Mirrors such as `.claude/skills/<name>` and `.opencode/skills/<name>` are planne
 }
 ```
 
-Codes: `AUTH_REQUIRED`, `AUTH_INVALID`, `PROPERTY_NOT_FOUND`, `QUOTA_EXCEEDED`, `UPSTREAM_UNAVAILABLE`, `TRUNCATED`, `WRITE_DISABLED`, `CONFIRM_REQUIRED`, `INVALID_INPUT`. Errors carry a code and a `next_action`, never a traceback or a token.
+Codes: `AUTH_REQUIRED`, `AUTH_INVALID`, `PROPERTY_NOT_FOUND`, `QUOTA_EXCEEDED`, `UPSTREAM_UNAVAILABLE`, `TRUNCATED`, `WRITE_DISABLED`, `CONFIRM_REQUIRED`, `INVALID_INPUT`, `CONFIG_INVALID`, `INTERNAL`, `STORE_LOCKED`, `STORE_CORRUPT`, `STORE_UNAVAILABLE`. Errors carry a code and a `next_action`, never a traceback or a token. A `STORE_LOCKED` failure is retryable; `STORE_CORRUPT` names the preserved backup copy in `detail.backup_path`.
 
 ## Example agent prompts
 
@@ -154,4 +181,4 @@ Codes: `AUTH_REQUIRED`, `AUTH_INVALID`, `PROPERTY_NOT_FOUND`, `QUOTA_EXCEEDED`, 
 - **Technical audit.** Crawl up to 500 URLs with `seo_crawl_site` and summarise critical and high issues by rule id. Do not describe an unvisited URL as broken.
 - **Write request.** Prepare a recrawl plan for these URLs and show the quota first. Do not write anything until I approve the plan.
 
-Source: `_source/engine-mcp.md`, `_source/engine-skills.md`, `_source/engine-cli.md`, `_source/engine-releases-0.5.2.md`.
+Source: `_source/engine-mcp.md`, `_source/engine-skills.md`, `_source/engine-cli.md`, `_source/engine-releases-0.5.2.md`, `_source/engine-releases-0.5.3.md`.
