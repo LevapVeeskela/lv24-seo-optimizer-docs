@@ -452,6 +452,7 @@ build from source and sign it with your own certificate. See [`docs/release.md`]
 | React screens (dashboard, settings, configuration, reports, recommendations) | implemented |
 | Bundled onedir sidecar | all four targets built in CI; Windows x64 has a reviewed local pin, Linux/macOS pins are pending, CI records rebuild-aware hashes |
 | Published installers | `0.2.2`: Windows x64, Linux x64, macOS arm64/x64 |
+| Install checks | macOS 27.2 arm64 DMG installed and launched with engine `0.5.2`; deb and AppImage fallback on Ubuntu 24.04 and rpm on Fedora 45 installed and launched with engine `0.5.2`; Linux updater signatures verified against the embedded key |
 | Auto-update | Windows NSIS, macOS `.app`, Linux AppImage; `0.2.0 → 0.2.1` verified end-to-end on Windows NSIS, `0.2.1 → 0.2.2` is the next in-app update; deb/rpm/MSI/portable ZIP are manual |
 | `lv24-seo stats --json` engine command | shipped in `lv24-seo 0.5.2`; fixture committed |
 

@@ -75,6 +75,11 @@ on Windows: an installed `0.2.1` build detected `0.2.2`, downloaded and verified
 installed it in passive mode, relaunched, and reported `0.2.2` with engine `0.5.2` ready. `0.2.2` can
 update directly from `0.2.0`.
 
+Installs were also checked on macOS and Linux: the arm64 DMG on macOS 27.2 passed
+`codesign --verify --deep --strict`, launched with engine `0.5.2` ready and fetched the `0.2.2`
+manifest; the deb on Ubuntu 24.04, the AppImage extract-and-run fallback and the rpm on Fedora 45
+installed, launched and reported `Engine ready` with engine `0.5.2`.
+
 The `0.2.1 → 0.2.2` update runs the old `0.2.1` updater, which does not include the new tracked-PID
 cleanup. If a sidecar is active during that first update, retry after it exits or install `0.2.2`
 manually. `0.2.2 → later` uses the tracked-PID cleanup and blocks with `UPDATE_ENGINE_BUSY` if a

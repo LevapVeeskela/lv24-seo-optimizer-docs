@@ -170,6 +170,24 @@ portable ZIP remain manual-only.
 - Manual Windows check: an installed `0.2.1` build detected `0.2.2`, downloaded
   and verified the signed package, installed it in passive mode, relaunched, and
   reported `0.2.2` with engine `0.5.2` ready.
+- Manual macOS check (macOS 27.2, arm64): the arm64 DMG installed to
+  `/Applications`, `codesign --verify --deep --strict` passed for the ad-hoc
+  signature, the app launched, the bundled sidecar reported `0.5.2`, and the
+  updater fetched and parsed the `0.2.2` `latest.json` manifest.
+- Linux checks in clean containers:
+  - Ubuntu 24.04: `apt install ./…deb` resolved `libwebkit2gtk-4.1-0` and
+    `libgtk-3-0`, the app launched under Xvfb and reported `Engine ready` with
+    desktop `0.2.2` and engine `0.5.2`.
+  - AppImage on Ubuntu 24.04: `--appimage-extract` contains the engine at
+    `usr/lib/LV24 SEO Optimizer/engine/lv24-seo/`, and
+    `APPIMAGE_EXTRACT_AND_RUN=1` launched the same UI with engine `0.5.2`. This
+    exercises the no-FUSE fallback fixed in `0.2.2`; the direct FUSE mount was
+    not available in the container.
+  - Fedora 45: `dnf install ./…rpm` installed `0.2.2`, the app launched under
+    Xvfb and reported `Engine ready` with engine `0.5.2`.
+  - The `latest.json` minisign signatures for the AppImage, deb and rpm verify
+    against the updater public key embedded in the app; the Linux assets also
+    match `SHA256SUMS.txt`.
 
 ## Known limitations
 
