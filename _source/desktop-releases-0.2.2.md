@@ -181,8 +181,10 @@ portable ZIP remain manual-only.
   - AppImage on Ubuntu 24.04: `--appimage-extract` contains the engine at
     `usr/lib/LV24 SEO Optimizer/engine/lv24-seo/`, and
     `APPIMAGE_EXTRACT_AND_RUN=1` launched the same UI with engine `0.5.2`. This
-    exercises the no-FUSE fallback fixed in `0.2.2`; the direct FUSE mount was
-    not available in the container.
+    exercises the no-FUSE fallback fixed in `0.2.2`. The direct FUSE path was
+    verified in WSL2 (Ubuntu 24.04, `libfuse2`): the runtime mounted the image
+    read-only at `/tmp/.mount_*` and the engine inside the mount reported
+    `0.5.2`.
   - Fedora 45: `dnf install ./…rpm` installed `0.2.2`, the app launched under
     Xvfb and reported `Engine ready` with engine `0.5.2`.
   - The `latest.json` minisign signatures for the AppImage, deb and rpm verify

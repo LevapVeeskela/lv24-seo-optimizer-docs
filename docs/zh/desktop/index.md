@@ -77,7 +77,7 @@ Windows 需要 Windows 10/11 x64 和 WebView2。Linux 仅提供 x64，基于 Ubu
 安装也已在 macOS 和 Linux 上验证：macOS 27.2 上的 arm64 DMG 通过
 `codesign --verify --deep --strict`，启动后引擎 `0.5.2` 就绪并获取了 `0.2.2` 清单；
 Ubuntu 24.04 上的 deb、AppImage extract-and-run fallback 和 Fedora 45 上的 rpm 均安装、
-启动并显示 `Engine ready`，引擎为 `0.5.2`。
+启动并显示 `Engine ready`，引擎为 `0.5.2`；AppImage 的直接 FUSE 挂载也在 WSL2 中验证。
 
 `0.2.1 → 0.2.2` 更新由旧的 `0.2.1` 更新器执行，其中没有新的受跟踪 PID 清理。如果首次更新期间
 有 sidecar 正在运行，请在其退出后重试，或手动安装 `0.2.2`。`0.2.2 → later` 使用受跟踪 PID

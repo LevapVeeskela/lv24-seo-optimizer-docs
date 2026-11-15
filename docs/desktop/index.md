@@ -78,7 +78,8 @@ update directly from `0.2.0`.
 Installs were also checked on macOS and Linux: the arm64 DMG on macOS 27.2 passed
 `codesign --verify --deep --strict`, launched with engine `0.5.2` ready and fetched the `0.2.2`
 manifest; the deb on Ubuntu 24.04, the AppImage extract-and-run fallback and the rpm on Fedora 45
-installed, launched and reported `Engine ready` with engine `0.5.2`.
+installed, launched and reported `Engine ready` with engine `0.5.2`; the direct AppImage FUSE mount
+was also verified in WSL2.
 
 The `0.2.1 → 0.2.2` update runs the old `0.2.1` updater, which does not include the new tracked-PID
 cleanup. If a sidecar is active during that first update, retry after it exits or install `0.2.2`
