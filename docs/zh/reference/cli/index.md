@@ -24,13 +24,13 @@ description: lv24-seo 命令行的命令、全局参数、JSON 信封、退出�
 使用 `--json` 时，命令只输出一个 JSON 文档，不会输出其他内容：
 
 ```json
-{ "ok": true, "data": {}, "meta": { "version": "0.6.0", "duration_ms": 812 }, "warnings": [] }
+{ "ok": true, "data": {}, "meta": { "version": "0.7.0", "duration_ms": 812 }, "warnings": [] }
 ```
 
 失败的命令使用相同结构，但 `ok: false`，并用 `error` 对象代替 `data`：
 
 ```json
-{ "ok": false, "error": { "code": "AUTH_REQUIRED", "message": "Google Search Console token is missing", "retryable": false, "next_action": "lv24-seo auth login --provider gsc" }, "meta": { "version": "0.6.0" }, "warnings": ["gsc: token missing"] }
+{ "ok": false, "error": { "code": "AUTH_REQUIRED", "message": "Google Search Console token is missing", "retryable": false, "next_action": "lv24-seo auth login --provider gsc" }, "meta": { "version": "0.7.0" }, "warnings": ["gsc: token missing"] }
 ```
 
 - `data` 因命令而异。`meta` 始终包含 `version`，通常还会加入 `duration_ms`、`truncated`、
@@ -152,9 +152,12 @@ recrawl 目前返回 `WRITE_DISABLED`，不会假装提供方调用已经发生�
 | Reports | `report weekly`, `report diff` | `weekly` 保存本地快照；`diff` 只读。 |
 | Logs | `logs analyze` | 只读分析一个本地 nginx JSON 访问日志；不会存储或上传。 |
 | Tasks | `tasks list`, `tasks add`, `tasks update` | 工作区任务账本；`add` 幂等，`update` 遵循允许的状态转换。 |
-| Backup | `backup create` | 写入一个可移植的工作区归档；源文件只读，恢复需手动。 |
+| Backup | `backup create`, `backup restore` | `create` 写入一个可移植工作区归档；`restore` 校验计划，并且只在 `--allow-write --confirm TOKEN` 时替换文件。 |
+| Portfolio | `portfolio list` | 只读汇总一个目录下的本地项目；不调用提供方、不读取令牌、不写入。 |
 | Scheduling | `schedule print`, `schedule install` | `print` 只渲染；`install` 写入主机计划任务文件。 |
 | Agents and MCP | `mcp serve`, `install`, `export tools`, `export skills` | 主机配置、生成文件或本地服务器。 |
+
+CLI 有 21 个顶层命令：14 个组和 7 个命令（`version`、`doctor`、`init`、`properties`、`stats`、`crawl`、`install`）。
 
 ## 示例
 
@@ -206,9 +209,11 @@ lv24-seo tasks list --state open --limit 200 --json
 lv24-seo tasks add --kind issue --url https://example.com/page --rule broken-internal-link --json
 lv24-seo tasks update TASK_ID --state verified --json
 lv24-seo backup create --out /srv/backups --json
+lv24-seo backup restore --file /srv/backups/lv24-seo-backup-20261116T120000Z.zip --config /srv/site/seo.toml --json
+lv24-seo portfolio list --root /srv/sites --limit 50 --json
 ```
 
-`logs analyze` 只读取一个不超过 100 MiB 的绝对路径 nginx JSON 访问日志，返回按日期、bot 和状态分组的 `bot_daily` 以及 `crawl_waste` 汇总；文件不会上传或写入 SQLite。`tasks list` 按最新优先返回有界任务，`tasks add` 幂等，`tasks update` 只接受允许的状态转换。`backup create` 写入一个带 manifest、脱敏 `seo.toml` 和一致 SQLite 副本的归档；恢复需要手动解包。
+`logs analyze` 只读取一个不超过 100 MiB 的绝对路径 nginx JSON 访问日志，返回按日期、bot 和状态分组的 `bot_daily` 以及 `crawl_waste` 汇总；文件不会上传或写入 SQLite。`tasks list` 按最新优先返回有界任务，`tasks add` 幂等，`tasks update` 只接受允许的状态转换。`backup create` 写入一个带 manifest、脱敏 `seo.toml` 和一致 SQLite 副本的归档。`backup restore` 先校验并返回带 300 秒 `confirm_token` 的计划；应用需要 `--allow-write` 和令牌，替换前当前数据库会复制到 `<db>.pre-restore-<utc>`。`portfolio list` 在绝对目录下最多三层扫描 `seo.toml`，最多检查 50 个站点，按最新活动优先报告本地抓取、报告和问题计数。
 
 ### 报告
 
@@ -271,4 +276,4 @@ lv24-seo export skills --out skills/
 - [MCP 与智能体技能](/zh/mcp/)
 - [故障排查](/zh/troubleshooting/)
 
-Source: `_source/engine-cli.md`, `_source/engine-mcp.md`, `_source/engine-releases-0.5.2.md`, `_source/engine-releases-0.5.3.md`; 引擎仓库中 0.5.2 的 `--help` 输出。
+Source: `_source/engine-cli.md`, `_source/engine-mcp.md`, `_source/engine-releases-0.5.2.md`, `_source/engine-releases-0.5.3.md`, `_source/engine-releases-0.6.0.md`, `_source/engine-releases-0.7.0.md`; 引擎仓库中 0.7.0 的 `--help` 输出。

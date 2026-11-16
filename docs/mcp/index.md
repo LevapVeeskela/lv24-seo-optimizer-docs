@@ -13,14 +13,15 @@ Related: [Reports and diffs](/reports/), [Data sources and quotas](/providers/),
 
 Read responses that wrap provider rows carry `truncated`, `total` when the provider reports one, `data_age_days` and `limitations[]`. A GSC final page that exactly fills the 50,000-row cap is reported as `truncated: true` with `rows_cap_50000`; a full page is not proof of complete coverage. Read tools take no `format` parameter. Responses are available as text and, when the installed MCP SDK supports it, as `structuredContent`; the text block is the fallback for older clients.
 
-Two tools persist local state and are no longer advertised as read-only:
+Three tools persist local state and are not advertised as read-only:
 
 | Tool | `kind` | `writes_local_state` | `readOnlyHint` | `destructiveHint` | `idempotentHint` |
 |---|---|---|---|---|---|
+| `yandex_indexing_state` | read | `true` | `false` | `false` | `false` |
 | `seo_crawl_site` | read | `true` | `false` | `false` | `false` |
 | `seo_weekly_report` | read | `true` | `false` | `false` | `false` |
 
-They save crawl or weekly snapshots but never mutate provider state and need no confirm token. MCP clients that branch on `readOnlyHint` may ask for confirmation before calling them; that is intentional.
+They save indexing events, crawl snapshots or weekly snapshots but never mutate provider state and need no confirm token. MCP clients that branch on `readOnlyHint` may ask for confirmation before calling them; that is intentional. The remaining nine are seven pure read-only tools plus the two gated writes that still return `WRITE_DISABLED` in this build.
 
 The two write tools carry `destructiveHint: true` and are opt-in: `allow_write` defaults to `false` and every call without it returns `WRITE_DISABLED` before a plan is built. They follow the same two-phase contract as the CLI, described below.
 
@@ -56,7 +57,7 @@ The contract is implemented in the server, but the shipped `SeoService` has no Y
 | `seo_properties` | None | Configured providers, their target and token presence |
 | `gsc_search_analytics` | `property`, `start_date`, `end_date`, `dimensions`, `limit` 1–500 (default 50) | Query, page, country or device rows with clicks, impressions, CTR and position |
 | `yandex_query_stats` | `host_id`, `limit` 1–500, `order_by` `TOTAL_SHOWS` or `TOTAL_CLICKS` | Top queries with shows, clicks and position |
-| `yandex_indexing_state` | None beyond the configured host | Indexing history, in-search counts and diagnostics |
+| `yandex_indexing_state` | None beyond the configured host | Indexing history, in-search counts and diagnostics; persists per-URL events in `indexing_events` (schema v4) when a workspace store exists |
 | `seo_crawl_site` | `start_url`, `max_urls` 0 or 1–5000, `include_rules` | Crawl summary, issues, link graph and sitemap coverage |
 | `seo_weekly_report` | `days` 1–90, `lag_days` 0–14 | Weekly report sections plus envelope meta |
 | `seo_report_diff` | `base`, `head` as `START..END` | Headline changes, issue counts, opportunity churn, limitations, Markdown |
@@ -73,6 +74,8 @@ The MCP weekly tool caps `days` at 90 and `lag_days` at 14 with a warning; value
 `seo_crawl_site` filters by real rule ids such as `robots-blocked`, `broken-internal-link` or `canonical-mismatch`. There is no `rules` parameter and no `--ignore-robots` flag. The returned issue list is capped at 500 with `meta.issues_shown`, `meta.issues_truncated` and `meta.issues_filtered_by`. A sitemap that fails to load reports only the exception type, never the URL or query string.
 
 `seo_log_analysis` is the twelfth tool and the only one that needs no service, store or workspace. It reads one local nginx JSON access log of at most 100 MiB, returns the same `data`, `meta` and `warnings` as `lv24-seo logs analyze`, and is read-only: the file is opened once and nothing is uploaded or stored. Bot classes are User-Agent only, so the result is triage, not proof of crawl identity.
+
+`yandex_indexing_state` persists provider-reported per-URL events in the `indexing_events` table when a store exists. A replay updates `last_seen` without duplicating, `first_seen` is immutable, `meta.indexing_events` reports `new`, `existing`, `skipped` and `truncated`, and at most 500 provider rows are considered per call. Storage failures become warnings, never a failed provider read. The weekly report reads these events as digest evidence.
 
 ## Resources
 

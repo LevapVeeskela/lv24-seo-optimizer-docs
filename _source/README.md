@@ -4,8 +4,8 @@ Immutable snapshot of the public documentation used to build this portal.
 
 | Field | Value |
 |---|---|
-| Engine | `lv24-seo-optimizer` 0.6.0, released 2026-11-16 (`1ee8e49`) |
-| Desktop | `lv24-seo-optimizer-desktop` 0.4.0, released 2026-11-16 (`69e0572`) |
+| Engine | `lv24-seo-optimizer` 0.7.0, released 2026-11-16 (`00e85aa`) |
+| Desktop | `lv24-seo-optimizer-desktop` 0.5.0, released 2026-11-16 (`9ec5641`) |
 | Snapshot date | 2026-11-16 |
 | License | Apache-2.0 |
 

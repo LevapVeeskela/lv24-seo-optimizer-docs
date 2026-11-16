@@ -28,5 +28,7 @@
   { "id": "tasks-list", "group": "Tasks", "command": "lv24-seo tasks list --state open --limit 200 --json", "description": "List finding tasks newest-first with property, kind and state filters." },
   { "id": "tasks-add", "group": "Tasks", "command": "lv24-seo tasks add --kind issue --url https://example.com/page --rule broken-internal-link --json", "description": "Create or refresh a finding task; idempotent per kind, property, URL and rule." },
   { "id": "tasks-update", "group": "Tasks", "command": "lv24-seo tasks update TASK_ID --state verified --json", "description": "Move a task through the allowed lifecycle transitions." },
-  { "id": "backup-create", "group": "Backup", "command": "lv24-seo backup create --out /srv/backups --json", "description": "Write a portable workspace archive with a redacted config and a consistent database copy." }
+  { "id": "backup-create", "group": "Backup", "command": "lv24-seo backup create --out /srv/backups --json", "description": "Write a portable workspace archive with a redacted config and a consistent database copy." },
+  { "id": "backup-restore", "group": "Backup", "command": "lv24-seo backup restore --file /srv/backups/lv24-seo-backup-20261116T120000Z.zip --config /srv/site/seo.toml --json", "description": "Validate a backup and plan a restore; apply only with --allow-write and the plan token." },
+  { "id": "portfolio-list", "group": "Portfolio", "command": "lv24-seo portfolio list --root /srv/sites --limit 50 --json", "description": "List local projects below one folder with crawl, report and issue counts; read-only." }
 ]

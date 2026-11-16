@@ -25,13 +25,13 @@ description: Команды, глобальные флаги, JSON-конвер�
 С флагом `--json` команда печатает ровно один JSON-документ и ничего больше:
 
 ```json
-{ "ok": true, "data": {}, "meta": { "version": "0.6.0", "duration_ms": 812 }, "warnings": [] }
+{ "ok": true, "data": {}, "meta": { "version": "0.7.0", "duration_ms": 812 }, "warnings": [] }
 ```
 
 Неудачная команда использует ту же форму с `ok: false` и объектом `error` вместо `data`:
 
 ```json
-{ "ok": false, "error": { "code": "AUTH_REQUIRED", "message": "Google Search Console token is missing", "retryable": false, "next_action": "lv24-seo auth login --provider gsc" }, "meta": { "version": "0.6.0" }, "warnings": ["gsc: token missing"] }
+{ "ok": false, "error": { "code": "AUTH_REQUIRED", "message": "Google Search Console token is missing", "retryable": false, "next_action": "lv24-seo auth login --provider gsc" }, "meta": { "version": "0.7.0" }, "warnings": ["gsc: token missing"] }
 ```
 
 - `data` зависит от команды. В `meta` всегда есть `version`, часто добавляются `duration_ms`,
@@ -167,10 +167,11 @@ redacting-handler в CLI и `lv24-seo mcp serve`; если переменная 
 | Scheduling | `schedule print`, `schedule install` | `print` только рендерит; `install` пишет файлы планировщика хоста. |
 | Logs | `logs analyze` | Читает один локальный JSON access-лог nginx; не сохраняет и не отправляет его. |
 | Tasks | `tasks list`, `tasks add`, `tasks update` | Журнал задач рабочей области; `add` идемпотентен, `update` соблюдает разрешённые переходы. |
-| Backup | `backup create` | Пишет один переносимый архив рабочей области; источник только для чтения, восстановление вручную. |
+| Backup | `backup create`, `backup restore` | `create` пишет один переносимый архив рабочей области; `restore` проверяет план и заменяет файлы только с `--allow-write --confirm TOKEN`. |
+| Portfolio | `portfolio list` | Сводка локальных проектов ниже одного каталога только для чтения; без вызова провайдера, чтения токена и записи. |
 | Agents and MCP | `mcp serve`, `install`, `export tools`, `export skills` | Конфиг хоста, сгенерированные файлы или локальный сервер. |
 
-В CLI 20 команд верхнего уровня: 13 групп и 7 команд (`version`, `doctor`, `init`, `properties`, `stats`, `crawl`, `install`).
+В CLI 21 команда верхнего уровня: 14 групп и 7 команд (`version`, `doctor`, `init`, `properties`, `stats`, `crawl`, `install`).
 
 ## Примеры
 
@@ -225,6 +226,8 @@ lv24-seo tasks list --state open --limit 200 --json
 lv24-seo tasks add --kind issue --url https://example.com/page --rule broken-internal-link --json
 lv24-seo tasks update TASK_ID --state verified --json
 lv24-seo backup create --out /srv/backups --json
+lv24-seo backup restore --file /srv/backups/lv24-seo-backup-20261116T120000Z.zip --config /srv/site/seo.toml --json
+lv24-seo portfolio list --root /srv/sites --limit 50 --json
 ```
 
 `logs analyze` читает ровно один абсолютный JSON access-лог nginx не более 100 MiB и возвращает строки
@@ -232,7 +235,11 @@ lv24-seo backup create --out /srv/backups --json
 `tasks add` идемпотентен по `(kind, property_id, url, rule_id)` и сообщает `created`, `existing` или
 `reopened`; `tasks update` принимает только документированные переходы, а `tasks list` ограничен.
 `backup create` пишет `lv24-seo-backup-YYYYMMDDTHHMMSSZ.zip` с манифестом, отредактированным `seo.toml`
-и согласованной копией базы; токены, логи и кэши исключены, восстановление вручную.
+и согласованной копией базы; токены, логи и кэши исключены. `backup restore` сначала проверяет архив и
+возвращает план с `confirm_token` на 300 секунд; для применения нужны `--allow-write` и токен, а текущая
+база копируется в `<db>.pre-restore-<utc>` до замены. `portfolio list` сканирует до трёх уровней ниже
+абсолютного каталога в поисках `seo.toml`, проверяет не более 50 сайтов и сообщает локальные счётчики
+обхода, отчётов и проблем, сначала самые активные.
 
 ### Отчёты
 
@@ -302,4 +309,4 @@ lv24-seo export skills --out skills/
 - [MCP и навыки агентов](/ru/mcp/)
 - [Устранение неполадок](/ru/troubleshooting/)
 
-Source: `_source/engine-cli.md`, `_source/engine-mcp.md`, `_source/engine-releases-0.5.2.md`, `_source/engine-releases-0.5.3.md`; вывод `--help` версии 0.5.2 в репозитории движка.
+Source: `_source/engine-cli.md`, `_source/engine-mcp.md`, `_source/engine-releases-0.5.2.md`, `_source/engine-releases-0.5.3.md`, `_source/engine-releases-0.6.0.md`, `_source/engine-releases-0.7.0.md`; вывод `--help` версии 0.7.0 в репозитории движка.

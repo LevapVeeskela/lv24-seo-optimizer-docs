@@ -1,6 +1,6 @@
 ---
 title: 发行与更新
-description: 引擎 0.6.0 与桌面 0.4.0 发行说明、0.5.3、0.3.0 及更早版本历史、签名自动更新矩阵、发布流水线、版本固定与回滚。
+description: 引擎 0.7.0 与桌面 0.5.0 发行说明、0.6.0、0.5.3、0.3.0 及更早版本历史、签名自动更新矩阵、发布流水线、版本固定与回滚。
 ---
 
 # 发行与更新
@@ -9,10 +9,70 @@ description: 引擎 0.6.0 与桌面 0.4.0 发行说明、0.5.3、0.3.0 及更早
 
 | 产品 | 版本 | 发布日期 | 说明 |
 |---|---|---|---|
-| 引擎 | `lv24-seo 0.6.0` | 2026-11-16 | 日志分析、归因变更摘要、任务生命周期（模式 v3）、可移植备份、第 12 个 MCP 工具和 20 个 CLI 命令 |
-| 桌面 | `0.4.0` | 2026-11-16 | Logs、Tasks 和 Backup 页面、摘要卡片、捆绑引擎 0.6.0 和 `MIN_ENGINE_VERSION` 0.6.0 |
+| 引擎 | `lv24-seo 0.7.0` | 2026-11-16 | 两阶段恢复、多站点组合、按模板和设备的 CWV、带索引事件模式 v4、21 个 CLI 命令和 10 个读取类 MCP 工具 |
+| 桌面 | `0.5.0` | 2026-11-16 | 恢复界面、经确认的计划任务安装、Portfolio 页面、CWV 卡片、捆绑引擎 0.7.0 和 `MIN_ENGINE_VERSION` 0.7.0 |
 
-桌面版本与引擎版本相互独立，但桌面固定精确引擎，并拒绝低于最低版本的引擎。`0.4.0` 捆绑 `0.6.0` 并要求至少 `0.6.0`，因此已安装的 `0.5.x` 引擎会被报告为不兼容。
+桌面版本与引擎版本相互独立，但桌面固定精确引擎，并拒绝低于最低版本的引擎。`0.5.0` 捆绑 `0.7.0` 并要求至少 `0.7.0`，因此已安装的 `0.6.x` 引擎会被报告为不兼容。
+
+## 引擎 0.7.0
+
+2026-11-16 发布。它增加两阶段项目恢复、只读的多站点组合、按 URL 模板和设备分组的 Core Web Vitals，以及带持久索引事件的模式 v4。CLI 现在有 21 个顶层命令，MCP 接口仍为 12 个工具。
+
+变更内容：
+
+- **两阶段恢复。** `backup restore --file ABS --config ABS` 验证归档并返回计划，包含归档与清单哈希、目标配置和数据目录、当前与归档数据库哈希、配置动作（`create`、`replace` 或 `write_alongside`）以及有效期 300 秒的 `confirm_token`。应用需要 `--allow-write` 和令牌；只有 `--allow-write` 时仅生成计划，只有令牌时返回 `WRITE_DISABLED`，归档变化、工作区变化、令牌过期或重放都会得到 `CONFIRM_REQUIRED`。替换前当前数据库会复制到 `<db>.pre-restore-<utc>`（配置被替换时复制到 `seo.toml.pre-restore-<utc>`），每个成员哈希都会重新校验，恢复后的数据库通过 `PRAGMA quick_check`，文件原子替换。未通过校验的配置会并排写为 `seo.toml.restored-<utc>`。
+- **多站点组合。** `portfolio list --root ABS [--limit 1..50]` 在绝对目录下最多三层扫描 `seo.toml`，跳过隐藏目录、`node_modules`、`__pycache__`、`venv` 和符号链接目录，并为每个站点返回一行：配置路径、名称、属性、基础 URL、数据目录、数据库是否存在、抓取次数、报告快照、问题计数和最后活动时间。它不调用提供商、不读取令牌、不写磁盘。损坏的配置或不可读的数据库成为该站点的 `error`，其余站点仍会扫描；扫描上限为 50 个站点，并报告真实 `total` 和 `truncated: true`。
+- **模式 v4 与索引事件。** 迁移 v4 增加 `indexing_events`，以 `(provider, property_id, url, event, event_date)` 为键。只要存在存储，`yandex indexing` 和 MCP `yandex_indexing_state` 就会保存提供商报告的按 URL 事件：重放更新 `last_seen` 而不重复，`first_seen` 不可变，`meta.indexing_events` 报告 `new`、`existing`、`skipped` 和 `truncated`，存储失败变成警告而不是提供商读取失败。周报摘要现在读取这些事件，因此 `indexing_event` 证据不再依赖调用方提供行。
+- **按模板的 Core Web Vitals。** 当存储中有比较窗口的 CrUX/PSI 字段行时，`report weekly` 和 `seo_weekly_report` 增加 `cwv` 分区，按规范化 URL 模板（`/blog/{id}`）和设备（`phone`、`desktop`、`tablet`）分组。最多显示五个模板，先显示回归项，包含各指标 p75、上一 p75、差值、回归标记和 `poor_metrics`。回归是 p75 上升至少 5%（CLS 高于 0.01），模板 p75 是该组中最差页面的 p75，而不是全站平均。来源聚合、实验室/PSI 分数以及没有 URL 或已知设备的行绝不会并入模板；它们通过 `cwv_template_missing`、`cwv_device_missing`、`cwv_lab_ignored` 和 `cwv_values_ignored` 报告。
+- **接口与模式。** 21 个顶层 CLI 命令（14 个组和 7 个命令，新增 `portfolio` 和 `backup restore`）、12 个 MCP 工具（10 个读取类：7 个纯只读和 3 个持久化本地状态的工具；2 个受限写入仍返回 `WRITE_DISABLED`）、3 个资源和 3 个提示不变。模式版本为 4；迁移是增量的，并在下次打开时应用。`yandex_indexing_state` 现在带有 `writes_local_state: true` 和 `readOnlyHint: false`。组合和恢复仅限 CLI。
+
+本次发行记录的验证：
+
+| 检查 | 结果 |
+|---|---|
+| PyPI | `lv24-seo 0.7.0` 已发布 |
+| npm | `@lv24/seo 0.7.0` 已发布 |
+| MCP Registry | `io.github.LevapVeeskela/lv24-seo 0.7.0` 已发布 |
+| CI | 发布提交上 Linux、Windows 和 macOS 全绿 |
+
+0.7.0 的已知限制：
+
+- `portfolio list` 只报告本地历史；它从不调用提供商，因此本地存储为空的站点没有远程索引状态和流量。
+- 组合扫描每次运行上限为 50 个站点；更大的机构需要扫描更窄的根目录。
+- `backup restore` 替换文件，绝不合并行或设置。令牌被排除，因此恢复后需要重新认证；被其他 CLI 或桌面进程打开的数据库在 Windows 上无法替换。
+- 恢复令牌防止意外或过期应用；它不是访问控制。
+- 索引事件仅来自 Yandex Webmaster 索引调用；没有 URL、事件名称或事件日期的行会被跳过，每次调用最多考虑 500 行提供商数据。
+- CWV 分区需要存储的 CrUX/PSI 字段行，且最多显示五个模板。CWV 和组合数据不会在变更摘要中归因。
+
+## 桌面 0.5.0
+
+2026-11-16 发布。它在 Backup 页面增加恢复流程、经确认的计划任务安装、Portfolio 页面和 CWV 卡片，捆绑 `lv24-seo 0.7.0`，并把 `MIN_ENGINE_VERSION` 提高到 `0.7.0`，因此 `0.6.x` 引擎被报告为不兼容。
+
+变更内容：
+
+- **恢复。** 备份面板增加恢复区。`pick_backup_archive` 选择归档；第一次调用只生成计划，**Restore now** 在有令牌前保持禁用。应用时显示确认对话框，并用 `--allow-write` 和计划令牌调用 `backup_restore`。计划显示归档与清单哈希、目标配置和数据目录、当前与归档数据库哈希、配置动作以及 300 秒令牌有效期。归档变化、工作区变化、令牌过期或重放都会得到 `CONFIRM_REQUIRED`。
+- **计划任务安装。** Integrations 的计划卡片有 **Preview artifact** 和 **Install on this host** 两种模式。安装会在确认对话框（显示配置和任务类型）后为每周或每日报告写入 cron 条目、systemd 用户定时器或 Windows 任务计划程序任务；它只影响本机。
+- **组合。** Portfolio 页面在所选目录下最多三层扫描 `seo.toml`，每次扫描最多检查 50 个站点。行包含配置路径、名称、属性、基础 URL、数据目录、数据库是否存在、抓取次数、报告快照、问题计数和最后活动时间。可按未解决问题、名称、最后活动或错误优先排序，按名称、属性或路径过滤；打开一行会通过常规 shell 流程切换工作区。损坏的配置或不可读数据库成为该站点的错误，其余站点仍会扫描。
+- **CWV 卡片。** 周报渲染引擎的 `cwv` 分区，按规范化 URL 模板和设备显示上一 p75、差值和回归标记，并显示截断、最早证据日期、跳过行和引擎限制。最多显示五个模板，先显示回归项。
+- **外壳与引擎。** 新增白名单命令 `backup_restore`、`portfolio_list` 和 `schedule_install`，都在外壳中做参数校验；`pick_backup_archive` 是新增命令，`pick_directory` 也会批准组合根目录和备份输出目录。契约从 `lv24-seo 0.7.0` 重新生成。
+
+本次发行记录的验证：
+
+| 检查 | 结果 |
+|---|---|
+| 已发布资产 | `v0.5.0` 上 18 个，包括 Windows portable `.zip.sha256` |
+| CI | 发布提交上 Linux x64、Windows x64 和 macOS arm64 + x64 全绿 |
+| 应用内更新 | 在 Windows NSIS 上通过 Rust 更新器验证 `0.4.0 → 0.5.0`：**Desktop 0.5.0**、**Engine 0.7.0** 和引擎就绪 |
+| Sidecar | Windows x64 固定自 PyPI `0.7.0`；Linux 和 macOS 重新构建并通过 rebuild-aware 报告 |
+
+0.5.0 的已知限制：
+
+- 恢复会替换数据库和配置，绝不合并；`.pre-restore-<utc>` 副本是唯一回滚手段。
+- 计划任务安装会修改主机；删除或修复任务需要手动完成。
+- 没有 CrUX/PSI 字段行（带 URL 和设备）时 CWV 卡片为空。
+- 组合只报告本地历史，每次扫描最多检查 50 个站点。
+- 没有取消和后台运行：恢复、计划任务安装、组合扫描或报告构建都会运行到完成。
+- `MIN_ENGINE_VERSION` 为 `0.7.0`，因此 `0.6.x` 引擎会被拒绝。
 
 ## 引擎 0.6.0
 
@@ -308,10 +368,10 @@ PID**。不会按映像名称匹配，因此另一个已安装副本、便携构
 portable ZIP 没有可替换的安装器，且可能位于可移动介质上。桌面端报告已安装的包类型，并对这些
 情况禁用应用内安装器。它不会假装手动包已被更新。
 
-Windows NSIS 路径现已完成五次端到端验证：`0.2.0 → 0.2.1`、`0.2.1 → 0.2.2`、
-`0.2.2 → 0.2.3`、`0.2.3 → 0.3.0` 和 `0.3.0 → 0.4.0`。第五次运行中，已安装的 `0.3.0` 通过 Rust
-更新器升级，下载并验证已签名包，安装并重启后报告 **Desktop 0.4.0**、**Engine 0.6.0** 且引擎就绪。
-任何带应用内更新器的 `0.2.x` 安装都可直接升级到 `0.4.0`；`0.1.0` 没有更新器，需要一次手动安装。
+Windows NSIS 路径现已完成六次端到端验证：`0.2.0 → 0.2.1`、`0.2.1 → 0.2.2`、
+`0.2.2 → 0.2.3`、`0.2.3 → 0.3.0`、`0.3.0 → 0.4.0` 和 `0.4.0 → 0.5.0`。第六次运行中，已安装的 `0.4.0`
+通过 Rust 更新器升级，下载并验证已签名包，安装并重启后报告 **Desktop 0.5.0**、**Engine 0.7.0** 且引擎就绪。
+任何带应用内更新器的 `0.2.x` 安装都可直接升级到 `0.5.0`；`0.1.0` 没有更新器，需要一次手动安装。
 
 `0.2.1 → 0.2.2` 更新由旧的 `0.2.1` 更新器执行，其中没有新的受跟踪 PID 清理。如果首次更新期间
 有 sidecar 正在运行，请在其退出后重试，或手动安装 `0.2.2`。`0.2.2 → 0.2.3` 及后续更新使用受跟踪 PID
@@ -324,12 +384,12 @@ Windows NSIS 路径现已完成五次端到端验证：`0.2.0 → 0.2.1`、`0.2.
 
 | 输入 | 默认值 | 含义 |
 |---|---|---|
-| `engine_version` | `0.6.0` | sidecar 中捆绑的精确引擎版本 |
+| `engine_version` | `0.7.0` | sidecar 中捆绑的精确引擎版本 |
 | `signed` | `false` | 请求操作系统签名/公证；此零支出仓库未配置 |
 | `publish` | `false` | 所有矩阵构建通过后创建 GitHub release |
 | `tag` | 空 | `vX.Y.Z` 发布标签；`publish=true` 时必填 |
 
-默认值与 `0.4.0` 固定版本一致。如果传入不同版本，发布门控会拒绝清单不匹配。
+默认值与 `0.5.0` 固定版本一致。如果传入不同版本，发布门控会拒绝清单不匹配。
 
 | Runner | Target | 包 |
 |---|---|---|
@@ -344,8 +404,8 @@ Windows NSIS 路径现已完成五次端到端验证：`0.2.0 → 0.2.1`、`0.2.
 ## Sidecar 固定与校验和
 
 发布 sidecar 是 PyInstaller **onedir** 树，在匹配的主机上构建；PyInstaller 不交叉编译。引擎、
-Python、Pydantic、Typer 和 PyInstaller 版本固定在 `scripts/cli-checksums.json`。`0.4.0` 固定
-引擎 `0.6.0`（高于 `0.5.3`）、Python `3.12`、Pydantic `2.14.3`、Typer `0.29.0` 和 PyInstaller `6.22.3`。
+Python、Pydantic、Typer 和 PyInstaller 版本固定在 `scripts/cli-checksums.json`。`0.5.0` 固定
+引擎 `0.7.0`（高于 `0.6.0`）、Python `3.12`、Pydantic `2.14.3`、Typer `0.29.0` 和 PyInstaller `6.22.3`。
 
 PyInstaller onedir 输出不是字节可复现的。因此校验和政策分为三部分：
 
@@ -356,8 +416,8 @@ PyInstaller onedir 输出不是字节可复现的。因此校验和政策分为�
 - **发布门控 — 基于报告。** 发布 job 要求每个交付 target 都有有效报告：target 名称匹配、
   `hashPolicy: "rebuild"`、`ok: true`、64 位十六进制哈希、正大小和精确引擎版本。
 
-对于 `0.6.0`，Windows x64 有已审查的本地固定值；Linux 和 macOS sidecar 由发布 workflow 重新构建并通过
-rebuild-aware 报告，其已审查固定值仍为 `null`，直到在这些主机上审查本地构建。`0.5.3` 的 Windows 固定值没有沿用，因为可执行文件随引擎变化。校验和报告是 CI 证据，不是发布产物。
+对于 `0.7.0`，Windows x64 有已审查的本地固定值；Linux 和 macOS sidecar 由发布 workflow 重新构建并通过
+rebuild-aware 报告，其已审查固定值仍为 `null`，直到在这些主机上审查本地构建。`0.6.0` 的 Windows 固定值没有沿用，因为可执行文件随引擎变化。校验和报告是 CI 证据，不是发布产物。
 `SHA256SUMS.txt` 覆盖安装器、更新包、签名和 `latest.json`；sidecar 可执行文件位于这些包内，
 不单独列出。手动安装的用户应使用 `SHA256SUMS.txt` 校验下载的产物。
 
@@ -365,7 +425,7 @@ rebuild-aware 报告，其已审查固定值仍为 `null`，直到在这些主�
 node scripts/verify-sidecar.mjs \
   --root src-tauri/engine \
   --target x86_64-pc-windows-msvc \
-  --engine-version 0.6.0
+  --engine-version 0.7.0
 ```
 
 ## `latest.json`、签名与发布
@@ -397,20 +457,22 @@ node scripts/verify-sidecar.mjs \
 和发布标题中一致。引擎固定值位于 `scripts/cli-checksums.json`；workflow 显式传入
 `engine_version`，发布门控要求它与清单一致。
 
-当前源码中 `src-tauri/src/commands.rs` 的 `MIN_ENGINE_VERSION` 为 `0.6.0`。`0.4.0` 捆绑引擎
-`0.6.0`，因此最低版本与捆绑引擎一致，`0.5.x` 引擎会被视为不兼容。外壳接受不低于该
+当前源码中 `src-tauri/src/commands.rs` 的 `MIN_ENGINE_VERSION` 为 `0.7.0`。`0.5.0` 捆绑引擎
+`0.7.0`，因此最低版本与捆绑引擎一致，`0.6.x` 引擎会被视为不兼容。外壳接受不低于该
 版本的引擎，并把更旧版本标记为离线并显示通知。更新的引擎会通过门控，但不是发布测试过的固定
 版本。开发构建可通过 `LV24_SEO_BIN` 使用其他版本；UI 会将其标记为外部并仍检查最低版本。只有
 设置 `LV24_SEO_ALLOW_PATH_ENGINE=1` 时才使用 `PATH` 中的引擎。
 
 ## 从 0.1.0 一次性升级
 
-`0.1.0` 没有更新器、端点和公钥。它无法发现或安装 `0.4.0`。请手动下载并安装一次 `0.4.0`
-（Windows 上的 NSIS 安装器或便携 ZIP）。之后，`0.4.0` 安装在使用支持自动更新的包类型时，
+`0.1.0` 没有更新器、端点和公钥。它无法发现或安装 `0.5.0`。请手动下载并安装一次 `0.5.0`
+（Windows 上的 NSIS 安装器或便携 ZIP）。之后，`0.5.0` 安装在使用支持自动更新的包类型时，
 可以自动更新到后续版本。
 
 ## 更早的版本
 
+- **桌面 0.4.0** 增加了 Logs、Tasks 和 Backup 页面及报告摘要卡片，捆绑引擎 `0.6.0`，并把 `MIN_ENGINE_VERSION` 提高到 `0.6.0`。
+- **引擎 0.6.0** 增加了本地 nginx 日志分析和第 12 个 MCP 工具、归因变更摘要、带模式 v3 的任务生命周期、可移植备份和 20 个 CLI 命令。
 - **桌面 0.3.0** 增加了项目向导、抓取屏幕、报告比较与导出、设置保存流程、集成、按工作区的报告窗口和运行状态。
 - **引擎 0.5.3** 让 MCP 写入变成两阶段，把抓取移出事件循环，增加 `--strict` 退出码 `5`、类型化存储错误
   和诚实的 GSC/Metrika/Bing/Yandex 数据。
@@ -458,4 +520,4 @@ sha256sum -c SHA256SUMS.txt --ignore-missing
 
 更新信任见[安全与隐私](/zh/security/)，sidecar 布局见[架构](/zh/architecture/)。
 
-Source: `_source/engine-releases-0.6.0.md`, `_source/engine-releases-0.5.3.md`, `_source/engine-releases-0.5.2.md`, `_source/desktop-releases-0.4.0.md`, `_source/desktop-releases-0.3.0.md`, `_source/desktop-releases-0.2.3.md`, `_source/desktop-releases-0.2.2.md`, `_source/desktop-releases-0.2.1.md`, `_source/desktop-releases-0.2.0.md`, `_source/desktop-release.md`, `_source/desktop-security.md`.
+Source: `_source/engine-releases-0.7.0.md`, `_source/engine-releases-0.6.0.md`, `_source/engine-releases-0.5.3.md`, `_source/engine-releases-0.5.2.md`, `_source/desktop-releases-0.5.0.md`, `_source/desktop-releases-0.4.0.md`, `_source/desktop-releases-0.3.0.md`, `_source/desktop-releases-0.2.3.md`, `_source/desktop-releases-0.2.2.md`, `_source/desktop-releases-0.2.1.md`, `_source/desktop-releases-0.2.0.md`, `_source/desktop-release.md`, `_source/desktop-security.md`.

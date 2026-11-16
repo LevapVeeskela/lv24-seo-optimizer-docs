@@ -1,6 +1,6 @@
 ---
 title: Releases and updates
-description: Engine 0.6.0 and desktop 0.4.0 releases, the 0.5.3, 0.3.0 and older history, signed auto-update matrix, release pipeline, version pinning and rollback.
+description: Engine 0.7.0 and desktop 0.5.0 releases, the 0.6.0, 0.5.3, 0.3.0 and older history, signed auto-update matrix, release pipeline, version pinning and rollback.
 ---
 
 # Releases and updates
@@ -9,10 +9,117 @@ The current releases are:
 
 | Product | Version | Released | Notes |
 |---|---|---|---|
-| Engine | `lv24-seo 0.6.0` | 2026-11-16 | Log analysis, attributed change digest, task lifecycle (schema v3), portable backup, 12th MCP tool and 20 CLI commands |
-| Desktop | `0.4.0` | 2026-11-16 | Logs, Tasks and Backup pages, digest card, bundled engine 0.6.0 and `MIN_ENGINE_VERSION` 0.6.0 |
+| Engine | `lv24-seo 0.7.0` | 2026-11-16 | Two-phase restore, multi-site portfolio, CWV by template and device, schema v4 indexing events, 21 CLI commands and 10 read-class MCP tools |
+| Desktop | `0.5.0` | 2026-11-16 | Restore UI, confirmed schedule install, Portfolio page, CWV card, bundled engine 0.7.0 and `MIN_ENGINE_VERSION` 0.7.0 |
 
-The desktop version and the engine version are independent, but the desktop pins an exact engine and refuses one below its minimum. `0.4.0` bundles `0.6.0` and requires at least `0.6.0`, so an installed `0.5.x` engine is reported as incompatible.
+The desktop version and the engine version are independent, but the desktop pins an exact engine and refuses one below its minimum. `0.5.0` bundles `0.7.0` and requires at least `0.7.0`, so an installed `0.6.x` engine is reported as incompatible.
+
+## Engine 0.7.0
+
+Released on 2026-11-16. It adds a two-phase project restore, a read-only multi-site portfolio, Core Web Vitals
+grouped by URL template and device, and schema v4 with persisted indexing events. The CLI now has 21 top-level
+commands, and the MCP surface stays at 12 tools.
+
+What changed:
+
+- **Two-phase restore.** `backup restore --file ABS --config ABS` validates the archive and returns a plan with the
+  archive and manifest hashes, the target config and data directory, the current and archived database hashes, the
+  config action (`create`, `replace` or `write_alongside`) and a `confirm_token` valid for 300 seconds. Applying
+  needs `--allow-write` and the token; `--allow-write` alone only plans, a token without it is `WRITE_DISABLED`, and
+  a changed archive, changed workspace, expired token or replay is `CONFIRM_REQUIRED`. Before replacement the
+  current database is copied to `<db>.pre-restore-<utc>` (and the config to `seo.toml.pre-restore-<utc>` when it is
+  replaced), every member hash is re-verified, the restored database passes `PRAGMA quick_check` and files are
+  replaced atomically. A config that does not validate is written alongside as `seo.toml.restored-<utc>`.
+- **Multi-site portfolio.** `portfolio list --root ABS [--limit 1..50]` scans up to three levels below an absolute
+  directory for `seo.toml`, skipping hidden, `node_modules`, `__pycache__`, `venv` and symlinked directories, and
+  returns one row per site: config path, name, property, base URL, data directory, database presence, crawl runs,
+  report snapshots, issue counts and last activity. It opens no provider, reads no token and writes nothing. A
+  broken config or unreadable database becomes that site's `error` while the rest still scans; the scan is capped
+  at 50 sites and reports the real total with `truncated: true`.
+- **Schema v4 and indexing events.** Migration v4 adds `indexing_events`, keyed by
+  `(provider, property_id, url, event, event_date)`. `yandex indexing` and the MCP `yandex_indexing_state` call
+  persist per-URL events whenever a store exists: a replay updates `last_seen` without duplicating, `first_seen` is
+  immutable, `meta.indexing_events` reports `new`, `existing`, `skipped` and `truncated`, and storage failures
+  become warnings rather than a failed provider read. The weekly digest now reads these events, so `indexing_event`
+  evidence no longer depends on a caller supplying rows.
+- **Core Web Vitals by template.** When the store holds CrUX/PSI field rows for the compared windows,
+  `report weekly` and `seo_weekly_report` add a `cwv` section grouped by normalized URL template (`/blog/{id}`) and
+  device (`phone`, `desktop`, `tablet`). It shows at most five templates, regressed first, with per-metric p75,
+  previous p75, delta, a regression flag and `poor_metrics`. A regression is a p75 increase of at least 5% (above
+  0.01 for CLS), and a template p75 is the worst page p75 in the group, not a site-wide average. Origin aggregates,
+  lab/PSI scores and rows without a URL or known device are never merged; they are reported through
+  `cwv_template_missing`, `cwv_device_missing`, `cwv_lab_ignored` and `cwv_values_ignored`.
+- **Surface and schema.** 21 top-level CLI commands (14 groups and 7 commands, adding `portfolio` and
+  `backup restore`), 12 MCP tools (10 read-class: 7 pure read-only plus 3 local-state writers; 2 gated writes still return
+  `WRITE_DISABLED`; 3 tools persist local state), 3 resources and 3 prompts unchanged. Schema version is 4; the
+  migration is additive and runs on the next open. `yandex_indexing_state` now carries `writes_local_state: true`
+  and `readOnlyHint: false`. Portfolio and restore are CLI-only.
+
+Verification recorded for this release:
+
+| Check | Result |
+|---|---|
+| PyPI | `lv24-seo 0.7.0` published |
+| npm | `@lv24/seo 0.7.0` published |
+| MCP Registry | `io.github.LevapVeeskela/lv24-seo 0.7.0` published |
+| CI | Green on Linux, Windows and macOS on the release commit |
+
+Known limits in 0.7.0:
+
+- `portfolio list` reports local history only; it never calls a provider, so remote index status and traffic are
+  absent for a site whose local store is empty.
+- The portfolio scan is capped at 50 sites per run; larger agencies must scan narrower roots.
+- `backup restore` replaces files and never merges rows or settings. Tokens are excluded, so re-authenticate
+  afterwards; a database held open by another CLI or desktop process cannot be replaced on Windows.
+- The restore token prevents accidental or stale applies; it is not access control.
+- Indexing events come only from Yandex Webmaster indexing calls; rows without a URL, event name or event date are
+  skipped, and each call considers at most 500 provider rows.
+- The CWV section needs stored CrUX/PSI field rows and shows at most five templates. CWV and portfolio data are not
+  attributed in the change digest.
+
+## Desktop 0.5.0
+
+Released on 2026-11-16. It adds a restore flow to the Backup page, a confirmed schedule install, a Portfolio page
+and the CWV card, bundles `lv24-seo 0.7.0` and raises `MIN_ENGINE_VERSION` to `0.7.0`, so a `0.6.x` engine is
+reported as incompatible.
+
+What changed:
+
+- **Restore UI.** The backup panel adds a restore section. The archive is chosen through the native
+  `pick_backup_archive` dialog; the first call only builds a plan, and **Restore now** stays disabled until a token
+  exists. Applying shows a confirmation dialog and calls the engine with `--allow-write` and the plan token. The
+  plan shows the archive and manifest hashes, the target config and data directory, the current and archived
+  database hashes, the config action and the token lifetime.
+- **Schedule install.** The Integrations schedule card has **Preview artifact** and **Install on this host**. An
+  install writes a cron entry, systemd user timer or Windows Task Scheduler task for a weekly or daily report after
+  a confirmation dialog that names the config and the job kind; it touches only the local host.
+- **Portfolio page.** Choose a folder through the native directory dialog; the engine scans up to three levels for
+  `seo.toml` and inspects at most 50 sites. Summary counts, sorting by open issues, name, last activity or errors
+  first, and filtering by name, property or path. Opening a row switches the workspace through the normal shell
+  flow. The scan is read-only: no provider call, no token read, no write.
+- **CWV card.** The weekly report renders the engine's `cwv` section per template and device with previous p75,
+  delta and regression flag, plus truncation, the oldest evidence date, skipped rows and the engine's limitations.
+- **Shell and engine.** New allow-listed commands `backup_restore`, `portfolio_list` and `schedule_install`, all
+  argument-validated in the shell; `pick_backup_archive` is new, and `pick_directory` also approves the portfolio
+  root and the backup output folder. Contracts were regenerated from `lv24-seo 0.7.0`.
+
+Verification recorded for this release:
+
+| Check | Result |
+|---|---|
+| Published assets | 18 on `v0.5.0`, including the Windows portable `.zip.sha256` |
+| CI | Green for Linux x64, Windows x64 and macOS arm64 + x64 on the release commit |
+| In-app update | `0.4.0 → 0.5.0` verified through the Rust updater on Windows NSIS: **Desktop 0.5.0**, **Engine 0.7.0** and engine ready |
+| Sidecars | Windows x64 pinned from PyPI `0.7.0`; Linux and macOS rebuilt with passing rebuild-aware reports |
+
+Known limits in 0.5.0:
+
+- Restore replaces the database and config; it never merges, and the pre-restore copies are the only rollback.
+- Schedule install mutates the host; removing or repairing the job is manual.
+- The CWV card is empty without CrUX/PSI field rows that carry a URL and a device.
+- Portfolio reports local history only and inspects at most 50 sites per scan.
+- No cancel and no background runs: a restore, schedule install, portfolio scan or report build runs to completion.
+- `MIN_ENGINE_VERSION` is `0.7.0`, so a `0.6.x` engine is rejected.
 
 ## Engine 0.6.0
 
@@ -418,11 +525,11 @@ Manual-only is deliberate. A deb or rpm install is owned by the package database
 replace it; a portable ZIP has no installer to replace and may live on removable media. The desktop reports the installed bundle type and disables the in-app
 installer for those cases. It does not pretend that a manual package was updated.
 
-The Windows NSIS path has now been verified end-to-end five times: `0.2.0 → 0.2.1`, `0.2.1 → 0.2.2`,
-`0.2.2 → 0.2.3`, `0.2.3 → 0.3.0`, and `0.3.0 → 0.4.0`. For the fifth run, an installed `0.3.0` build
+The Windows NSIS path has now been verified end-to-end six times: `0.2.0 → 0.2.1`, `0.2.1 → 0.2.2`,
+`0.2.2 → 0.2.3`, `0.2.3 → 0.3.0`, `0.3.0 → 0.4.0`, and `0.4.0 → 0.5.0`. For the sixth run, an installed `0.4.0` build
 updated through the Rust updater, downloaded and verified the signed package, installed it, relaunched,
-and reported **Desktop 0.4.0** with **Engine 0.6.0** and the engine ready. Any `0.2.x` install with the
-in-app updater can jump straight to `0.4.0`; `0.1.0` has no updater and needs one manual install.
+and reported **Desktop 0.5.0** with **Engine 0.7.0** and the engine ready. Any `0.2.x` install with the
+in-app updater can jump straight to `0.5.0`; `0.1.0` has no updater and needs one manual install.
 
 The `0.2.1 → 0.2.2` update runs the old `0.2.1` updater, which does not include the new tracked-PID
 cleanup. If a sidecar is active during that first update, retry after it exits or install `0.2.2`
@@ -436,12 +543,12 @@ approves the `desktop-release` environment; a non-owner run is skipped.
 
 | Input | Default | Meaning |
 |---|---|---|
-| `engine_version` | `0.6.0` | Exact engine bundled in the sidecar |
+| `engine_version` | `0.7.0` | Exact engine bundled in the sidecar |
 | `signed` | `false` | Request OS signing/notarization; not configured in this zero-spend repository |
 | `publish` | `false` | Create a GitHub release after every matrix build passes |
 | `tag` | Empty | `vX.Y.Z` release tag; required when `publish=true` |
 
-The default matches the `0.4.0` pin. The release gate rejects a manifest mismatch if a different version is passed.
+The default matches the `0.5.0` pin. The release gate rejects a manifest mismatch if a different version is passed.
 
 | Runner | Target | Bundles |
 |---|---|---|
@@ -456,7 +563,7 @@ days; the GitHub release is the durable distribution channel.
 ## Sidecar pin and checksums
 
 The release sidecar is a PyInstaller **onedir** tree, built on the matching host; PyInstaller does not cross-compile. The engine, Python, Pydantic, Typer and
-PyInstaller versions are pinned in `scripts/cli-checksums.json`. `0.4.0` pins engine `0.6.0` (up from `0.5.3`), Python `3.12`, Pydantic `2.14.3`, Typer `0.29.0` and PyInstaller
+PyInstaller versions are pinned in `scripts/cli-checksums.json`. `0.5.0` pins engine `0.7.0` (up from `0.6.0`), Python `3.12`, Pydantic `2.14.3`, Typer `0.29.0` and PyInstaller
 `6.22.3`.
 
 PyInstaller onedir output is not byte-reproducible. The checksum policy is therefore split:
@@ -470,9 +577,9 @@ PyInstaller onedir output is not byte-reproducible. The checksum policy is there
   shipped target: matching target name, `hashPolicy: "rebuild"`, `ok: true`, a 64-hex
   hash, a positive size and the exact engine version.
 
-For `0.6.0`, Windows x64 has a reviewed local pin; Linux and macOS were rebuilt by the release workflow
+For `0.7.0`, Windows x64 has a reviewed local pin; Linux and macOS were rebuilt by the release workflow
 with passing rebuild-aware checksum reports, and their reviewed pins remain `null` until a local build is
-reviewed on those hosts. The `0.5.2` Windows pin did not carry over because the executable changes with
+reviewed on those hosts. The `0.6.0` Windows pin did not carry over because the executable changes with
 the engine.
 The checksum reports are CI evidence, not release assets. `SHA256SUMS.txt` covers the installers,
 updater packages, signatures and `latest.json`; the sidecar executable is inside those packages and
@@ -483,7 +590,7 @@ is not listed separately. Users who install manually verify the downloaded asset
 node scripts/verify-sidecar.mjs \
   --root src-tauri/engine \
   --target x86_64-pc-windows-msvc \
-  --engine-version 0.6.0
+  --engine-version 0.7.0
 ```
 
 ## `latest.json`, signing and publishing
@@ -515,18 +622,22 @@ uploaded manifest. A rerun reuses an existing draft, clears its assets and refus
 The desktop version must agree in `package.json`, `src-tauri/tauri.conf.json`, `src-tauri/Cargo.toml`, the Git tag and the release title. The engine pin lives
 in `scripts/cli-checksums.json`; the workflow passes `engine_version` explicitly and the release gate requires it to match the manifest.
 
-`MIN_ENGINE_VERSION` in `src-tauri/src/commands.rs` is `0.6.0` in the current source. The `0.4.0` bundle ships engine `0.6.0`,
-so the minimum matches the bundled engine and a `0.5.x` engine is reported as incompatible. The shell accepts an engine at least that new and marks an older one
+`MIN_ENGINE_VERSION` in `src-tauri/src/commands.rs` is `0.7.0` in the current source. The `0.5.0` bundle ships engine `0.7.0`,
+so the minimum matches the bundled engine and a `0.6.x` engine is reported as incompatible. The shell accepts an engine at least that new and marks an older one
 offline with a notice. A newer engine passes the gate but is not the release-tested pin. A development build may use `LV24_SEO_BIN` with another version; the UI
 labels it external and still checks the minimum. A `PATH` engine is used only when `LV24_SEO_ALLOW_PATH_ENGINE=1`.
 
 ## One-time 0.1.0 upgrade
 
-`0.1.0` has no updater, endpoint or public key. It cannot discover or install `0.4.0`. Download and install `0.4.0` manually once (NSIS installer or portable
-ZIP on Windows). After that, the `0.4.0` installation can auto-update to later releases when it uses an auto-update-capable bundle.
+`0.1.0` has no updater, endpoint or public key. It cannot discover or install `0.5.0`. Download and install `0.5.0` manually once (NSIS installer or portable
+ZIP on Windows). After that, the `0.5.0` installation can auto-update to later releases when it uses an auto-update-capable bundle.
 
 ## Earlier releases
 
+- **Desktop 0.4.0** added the Logs, Tasks and Backup pages and the report digest card, bundled engine `0.6.0`
+  and raised `MIN_ENGINE_VERSION` to `0.6.0`.
+- **Engine 0.6.0** added local nginx log analysis and the twelfth MCP tool, the attributed change digest,
+  the task lifecycle with schema v3, a portable backup and 20 CLI commands.
 - **Desktop 0.3.0** added the project wizard, crawl screen, report comparison and export, settings save workflow,
   integrations, per-workspace reporting window and run status.
 - **Engine 0.5.3** made MCP writes two-phase, moved the crawl off the event loop, added `--strict` exit `5`, typed
@@ -577,4 +688,4 @@ those protections system-wide.
 
 See [Security and privacy](/security/) for updater trust and [Architecture](/architecture/) for the sidecar layout.
 
-Source: `_source/engine-releases-0.6.0.md`, `_source/engine-releases-0.5.3.md`, `_source/engine-releases-0.5.2.md`, `_source/desktop-releases-0.4.0.md`, `_source/desktop-releases-0.3.0.md`, `_source/desktop-releases-0.2.3.md`, `_source/desktop-releases-0.2.2.md`, `_source/desktop-releases-0.2.1.md`, `_source/desktop-releases-0.2.0.md`, `_source/desktop-release.md`, `_source/desktop-security.md`.
+Source: `_source/engine-releases-0.7.0.md`, `_source/engine-releases-0.6.0.md`, `_source/engine-releases-0.5.3.md`, `_source/engine-releases-0.5.2.md`, `_source/desktop-releases-0.5.0.md`, `_source/desktop-releases-0.4.0.md`, `_source/desktop-releases-0.3.0.md`, `_source/desktop-releases-0.2.3.md`, `_source/desktop-releases-0.2.2.md`, `_source/desktop-releases-0.2.1.md`, `_source/desktop-releases-0.2.0.md`, `_source/desktop-release.md`, `_source/desktop-security.md`.

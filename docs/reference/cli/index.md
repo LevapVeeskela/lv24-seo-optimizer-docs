@@ -26,13 +26,13 @@ version.
 With `--json`, a command prints exactly one JSON document and nothing else:
 
 ```json
-{ "ok": true, "data": {}, "meta": { "version": "0.6.0", "duration_ms": 812 }, "warnings": [] }
+{ "ok": true, "data": {}, "meta": { "version": "0.7.0", "duration_ms": 812 }, "warnings": [] }
 ```
 
 A failed command uses the same shape with `ok: false` and an `error` object instead of `data`:
 
 ```json
-{ "ok": false, "error": { "code": "AUTH_REQUIRED", "message": "Google Search Console token is missing", "retryable": false, "next_action": "lv24-seo auth login --provider gsc" }, "meta": { "version": "0.6.0" }, "warnings": ["gsc: token missing"] }
+{ "ok": false, "error": { "code": "AUTH_REQUIRED", "message": "Google Search Console token is missing", "retryable": false, "next_action": "lv24-seo auth login --provider gsc" }, "meta": { "version": "0.7.0" }, "warnings": ["gsc: token missing"] }
 ```
 
 - `data` is command-specific. `meta` always carries `version` and often adds `duration_ms`,
@@ -159,10 +159,11 @@ envelope remains the stable diagnostic interface.
 | Scheduling | `schedule print`, `schedule install` | `print` renders only; `install` writes host scheduler files. |
 | Logs | `logs analyze` | Reads one local nginx JSON access log; never stores or uploads it. |
 | Tasks | `tasks list`, `tasks add`, `tasks update` | The workspace task ledger; `add` is idempotent and `update` follows the allowed transitions. |
-| Backup | `backup create` | Writes one portable workspace archive; the source is read-only and restore is manual. |
+| Backup | `backup create`, `backup restore` | `create` writes one portable workspace archive; `restore` validates a plan and replaces files only with `--allow-write --confirm TOKEN`. |
+| Portfolio | `portfolio list` | Read-only rollup of local projects below one folder; no provider call, no token read, no write. |
 | Agents and MCP | `mcp serve`, `install`, `export tools`, `export skills` | Host config, generated files or a local server. |
 
-The CLI has 20 top-level commands: 13 groups and 7 commands (`version`, `doctor`, `init`, `properties`, `stats`, `crawl`, `install`).
+The CLI has 21 top-level commands: 14 groups and 7 commands (`version`, `doctor`, `init`, `properties`, `stats`, `crawl`, `install`).
 
 ## Examples
 
@@ -216,6 +217,8 @@ lv24-seo tasks list --state open --limit 200 --json
 lv24-seo tasks add --kind issue --url https://example.com/page --rule broken-internal-link --json
 lv24-seo tasks update TASK_ID --state verified --json
 lv24-seo backup create --out /srv/backups --json
+lv24-seo backup restore --file /srv/backups/lv24-seo-backup-20261116T120000Z.zip --config /srv/site/seo.toml --json
+lv24-seo portfolio list --root /srv/sites --limit 50 --json
 ```
 
 `logs analyze` reads exactly one absolute nginx JSON access log of at most 100 MiB and returns
@@ -223,7 +226,11 @@ lv24-seo backup create --out /srv/backups --json
 `tasks add` is idempotent per `(kind, property_id, url, rule_id)` and reports `created`, `existing` or
 `reopened`; `tasks update` accepts only the documented transitions and `tasks list` is bounded.
 `backup create` writes `lv24-seo-backup-YYYYMMDDTHHMMSSZ.zip` with a manifest, a redacted `seo.toml`
-and a consistent database copy; tokens, logs and caches are excluded and restore is manual.
+and a consistent database copy; tokens, logs and caches are excluded. `backup restore` first validates
+and returns a plan with a 300-second `confirm_token`; applying needs `--allow-write` and the token, and
+the current database is copied to `<db>.pre-restore-<utc>` before replacement. `portfolio list` scans up
+to three levels below an absolute folder for `seo.toml`, inspects at most 50 sites, and reports local
+crawl, report and issue counts newest-activity first.
 
 ### Reports
 
@@ -290,4 +297,4 @@ packaged `SKILL.md` files and their manifest. Both write local files only.
 - [MCP and agent skills](/mcp/)
 - [Troubleshooting](/troubleshooting/)
 
-Source: `_source/engine-cli.md`, `_source/engine-mcp.md`, `_source/engine-releases-0.5.2.md`, `_source/engine-releases-0.5.3.md`, `_source/engine-releases-0.6.0.md`; 0.6.0 `--help` output in the engine repository.
+Source: `_source/engine-cli.md`, `_source/engine-mcp.md`, `_source/engine-releases-0.5.2.md`, `_source/engine-releases-0.5.3.md`, `_source/engine-releases-0.6.0.md`, `_source/engine-releases-0.7.0.md`; 0.7.0 `--help` output in the engine repository.

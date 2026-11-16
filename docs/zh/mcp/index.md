@@ -13,14 +13,15 @@ MCP 服务器提供一个小而明确的能力面：12 个工具、3 个资源�
 
 返回提供商数据行的读取响应带有 `truncated`、`total`（当提供商报告时）、`data_age_days` 和 `limitations[]`。恰好填满 50,000 行上限的 GSC 最后一页会报告 `truncated: true` 和 `rows_cap_50000`；完整一页不能证明完整覆盖。读取工具不接受 `format` 参数。响应以文本提供，并在已安装的 MCP SDK 支持时提供 `structuredContent`；文本块是旧客户端的回退。
 
-有两个工具会持久化本地状态，因此不再声明为只读：
+有三个工具会持久化本地状态，因此不声明为只读：
 
 | 工具 | `kind` | `writes_local_state` | `readOnlyHint` | `destructiveHint` | `idempotentHint` |
 |---|---|---|---|---|---|
+| `yandex_indexing_state` | read | `true` | `false` | `false` | `false` |
 | `seo_crawl_site` | read | `true` | `false` | `false` | `false` |
 | `seo_weekly_report` | read | `true` | `false` | `false` | `false` |
 
-它们保存抓取或周报快照，但从不改变提供商状态，也不需要确认令牌。依据 `readOnlyHint` 分支的 MCP 客户端可能会在调用前请求确认；这是有意为之。
+它们保存索引事件、抓取或周报快照，但从不改变提供商状态，也不需要确认令牌。依据 `readOnlyHint` 分支的 MCP 客户端可能会在调用前请求确认；这是有意为之。其余九个工具是七个纯只读工具加上两个在此构建中仍返回 `WRITE_DISABLED` 的受限写入。
 
 两个写入工具带有 `destructiveHint: true`，并且需要显式开启：`allow_write` 默认为 `false`，任何不带它的调用都会在构建计划之前返回 `WRITE_DISABLED`。它们遵循与 CLI 相同的两阶段契约，见下文。
 
@@ -56,7 +57,7 @@ dry run 的 `data` 对象：
 | `seo_properties` | 无 | 已配置的提供商、目标和令牌是否存在 |
 | `gsc_search_analytics` | `property`、`start_date`、`end_date`、`dimensions`、`limit` 1–500（默认 50） | 按查询、页面、国家或设备分组的点击、展示、CTR 和排名行 |
 | `yandex_query_stats` | `host_id`、`limit` 1–500、`order_by` `TOTAL_SHOWS` 或 `TOTAL_CLICKS` | 热门查询的展示、点击和排名 |
-| `yandex_indexing_state` | 除已配置主机外无输入 | 索引历史、搜索中页面数和诊断 |
+| `yandex_indexing_state` | 除已配置主机外无输入 | 索引历史、搜索中页面数和诊断；存在工作区存储时把按 URL 事件保存到 `indexing_events`（模式 v4） |
 | `seo_crawl_site` | `start_url`、`max_urls` 0 或 1–5000、`include_rules` | 抓取摘要、问题、链接图和站点地图覆盖 |
 | `seo_weekly_report` | `days` 1–90、`lag_days` 0–14 | 周报各部分以及信封 meta |
 | `seo_report_diff` | `base`、`head`，格式 `START..END` | 标题变化、问题数量、机会变动、限制、Markdown |
@@ -73,6 +74,8 @@ MCP 周报工具会把 `days` 上限设为 90、`lag_days` 上限设为 14，并
 `seo_crawl_site` 按真实规则 id 过滤，例如 `robots-blocked`、`broken-internal-link` 或 `canonical-mismatch`。不存在 `rules` 参数，也不存在 `--ignore-robots` 标志。返回的问题列表最多 500 条，并带有 `meta.issues_shown`、`meta.issues_truncated` 和 `meta.issues_filtered_by`。加载失败的站点地图只报告异常类型，绝不报告 URL 或查询字符串。
 
 `seo_log_analysis` 是第十二个工具，也是唯一不需要服务、存储或工作区的工具。它读取一个不超过 100 MiB 的本地 nginx JSON 访问日志，返回与 `lv24-seo logs analyze` 相同的 `data`、`meta` 和 `warnings`，并且只读：文件只打开一次，不会上传或存储。机器人分类仅基于 User-Agent，因此结果是分诊，不是抓取身份的证明。
+
+`yandex_indexing_state` 在存在存储时把提供商报告的按 URL 事件保存到 `indexing_events` 表。重放会更新 `last_seen` 而不重复，`first_seen` 不可变，`meta.indexing_events` 报告 `new`、`existing`、`skipped` 和 `truncated`，每次调用最多考虑 500 行提供商数据。存储失败变成警告，而不是提供商读取失败。周报会把这些事件作为摘要证据读取。
 
 ## 资源
 
@@ -184,4 +187,4 @@ lv24-seo export skills --out .opencode/skills
 - **技术审计。** 用 `seo_crawl_site` 抓取最多 500 个 URL，按规则 id 汇总 critical 和 high 问题。不要把未抓取的 URL 说成失效。
 - **写入请求。** 为这些 URL 准备重新抓取计划，先显示配额。在我批准计划前不要写入任何内容。
 
-Source: `_source/engine-mcp.md`, `_source/engine-skills.md`, `_source/engine-cli.md`, `_source/engine-releases-0.5.2.md`, `_source/engine-releases-0.5.3.md`, `_source/engine-releases-0.6.0.md`.
+Source: `_source/engine-mcp.md`, `_source/engine-skills.md`, `_source/engine-cli.md`, `_source/engine-releases-0.5.2.md`, `_source/engine-releases-0.5.3.md`, `_source/engine-releases-0.6.0.md`, `_source/engine-releases-0.7.0.md`.
