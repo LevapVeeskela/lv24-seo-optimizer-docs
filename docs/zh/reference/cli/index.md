@@ -24,13 +24,13 @@ description: lv24-seo 命令行的命令、全局参数、JSON 信封、退出�
 使用 `--json` 时，命令只输出一个 JSON 文档，不会输出其他内容：
 
 ```json
-{ "ok": true, "data": {}, "meta": { "version": "0.5.3", "duration_ms": 812 }, "warnings": [] }
+{ "ok": true, "data": {}, "meta": { "version": "0.6.0", "duration_ms": 812 }, "warnings": [] }
 ```
 
 失败的命令使用相同结构，但 `ok: false`，并用 `error` 对象代替 `data`：
 
 ```json
-{ "ok": false, "error": { "code": "AUTH_REQUIRED", "message": "Google Search Console token is missing", "retryable": false, "next_action": "lv24-seo auth login --provider gsc" }, "meta": { "version": "0.5.3" }, "warnings": ["gsc: token missing"] }
+{ "ok": false, "error": { "code": "AUTH_REQUIRED", "message": "Google Search Console token is missing", "retryable": false, "next_action": "lv24-seo auth login --provider gsc" }, "meta": { "version": "0.6.0" }, "warnings": ["gsc: token missing"] }
 ```
 
 - `data` 因命令而异。`meta` 始终包含 `version`，通常还会加入 `duration_ms`、`truncated`、
@@ -150,6 +150,9 @@ recrawl 目前返回 `WRITE_DISABLED`，不会假装提供方调用已经发生�
 | IndexNow | `indexnow submit` | 受控写入，会真正提交 URL。 |
 | Crawl and audit | `crawl` | 与提供方无关；配置了存储时保存本地页面和问题。 |
 | Reports | `report weekly`, `report diff` | `weekly` 保存本地快照；`diff` 只读。 |
+| Logs | `logs analyze` | 只读分析一个本地 nginx JSON 访问日志；不会存储或上传。 |
+| Tasks | `tasks list`, `tasks add`, `tasks update` | 工作区任务账本；`add` 幂等，`update` 遵循允许的状态转换。 |
+| Backup | `backup create` | 写入一个可移植的工作区归档；源文件只读，恢复需手动。 |
 | Scheduling | `schedule print`, `schedule install` | `print` 只渲染；`install` 写入主机计划任务文件。 |
 | Agents and MCP | `mcp serve`, `install`, `export tools`, `export skills` | 主机配置、生成文件或本地服务器。 |
 
@@ -194,6 +197,18 @@ lv24-seo crawl --start https://example.com --max-urls 500 --json
 抓取器遵守 `robots.txt`，按广度优先跟随同主机链接，运行全部规则，并在配置了存储时保存页面和
 问题。`data.sitemap_coverage` 用六个分组比较站点地图与抓取结果。当返回 `complete: false` 时，
 受影响的分组只是候选，不是已确认的发现；`limitations[]` 会指出被截断的输入。
+
+### 日志、任务与备份
+
+```bash
+lv24-seo logs analyze --file /var/log/nginx/access.log --json
+lv24-seo tasks list --state open --limit 200 --json
+lv24-seo tasks add --kind issue --url https://example.com/page --rule broken-internal-link --json
+lv24-seo tasks update TASK_ID --state verified --json
+lv24-seo backup create --out /srv/backups --json
+```
+
+`logs analyze` 只读取一个不超过 100 MiB 的绝对路径 nginx JSON 访问日志，返回按日期、bot 和状态分组的 `bot_daily` 以及 `crawl_waste` 汇总；文件不会上传或写入 SQLite。`tasks list` 按最新优先返回有界任务，`tasks add` 幂等，`tasks update` 只接受允许的状态转换。`backup create` 写入一个带 manifest、脱敏 `seo.toml` 和一致 SQLite 副本的归档；恢复需要手动解包。
 
 ### 报告
 

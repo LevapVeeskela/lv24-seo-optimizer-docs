@@ -1,11 +1,11 @@
 ---
 title: MCP 与智能体技能
-description: 十一个 MCP 工具、三个资源、三个提示、传输方式、客户端注册以及随版本提供的智能体技能。
+description: 十二个 MCP 工具、三个资源、三个提示、传输方式、客户端注册以及随版本提供的智能体技能。
 ---
 
 # MCP 与智能体技能
 
-MCP 服务器提供一个小而明确的能力面：11 个工具、3 个资源和 3 个提示。工具注册表是单一事实来源；JSON 模式、CLI 帮助和 `schemas/tools.json` 都由它生成，绝不能手工编辑。
+MCP 服务器提供一个小而明确的能力面：12 个工具、3 个资源和 3 个提示。工具注册表是单一事实来源；JSON 模式、CLI 帮助和 `schemas/tools.json` 都由它生成，绝不能手工编辑。
 
 相关页面：[报告与差异](/zh/reports/)、[数据源与配额](/zh/providers/)、[抓取与审计](/zh/crawl/)、[自动化与投递](/zh/automation/)。
 
@@ -62,6 +62,7 @@ dry run 的 `data` 对象：
 | `seo_report_diff` | `base`、`head`，格式 `START..END` | 标题变化、问题数量、机会变动、限制、Markdown |
 | `seo_indexing_triage` | 无 | 带原因、数量、示例和 `next_action` 的桶 |
 | `seo_opportunities` | `days` 1–90（默认 28）、`limit` 1–500、`min_impressions` | 带证据和 `expected_gain` 的排序机会 |
+| `seo_log_analysis` | `file`（绝对路径）、`bot`（`googlebot`、`yandexbot`、`bingbot`、`other` 或空） | 一个本地 nginx JSON 访问日志的机器人汇总和抓取浪费摘要 |
 | `seo_recrawl_request` | `host_id`（默认：已配置主机）、`urls`、`allow_write`（默认 `false`）、`plan_hash`、`confirm_token` | 两阶段受限写入；未接通提供商适配器时返回 `WRITE_DISABLED` |
 | `seo_sitemap_submit` | `property`、`sitemap_url`、`action`、`allow_write`（默认 `false`）、`plan_hash`、`confirm_token` | 两阶段受限写入；未接通提供商适配器时返回 `WRITE_DISABLED` |
 
@@ -71,13 +72,15 @@ MCP 周报工具会把 `days` 上限设为 90、`lag_days` 上限设为 14，并
 
 `seo_crawl_site` 按真实规则 id 过滤，例如 `robots-blocked`、`broken-internal-link` 或 `canonical-mismatch`。不存在 `rules` 参数，也不存在 `--ignore-robots` 标志。返回的问题列表最多 500 条，并带有 `meta.issues_shown`、`meta.issues_truncated` 和 `meta.issues_filtered_by`。加载失败的站点地图只报告异常类型，绝不报告 URL 或查询字符串。
 
+`seo_log_analysis` 是第十二个工具，也是唯一不需要服务、存储或工作区的工具。它读取一个不超过 100 MiB 的本地 nginx JSON 访问日志，返回与 `lv24-seo logs analyze` 相同的 `data`、`meta` 和 `warnings`，并且只读：文件只打开一次，不会上传或存储。机器人分类仅基于 User-Agent，因此结果是分诊，不是抓取身份的证明。
+
 ## 资源
 
 | URI | 内容 |
 |---|---|
 | `seo://config` | 已脱敏的有效配置 |
 | `seo://report/latest` | 本服务器会话中最后一次成功的周报，Markdown 格式 |
-| `seo://docs/tools` | 生成的十一个工具 JSON 参考 |
+| `seo://docs/tools` | 生成的十二个工具 JSON 参考 |
 
 资源恰好三个。没有按属性的基线资源。
 
@@ -181,4 +184,4 @@ lv24-seo export skills --out .opencode/skills
 - **技术审计。** 用 `seo_crawl_site` 抓取最多 500 个 URL，按规则 id 汇总 critical 和 high 问题。不要把未抓取的 URL 说成失效。
 - **写入请求。** 为这些 URL 准备重新抓取计划，先显示配额。在我批准计划前不要写入任何内容。
 
-Source: `_source/engine-mcp.md`, `_source/engine-skills.md`, `_source/engine-cli.md`, `_source/engine-releases-0.5.2.md`, `_source/engine-releases-0.5.3.md`.
+Source: `_source/engine-mcp.md`, `_source/engine-skills.md`, `_source/engine-cli.md`, `_source/engine-releases-0.5.2.md`, `_source/engine-releases-0.5.3.md`, `_source/engine-releases-0.6.0.md`.

@@ -26,13 +26,13 @@ version.
 With `--json`, a command prints exactly one JSON document and nothing else:
 
 ```json
-{ "ok": true, "data": {}, "meta": { "version": "0.5.3", "duration_ms": 812 }, "warnings": [] }
+{ "ok": true, "data": {}, "meta": { "version": "0.6.0", "duration_ms": 812 }, "warnings": [] }
 ```
 
 A failed command uses the same shape with `ok: false` and an `error` object instead of `data`:
 
 ```json
-{ "ok": false, "error": { "code": "AUTH_REQUIRED", "message": "Google Search Console token is missing", "retryable": false, "next_action": "lv24-seo auth login --provider gsc" }, "meta": { "version": "0.5.3" }, "warnings": ["gsc: token missing"] }
+{ "ok": false, "error": { "code": "AUTH_REQUIRED", "message": "Google Search Console token is missing", "retryable": false, "next_action": "lv24-seo auth login --provider gsc" }, "meta": { "version": "0.6.0" }, "warnings": ["gsc: token missing"] }
 ```
 
 - `data` is command-specific. `meta` always carries `version` and often adds `duration_ms`,
@@ -157,7 +157,12 @@ envelope remains the stable diagnostic interface.
 | Crawl and audit | `crawl` | Provider-independent; stores local pages and issues when a store is configured. |
 | Reports | `report weekly`, `report diff` | `weekly` stores a local snapshot; `diff` is read-only. |
 | Scheduling | `schedule print`, `schedule install` | `print` renders only; `install` writes host scheduler files. |
+| Logs | `logs analyze` | Reads one local nginx JSON access log; never stores or uploads it. |
+| Tasks | `tasks list`, `tasks add`, `tasks update` | The workspace task ledger; `add` is idempotent and `update` follows the allowed transitions. |
+| Backup | `backup create` | Writes one portable workspace archive; the source is read-only and restore is manual. |
 | Agents and MCP | `mcp serve`, `install`, `export tools`, `export skills` | Host config, generated files or a local server. |
+
+The CLI has 20 top-level commands: 13 groups and 7 commands (`version`, `doctor`, `init`, `properties`, `stats`, `crawl`, `install`).
 
 ## Examples
 
@@ -203,6 +208,23 @@ pages and issues when a store is configured. `data.sitemap_coverage` compares th
 the crawl saw in six buckets. When it returns `complete: false`, the affected buckets are candidates,
 not confirmed findings; `limitations[]` names the truncated input.
 
+### Logs, tasks and backup
+
+```bash
+lv24-seo logs analyze --file /var/log/nginx/access.log --json
+lv24-seo tasks list --state open --limit 200 --json
+lv24-seo tasks add --kind issue --url https://example.com/page --rule broken-internal-link --json
+lv24-seo tasks update TASK_ID --state verified --json
+lv24-seo backup create --out /srv/backups --json
+```
+
+`logs analyze` reads exactly one absolute nginx JSON access log of at most 100 MiB and returns
+`bot_daily` rows plus a `crawl_waste` summary; the file is opened read-only and nothing is stored.
+`tasks add` is idempotent per `(kind, property_id, url, rule_id)` and reports `created`, `existing` or
+`reopened`; `tasks update` accepts only the documented transitions and `tasks list` is bounded.
+`backup create` writes `lv24-seo-backup-YYYYMMDDTHHMMSSZ.zip` with a manifest, a redacted `seo.toml`
+and a consistent database copy; tokens, logs and caches are excluded and restore is manual.
+
 ### Reports
 
 ```bash
@@ -212,6 +234,9 @@ lv24-seo report diff --markdown
 
 `report weekly` builds and stores a snapshot; add `--send` to deliver through the channels enabled in
 `seo.toml`. `--out` writes canonical English `report.json` and a locale-rendered `report.html`.
+When two comparable GSC windows and stored crawl evidence exist, the report adds an `Attributed change
+digest` section that pairs each material change with a candidate cause, a confidence and up to three
+evidence rows; without evidence the item stays `unexplained` with a limitation.
 `report diff` compares two stored weekly snapshots, never calls a provider, and needs two runs for
 different periods. `--markdown` prints only Markdown on stdout; warnings go to stderr.
 
@@ -265,4 +290,4 @@ packaged `SKILL.md` files and their manifest. Both write local files only.
 - [MCP and agent skills](/mcp/)
 - [Troubleshooting](/troubleshooting/)
 
-Source: `_source/engine-cli.md`, `_source/engine-mcp.md`, `_source/engine-releases-0.5.2.md`, `_source/engine-releases-0.5.3.md`; 0.5.2 `--help` output in the engine repository.
+Source: `_source/engine-cli.md`, `_source/engine-mcp.md`, `_source/engine-releases-0.5.2.md`, `_source/engine-releases-0.5.3.md`, `_source/engine-releases-0.6.0.md`; 0.6.0 `--help` output in the engine repository.

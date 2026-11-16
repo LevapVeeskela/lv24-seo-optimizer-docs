@@ -35,7 +35,7 @@ only through provider API calls and the delivery channels you enable. See
 ## CLI or MCP — which should I use?
 
 Both sit on the same engine and return the same data. The CLI is for terminals, cron and CI. The MCP
-server exposes 11 tools to coding agents over stdio or streamable HTTP. See
+server exposes 12 tools to coding agents over stdio or streamable HTTP. See
 [MCP and agent skills](/mcp/).
 
 ## Desktop app or CLI?

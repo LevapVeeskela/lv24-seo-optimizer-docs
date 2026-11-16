@@ -10,7 +10,10 @@
       "Crawl and audit": "Обход и аудит",
       "Reports": "Отчёты",
       "Scheduling": "Расписание",
-      "Agents and MCP": "Агенты и MCP"
+      "Agents and MCP": "Агенты и MCP",
+      "Logs": "Логи",
+      "Tasks": "Задачи",
+      "Backup": "Резервные копии"
     },
     "descriptions": {
       "version": "Вывести версию движка и имя пакета.",
@@ -37,7 +40,12 @@
       "mcp-serve": "Запустить MCP-сервер через stdio или streamable HTTP.",
       "install": "Влить запись MCP-сервера в конфиг клиента; --print показывает JSON.",
       "export-tools": "Записать реестр инструментов MCP в schemas/tools.json.",
-      "export-skills": "Скопировать упакованные навыки агентов в --out."
+      "export-skills": "Скопировать упакованные навыки агентов в --out.",
+      "logs-analyze": "Разобрать один локальный JSON-лог nginx: сводка по ботам и доля crawl waste; только чтение.",
+      "tasks-list": "Список задач-находок от новых к старым с фильтрами по свойству, типу и состоянию.",
+      "tasks-add": "Создать или обновить задачу-находку; идемпотентно по типу, свойству, URL и правилу.",
+      "tasks-update": "Перевести задачу по разрешённым переходам жизненного цикла.",
+      "backup-create": "Записать переносимый архив рабочей области с отредактированным конфигом и согласованной копией базы."
     }
   },
   "zh": {
@@ -51,7 +59,10 @@
       "Crawl and audit": "抓取与审计",
       "Reports": "报告",
       "Scheduling": "定时任务",
-      "Agents and MCP": "智能体与 MCP"
+      "Agents and MCP": "智能体与 MCP",
+      "Logs": "日志",
+      "Tasks": "任务",
+      "Backup": "备份"
     },
     "descriptions": {
       "version": "输出引擎版本和包名。",
@@ -78,7 +89,12 @@
       "mcp-serve": "通过 stdio 或 streamable HTTP 运行 MCP 服务器。",
       "install": "将 MCP 服务器条目合并进宿主客户端配置；--print 显示 JSON。",
       "export-tools": "将 MCP 工具注册表写入 schemas/tools.json。",
-      "export-skills": "将打包的智能体技能复制到 --out。"
+      "export-skills": "将打包的智能体技能复制到 --out。",
+      "logs-analyze": "分析一个本地 nginx JSON 访问日志：机器人汇总和抓取浪费；只读。",
+      "tasks-list": "按最新优先列出发现任务，支持属性、类型和状态过滤。",
+      "tasks-add": "创建或刷新发现任务；按类型、属性、URL 和规则幂等。",
+      "tasks-update": "让任务沿允许的生命周期转换移动。",
+      "backup-create": "写入可移植工作区归档，包含脱敏配置和一致的数据库副本。"
     }
   }
 }

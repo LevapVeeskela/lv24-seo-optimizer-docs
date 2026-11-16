@@ -1,6 +1,6 @@
 ---
 title: Releases and updates
-description: Engine 0.5.3 and desktop 0.3.0 releases, the 0.5.2, 0.2.3 and 0.2.2 history, signed auto-update matrix, release pipeline, version pinning and rollback.
+description: Engine 0.6.0 and desktop 0.4.0 releases, the 0.5.3, 0.3.0 and older history, signed auto-update matrix, release pipeline, version pinning and rollback.
 ---
 
 # Releases and updates
@@ -9,10 +9,100 @@ The current releases are:
 
 | Product | Version | Released | Notes |
 |---|---|---|---|
-| Engine | `lv24-seo 0.5.3` | 2026-11-16 | Provider honesty, hardened crawl, `--strict`, typed store errors, two-phase MCP write contract |
-| Desktop | `0.3.0` | 2026-11-16 | Project wizard, crawl screen, report comparison and export, settings save workflow, integrations, reporting window and run status; bundles engine 0.5.3 |
+| Engine | `lv24-seo 0.6.0` | 2026-11-16 | Log analysis, attributed change digest, task lifecycle (schema v3), portable backup, 12th MCP tool and 20 CLI commands |
+| Desktop | `0.4.0` | 2026-11-16 | Logs, Tasks and Backup pages, digest card, bundled engine 0.6.0 and `MIN_ENGINE_VERSION` 0.6.0 |
 
-The desktop version and the engine version are independent, but the desktop pins an exact engine and refuses one below its minimum. `0.3.0` bundles `0.5.3` and still accepts an engine as old as `0.5.2`.
+The desktop version and the engine version are independent, but the desktop pins an exact engine and refuses one below its minimum. `0.4.0` bundles `0.6.0` and requires at least `0.6.0`, so an installed `0.5.x` engine is reported as incompatible.
+
+## Engine 0.6.0
+
+Released on 2026-11-16. It adds local nginx log analysis, an attributed change digest in the weekly report, a finding/task
+lifecycle with schema v3, a portable project backup and the twelfth MCP tool. The CLI now has 20 top-level commands.
+
+What changed:
+
+- **Log analysis.** `logs analyze --file ABS [--bot …]` reads exactly one local nginx JSON access log of at most 100 MiB
+  and returns `bot_daily` rows (hits, bytes, p95 request time per date, bot and status class) plus a `crawl_waste`
+  summary with the by-bot split. Redirects, errors, assets, `/api/` calls and tracking-parameter requests count as waste,
+  each request once. The path must be absolute and a regular file; globs, UNC/device paths and larger files fail with
+  `INVALID_INPUT` before anything is read. The file is opened read-only once and nothing is uploaded or stored.
+- **12th MCP tool.** `seo_log_analysis(file, bot="")` is read-only (`readOnlyHint: true`, `writes_local_state: false`),
+  needs no service, store or workspace, and returns the same `data`, `meta` and `warnings` as the CLI.
+- **Attributed change digest.** When the two GSC windows are comparable and the store holds crawl issues or pages, the
+  weekly report adds an `Attributed change digest` section: each material change gets a candidate cause
+  (`new_crawl_issue`, `resolved_crawl_issue`, `indexing_event`, `page_state`, `unexplained`), a confidence, up to three
+  evidence rows and a `next_action`. With no matching evidence the item stays `unexplained` with a limitation; items are
+  capped at 8 and evidence at 3 per item.
+- **Task lifecycle (schema v3).** `tasks list`, `tasks add` and `tasks update` manage findings keyed by
+  `(kind, property_id, url, rule_id)` with states `open`, `in_progress`, `verified` and `dismissed`. `add` is idempotent
+  and reports `created`, `existing` or `reopened`; a verified finding observed again reopens, a dismissed one stays
+  dismissed. Only the documented transitions are accepted, `list` is newest-first and bounded (1–1000, default 200), and
+  `--payload` rejects credential-shaped keys. The migration is additive.
+- **Portable backup.** `backup create --out ABS [--force]` writes `lv24-seo-backup-YYYYMMDDTHHMMSSZ.zip` with
+  `manifest.json` (sizes and SHA-256 per member), a redacted `seo.toml` with `storage.data_dir` reset to `./data`, and a
+  consistent `data/seo.sqlite3` copy made through the SQLite backup API. Secrets, tokens, logs and caches are never
+  included; the source is read-only and the archive is written atomically. Restore is not implemented.
+- **Surface and schema.** 20 top-level CLI commands (13 groups and 7 commands), 12 MCP tools (10 read-class, including
+  `seo_log_analysis`, plus 2 gated writes that still return `WRITE_DISABLED`), 3 resources and 3 prompts unchanged.
+  Schema version is 3; `ReportSection` gained optional `total`, `truncated` and `data_age` fields, and a concurrent first
+  open retries the WAL switch instead of failing on `SQLITE_BUSY`.
+
+Verification recorded for this release:
+
+| Check | Result |
+|---|---|
+| PyPI | `lv24-seo 0.6.0` published |
+| npm | `@lv24/seo 0.6.0` published |
+| MCP Registry | `io.github.LevapVeeskela/lv24-seo 0.6.0` published |
+| CI | Green on Linux, Windows and macOS |
+
+Known limits in 0.6.0:
+
+- Bot detection is User-Agent only: a spoofed UA is not a verified crawler and non-search crawlers are `other`.
+- Log analysis accepts one file of at most 100 MiB; there is no rotation, glob, remote fetch or persisted log history.
+- `backup create` has no restore command; the manifest is the contract for a manual restore, and tokens are excluded.
+- Tasks are CLI-only; no MCP tool or report section consumes them yet.
+- The digest explains GSC headline deltas only; Yandex, Metrika, Bing, CrUX and PSI are not attributed, and indexing
+  events appear only when a caller supplies them.
+
+## Desktop 0.4.0
+
+Released on 2026-11-16. It adds Logs, Tasks and Backup pages and the report digest card, bundles `lv24-seo 0.6.0` and
+raises `MIN_ENGINE_VERSION` to `0.6.0`, so a `0.5.x` engine is reported as incompatible.
+
+What changed:
+
+- **Logs page.** A native `pick_log_file` dialog selects one nginx JSON access log (at most 100 MiB); the shell rejects a
+  path that did not come from the dialog or the app's own data/export directories with `PATH_NOT_APPROVED`. The page shows
+  a bot filter, parse summary (total, parsed, skipped), crawl waste with the by-bot split, a bot rollup table and JSON/CSV
+  export. Bots are User-Agent only and the page labels the result as triage.
+- **Tasks page.** Newest-first tasks with property, kind, state, rule, URL, timestamps and stored evidence; filters and a
+  row limit up to 500. State changes follow the allowed transitions, an invalid move is refused with the allowed set, and
+  the add form is idempotent with a 16 KiB evidence cap and credential-shaped keys rejected.
+- **Backup page.** `backup create` writes the archive into the app export folder or a folder chosen in the native
+  directory dialog; the panel shows the path, size, SHA-256, database inclusion, property and snapshot counts, the member
+  table and the engine's limitations. Restore is not implemented and the panel says so.
+- **Digest card.** The weekly report renders the engine's attributed change digest with cause, confidence, up to three
+  evidence rows and the next action, plus `showing N of M`, the oldest evidence date and skipped rows.
+- **Shell and engine.** New allow-listed commands `logs_analyze`, `tasks_list`, `tasks_add`, `tasks_update` and
+  `backup_create`, all argument-validated in the shell; `pick_directory` now also approves the backup output folder.
+  Contracts were regenerated from `lv24-seo 0.6.0`.
+
+Verification recorded for this release:
+
+| Check | Result |
+|---|---|
+| Published assets | 18 on `v0.4.0`, including the Windows portable `.zip.sha256` |
+| CI | Green for Linux x64, Windows x64 and macOS arm64 + x64 on the release commit |
+| In-app update | `0.3.0 → 0.4.0` verified through the Rust updater on Windows NSIS: **Desktop 0.4.0**, **Engine 0.6.0** and engine ready |
+
+Known limits in 0.4.0:
+
+- Backup restore is not implemented; unpack the archive manually and keep the source workspace until verified.
+- Bot triage is User-Agent only; there is no reverse-DNS or published-IP check.
+- No cancel and no background runs: a crawl, log analysis, report build, task refresh or backup runs to completion.
+- One log file at a time, at most 100 MiB; no rotation or persisted log history.
+- The digest is evidence-based triage, not causal proof.
 
 ## Engine 0.5.3
 
@@ -328,11 +418,11 @@ Manual-only is deliberate. A deb or rpm install is owned by the package database
 replace it; a portable ZIP has no installer to replace and may live on removable media. The desktop reports the installed bundle type and disables the in-app
 installer for those cases. It does not pretend that a manual package was updated.
 
-The Windows NSIS path has now been verified end-to-end four times: `0.2.0 → 0.2.1`, `0.2.1 → 0.2.2`,
-`0.2.2 → 0.2.3`, and `0.2.3 → 0.3.0`. For the fourth run, an installed `0.2.3` build updated through the
-new Rust updater, downloaded and verified the signed package, installed it in passive mode, relaunched,
-and reported **Desktop 0.3.0** with **Engine 0.5.3** and the engine ready. Any `0.2.x` install with the
-in-app updater can jump straight to `0.3.0`; `0.1.0` has no updater and needs one manual install.
+The Windows NSIS path has now been verified end-to-end five times: `0.2.0 → 0.2.1`, `0.2.1 → 0.2.2`,
+`0.2.2 → 0.2.3`, `0.2.3 → 0.3.0`, and `0.3.0 → 0.4.0`. For the fifth run, an installed `0.3.0` build
+updated through the Rust updater, downloaded and verified the signed package, installed it, relaunched,
+and reported **Desktop 0.4.0** with **Engine 0.6.0** and the engine ready. Any `0.2.x` install with the
+in-app updater can jump straight to `0.4.0`; `0.1.0` has no updater and needs one manual install.
 
 The `0.2.1 → 0.2.2` update runs the old `0.2.1` updater, which does not include the new tracked-PID
 cleanup. If a sidecar is active during that first update, retry after it exits or install `0.2.2`
@@ -346,12 +436,12 @@ approves the `desktop-release` environment; a non-owner run is skipped.
 
 | Input | Default | Meaning |
 |---|---|---|
-| `engine_version` | `0.5.3` | Exact engine bundled in the sidecar |
+| `engine_version` | `0.6.0` | Exact engine bundled in the sidecar |
 | `signed` | `false` | Request OS signing/notarization; not configured in this zero-spend repository |
 | `publish` | `false` | Create a GitHub release after every matrix build passes |
 | `tag` | Empty | `vX.Y.Z` release tag; required when `publish=true` |
 
-The default matches the `0.3.0` pin. The release gate rejects a manifest mismatch if a different version is passed.
+The default matches the `0.4.0` pin. The release gate rejects a manifest mismatch if a different version is passed.
 
 | Runner | Target | Bundles |
 |---|---|---|
@@ -366,7 +456,7 @@ days; the GitHub release is the durable distribution channel.
 ## Sidecar pin and checksums
 
 The release sidecar is a PyInstaller **onedir** tree, built on the matching host; PyInstaller does not cross-compile. The engine, Python, Pydantic, Typer and
-PyInstaller versions are pinned in `scripts/cli-checksums.json`. `0.3.0` pins engine `0.5.3` (unchanged from `0.2.3`), Python `3.12`, Pydantic `2.14.3`, Typer `0.29.0` and PyInstaller
+PyInstaller versions are pinned in `scripts/cli-checksums.json`. `0.4.0` pins engine `0.6.0` (up from `0.5.3`), Python `3.12`, Pydantic `2.14.3`, Typer `0.29.0` and PyInstaller
 `6.22.3`.
 
 PyInstaller onedir output is not byte-reproducible. The checksum policy is therefore split:
@@ -380,7 +470,7 @@ PyInstaller onedir output is not byte-reproducible. The checksum policy is there
   shipped target: matching target name, `hashPolicy: "rebuild"`, `ok: true`, a 64-hex
   hash, a positive size and the exact engine version.
 
-For `0.5.3`, Windows x64 has a reviewed local pin; Linux and macOS were rebuilt by the release workflow
+For `0.6.0`, Windows x64 has a reviewed local pin; Linux and macOS were rebuilt by the release workflow
 with passing rebuild-aware checksum reports, and their reviewed pins remain `null` until a local build is
 reviewed on those hosts. The `0.5.2` Windows pin did not carry over because the executable changes with
 the engine.
@@ -393,7 +483,7 @@ is not listed separately. Users who install manually verify the downloaded asset
 node scripts/verify-sidecar.mjs \
   --root src-tauri/engine \
   --target x86_64-pc-windows-msvc \
-  --engine-version 0.5.3
+  --engine-version 0.6.0
 ```
 
 ## `latest.json`, signing and publishing
@@ -425,18 +515,22 @@ uploaded manifest. A rerun reuses an existing draft, clears its assets and refus
 The desktop version must agree in `package.json`, `src-tauri/tauri.conf.json`, `src-tauri/Cargo.toml`, the Git tag and the release title. The engine pin lives
 in `scripts/cli-checksums.json`; the workflow passes `engine_version` explicitly and the release gate requires it to match the manifest.
 
-`MIN_ENGINE_VERSION` in `src-tauri/src/commands.rs` is `0.5.2` in the current source. The `0.3.0` bundle ships engine `0.5.3`,
-so the minimum is deliberately one engine release behind. The shell accepts an engine at least that new and marks an older one
+`MIN_ENGINE_VERSION` in `src-tauri/src/commands.rs` is `0.6.0` in the current source. The `0.4.0` bundle ships engine `0.6.0`,
+so the minimum matches the bundled engine and a `0.5.x` engine is reported as incompatible. The shell accepts an engine at least that new and marks an older one
 offline with a notice. A newer engine passes the gate but is not the release-tested pin. A development build may use `LV24_SEO_BIN` with another version; the UI
 labels it external and still checks the minimum. A `PATH` engine is used only when `LV24_SEO_ALLOW_PATH_ENGINE=1`.
 
 ## One-time 0.1.0 upgrade
 
-`0.1.0` has no updater, endpoint or public key. It cannot discover or install `0.3.0`. Download and install `0.3.0` manually once (NSIS installer or portable
-ZIP on Windows). After that, the `0.3.0` installation can auto-update to later releases when it uses an auto-update-capable bundle.
+`0.1.0` has no updater, endpoint or public key. It cannot discover or install `0.4.0`. Download and install `0.4.0` manually once (NSIS installer or portable
+ZIP on Windows). After that, the `0.4.0` installation can auto-update to later releases when it uses an auto-update-capable bundle.
 
 ## Earlier releases
 
+- **Desktop 0.3.0** added the project wizard, crawl screen, report comparison and export, settings save workflow,
+  integrations, per-workspace reporting window and run status.
+- **Engine 0.5.3** made MCP writes two-phase, moved the crawl off the event loop, added `--strict` exit `5`, typed
+  store errors and honest GSC/Metrika/Bing/Yandex data.
 - **Desktop 0.2.3** moved the update install into Rust with real cancellation, made the config path a
   dialog-approved capability, rejected network and device paths and redacted engine output before the webview.
 - **Desktop 0.2.2** fixed the locked-sidecar updater failure, made configuration writes durable and private, cleared stale
@@ -483,4 +577,4 @@ those protections system-wide.
 
 See [Security and privacy](/security/) for updater trust and [Architecture](/architecture/) for the sidecar layout.
 
-Source: `_source/engine-releases-0.5.3.md`, `_source/engine-releases-0.5.2.md`, `_source/desktop-releases-0.3.0.md`, `_source/desktop-releases-0.2.3.md`, `_source/desktop-releases-0.2.2.md`, `_source/desktop-releases-0.2.1.md`, `_source/desktop-releases-0.2.0.md`, `_source/desktop-release.md`, `_source/desktop-security.md`.
+Source: `_source/engine-releases-0.6.0.md`, `_source/engine-releases-0.5.3.md`, `_source/engine-releases-0.5.2.md`, `_source/desktop-releases-0.4.0.md`, `_source/desktop-releases-0.3.0.md`, `_source/desktop-releases-0.2.3.md`, `_source/desktop-releases-0.2.2.md`, `_source/desktop-releases-0.2.1.md`, `_source/desktop-releases-0.2.0.md`, `_source/desktop-release.md`, `_source/desktop-security.md`.

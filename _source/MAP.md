@@ -19,12 +19,14 @@ to site routes.
 | `engine-releases-0.5.1.md` | `/release/` | Engine 0.5.1 notes, kept for the previous bugfix release. |
 | `engine-releases-0.5.2.md` | `/release/` | Engine 0.5.2 notes: data-dir anchoring, replay-safe writes, sitemap redaction, GSC cap honesty, opt-in logging. |
 | `engine-releases-0.5.3.md` | `/release/` | Engine 0.5.3 notes: two-phase MCP writes, crawl off-loop, `--strict`, typed store errors, provider honesty. |
+| `engine-releases-0.6.0.md` | `/release/` | Engine 0.6.0 notes: log analysis and the 12th MCP tool, attributed digest, task lifecycle (schema v3), portable backup, 20 CLI commands. |
 | `desktop-README.md` | `/desktop/`, `/install/` | Desktop install matrix, update, troubleshooting. |
 | `desktop-release.md` | `/release/` | Release pipeline, signing, assets, rollback. |
 | `desktop-security.md` | `/security/`, `/desktop/` | Shell boundary, secrets, updater trust. |
 | `desktop-architecture.md` | `/architecture/`, `/desktop/` | FSD layout, commands, stores, resources. |
 | `desktop-releases-0.2.2.md` | `/release/` | Desktop 0.2.2 hardening notes: sidecar cleanup, `UPDATE_ENGINE_BUSY`, secrets, durable writes, engine 0.5.2. |
 | `desktop-releases-0.3.0.md` | `/release/` | Desktop 0.3.0 notes: project wizard, crawl screen, report comparison and export, settings save workflow, integrations, reporting window and run status. |
+| `desktop-releases-0.4.0.md` | `/release/` | Desktop 0.4.0 notes: Logs, Tasks and Backup pages, digest card, bundled engine 0.6.0 and `MIN_ENGINE_VERSION` 0.6.0. |
 | `desktop-releases-0.2.3.md` | `/release/` | Desktop 0.2.3 notes: Rust updater and cancel, dialog-approved config path, path rejection, redaction, UI state, release CI. |
 | `desktop-releases-0.2.1.md` | `/release/` | Desktop 0.2.1 patch notes: Metrika token and shared CLI keychain. |
 | `desktop-releases-0.2.0.md` | `/release/` | Desktop 0.2.0 release notes, kept for the first multi-platform release. |

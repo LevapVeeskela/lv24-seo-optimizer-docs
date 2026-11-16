@@ -25,13 +25,13 @@ description: Команды, глобальные флаги, JSON-конвер�
 С флагом `--json` команда печатает ровно один JSON-документ и ничего больше:
 
 ```json
-{ "ok": true, "data": {}, "meta": { "version": "0.5.3", "duration_ms": 812 }, "warnings": [] }
+{ "ok": true, "data": {}, "meta": { "version": "0.6.0", "duration_ms": 812 }, "warnings": [] }
 ```
 
 Неудачная команда использует ту же форму с `ok: false` и объектом `error` вместо `data`:
 
 ```json
-{ "ok": false, "error": { "code": "AUTH_REQUIRED", "message": "Google Search Console token is missing", "retryable": false, "next_action": "lv24-seo auth login --provider gsc" }, "meta": { "version": "0.5.3" }, "warnings": ["gsc: token missing"] }
+{ "ok": false, "error": { "code": "AUTH_REQUIRED", "message": "Google Search Console token is missing", "retryable": false, "next_action": "lv24-seo auth login --provider gsc" }, "meta": { "version": "0.6.0" }, "warnings": ["gsc: token missing"] }
 ```
 
 - `data` зависит от команды. В `meta` всегда есть `version`, часто добавляются `duration_ms`,
@@ -165,7 +165,12 @@ redacting-handler в CLI и `lv24-seo mcp serve`; если переменная 
 | Crawl and audit | `crawl` | Не зависит от провайдеров; сохраняет локальные страницы и проблемы, если настроено хранилище. |
 | Reports | `report weekly`, `report diff` | `weekly` сохраняет локальный снимок; `diff` только читает. |
 | Scheduling | `schedule print`, `schedule install` | `print` только рендерит; `install` пишет файлы планировщика хоста. |
+| Logs | `logs analyze` | Читает один локальный JSON access-лог nginx; не сохраняет и не отправляет его. |
+| Tasks | `tasks list`, `tasks add`, `tasks update` | Журнал задач рабочей области; `add` идемпотентен, `update` соблюдает разрешённые переходы. |
+| Backup | `backup create` | Пишет один переносимый архив рабочей области; источник только для чтения, восстановление вручную. |
 | Agents and MCP | `mcp serve`, `install`, `export tools`, `export skills` | Конфиг хоста, сгенерированные файлы или локальный сервер. |
+
+В CLI 20 команд верхнего уровня: 13 групп и 7 команд (`version`, `doctor`, `init`, `properties`, `stats`, `crawl`, `install`).
 
 ## Примеры
 
@@ -212,6 +217,23 @@ lv24-seo crawl --start https://example.com --max-urls 500 --json
 сайта с тем, что увидел обход, в шести корзинах. Если возвращается `complete: false`, затронутые
 корзины — кандидаты, а не подтверждённые находки; `limitations[]` называет усечённый вход.
 
+### Логи, задачи и backup
+
+```bash
+lv24-seo logs analyze --file /var/log/nginx/access.log --json
+lv24-seo tasks list --state open --limit 200 --json
+lv24-seo tasks add --kind issue --url https://example.com/page --rule broken-internal-link --json
+lv24-seo tasks update TASK_ID --state verified --json
+lv24-seo backup create --out /srv/backups --json
+```
+
+`logs analyze` читает ровно один абсолютный JSON access-лог nginx не более 100 MiB и возвращает строки
+`bot_daily` и сводку `crawl_waste`; файл открывается только для чтения и ничего не сохраняется.
+`tasks add` идемпотентен по `(kind, property_id, url, rule_id)` и сообщает `created`, `existing` или
+`reopened`; `tasks update` принимает только документированные переходы, а `tasks list` ограничен.
+`backup create` пишет `lv24-seo-backup-YYYYMMDDTHHMMSSZ.zip` с манифестом, отредактированным `seo.toml`
+и согласованной копией базы; токены, логи и кэши исключены, восстановление вручную.
+
 ### Отчёты
 
 ```bash
@@ -221,7 +243,10 @@ lv24-seo report diff --markdown
 
 `report weekly` собирает и сохраняет снимок; добавьте `--send`, чтобы доставить его через каналы,
 включённые в `seo.toml`. `--out` пишет канонический английский `report.json` и `report.html` на
-языке `report.locale`. `report diff` сравнивает два сохранённых недельных снимка, не обращается к
+языке `report.locale`. Когда есть два сопоставимых окна GSC и сохранённые доказательства обхода,
+отчёт добавляет раздел `Attributed change digest`, который сопоставляет каждое значимое изменение
+с предполагаемой причиной, уверенностью и до тремя строками доказательств; без доказательств пункт
+остаётся `unexplained` с ограничением. `report diff` сравнивает два сохранённых недельных снимка, не обращается к
 провайдерам и требует двух запусков за разные периоды. `--markdown` печатает в stdout только
 Markdown; предупреждения идут в stderr.
 

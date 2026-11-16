@@ -1,11 +1,11 @@
 ---
 title: MCP and agent skills
-description: Eleven MCP tools, three resources, three prompts, transports, client registration and the shipped agent skills.
+description: Twelve MCP tools, three resources, three prompts, transports, client registration and the shipped agent skills.
 ---
 
 # MCP and agent skills
 
-The MCP server exposes a small, opinionated surface: 11 tools, 3 resources and 3 prompts. The tool registry is the single source of truth; JSON schemas, CLI help and `schemas/tools.json` are generated from it and must never be edited by hand.
+The MCP server exposes a small, opinionated surface: 12 tools, 3 resources and 3 prompts. The tool registry is the single source of truth; JSON schemas, CLI help and `schemas/tools.json` are generated from it and must never be edited by hand.
 
 Related: [Reports and diffs](/reports/), [Data sources and quotas](/providers/), [Crawl and audit](/crawl/), [Automation and delivery](/automation/).
 
@@ -62,6 +62,7 @@ The contract is implemented in the server, but the shipped `SeoService` has no Y
 | `seo_report_diff` | `base`, `head` as `START..END` | Headline changes, issue counts, opportunity churn, limitations, Markdown |
 | `seo_indexing_triage` | None | Buckets with reason, count, examples and `next_action` |
 | `seo_opportunities` | `days` 1–90 (default 28), `limit` 1–500, `min_impressions` | Ranked opportunities with evidence and `expected_gain` |
+| `seo_log_analysis` | `file` (absolute path), `bot` (`googlebot`, `yandexbot`, `bingbot`, `other` or empty) | Bot rollup and crawl-waste summary for one local nginx JSON access log |
 | `seo_recrawl_request` | `host_id` (default: configured host), `urls`, `allow_write` (default `false`), `plan_hash`, `confirm_token` | Two-phase gated write; `WRITE_DISABLED` while no provider adapter is wired |
 | `seo_sitemap_submit` | `property`, `sitemap_url`, `action`, `allow_write` (default `false`), `plan_hash`, `confirm_token` | Two-phase gated write; `WRITE_DISABLED` while no provider adapter is wired |
 
@@ -71,13 +72,15 @@ The MCP weekly tool caps `days` at 90 and `lag_days` at 14 with a warning; value
 
 `seo_crawl_site` filters by real rule ids such as `robots-blocked`, `broken-internal-link` or `canonical-mismatch`. There is no `rules` parameter and no `--ignore-robots` flag. The returned issue list is capped at 500 with `meta.issues_shown`, `meta.issues_truncated` and `meta.issues_filtered_by`. A sitemap that fails to load reports only the exception type, never the URL or query string.
 
+`seo_log_analysis` is the twelfth tool and the only one that needs no service, store or workspace. It reads one local nginx JSON access log of at most 100 MiB, returns the same `data`, `meta` and `warnings` as `lv24-seo logs analyze`, and is read-only: the file is opened once and nothing is uploaded or stored. Bot classes are User-Agent only, so the result is triage, not proof of crawl identity.
+
 ## Resources
 
 | URI | Content |
 |---|---|
 | `seo://config` | Effective config with secrets redacted |
 | `seo://report/latest` | Last successful weekly report in this server session, as Markdown |
-| `seo://docs/tools` | Generated JSON reference for the eleven tools |
+| `seo://docs/tools` | Generated JSON reference for the twelve tools |
 
 Exactly three resources exist. There is no per-property baseline resource.
 
@@ -181,4 +184,4 @@ Codes: `AUTH_REQUIRED`, `AUTH_INVALID`, `PROPERTY_NOT_FOUND`, `QUOTA_EXCEEDED`, 
 - **Technical audit.** Crawl up to 500 URLs with `seo_crawl_site` and summarise critical and high issues by rule id. Do not describe an unvisited URL as broken.
 - **Write request.** Prepare a recrawl plan for these URLs and show the quota first. Do not write anything until I approve the plan.
 
-Source: `_source/engine-mcp.md`, `_source/engine-skills.md`, `_source/engine-cli.md`, `_source/engine-releases-0.5.2.md`, `_source/engine-releases-0.5.3.md`.
+Source: `_source/engine-mcp.md`, `_source/engine-skills.md`, `_source/engine-cli.md`, `_source/engine-releases-0.5.2.md`, `_source/engine-releases-0.5.3.md`, `_source/engine-releases-0.6.0.md`.

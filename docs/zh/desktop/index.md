@@ -1,24 +1,27 @@
 ---
 title: 桌面应用
-description: LV24 SEO Optimizer 桌面外壳增加了什么、签名更新如何工作，以及 0.3.0 工作流功能与 0.2.3、0.2.2 历史。
+description: LV24 SEO Optimizer 桌面外壳增加了什么、签名更新如何工作，以及 0.4.0 的 Logs、Tasks、Backup 和 Digest 功能与 0.3.0 及更早历史。
 ---
 
 # 桌面应用
 
 LV24 SEO Optimizer Desktop 是围绕 `lv24-seo` 引擎的本地、离线优先 Tauri v2 外壳。Python CLI 仍是核心引擎：它负责提供商客户端、抓取规则、分析、报告构建和投递。桌面端增加的是 React 界面和 Rust 进程桥，而不是第二套 SEO 实现。
 
-`0.3.0` 以内置 PyInstaller onedir 边车的形式捆绑 `lv24-seo 0.5.3`，并增加工作流屏幕：项目向导、抓取、报告比较与导出、集成和运行状态。没有云账号、遥测、本地 HTTP API 或搜索结果页抓取。桌面端通过固定且带允许列表的子进程桥与引擎通信。
+`0.4.0` 以内置 PyInstaller onedir 边车的形式捆绑 `lv24-seo 0.6.0`，并增加 Logs、Tasks 和 Backup 页面以及报告摘要卡片。它要求引擎 `0.6.0` 或更新（`MIN_ENGINE_VERSION`）。没有云账号、遥测、本地 HTTP API 或搜索结果页抓取。桌面端通过固定且带允许列表的子进程桥与引擎通信。
 
 ## 增加了什么
 
 - **工作区选择器。** 在 Settings 中通过原生文件对话框选择引擎应使用的 `seo.toml`。选中的配置路径就是工作区身份。配置被移动或删除时会显示为缺失，可重新选择，而不是阻塞启动。
 - **统计仪表板。** 渲染有边界的 `stats` 信封：每个已配置提供商一张卡片，包含当前值、上一窗口比较、覆盖率、数据年龄、截断和限制。CTR 变化以百分点显示。不补零，也不做跨引擎合计；未知保持未知。
-- **设置表单和配置输出。** Settings 屏幕是可编辑表单。Configuration 屏幕只读，包含 Overview、Effective、Source TOML、Diff、Validation、Doctor 和 Environment 标签页。Source TOML 已脱敏且只读；没有原始 TOML 编辑器。保存使用字段级补丁，保留注释和键顺序，用引擎校验，创建带时间戳的备份（保留最近五个）并原子替换文件。在 `0.3.0` 中，临时文件和备份在 POSIX 上权限为 `0600`，在 Windows 上带仅所有者 DACL，两者都会 fsync，重命名后还会 fsync 父目录。读取上限为 8 MiB；设置按字段加载；Windows 保留设备名和结尾点/空格在每个路径组件中都会被拒绝。
-- **报告。** 在本地运行周报，将 `report.json` 和 `report.html` 写入应用数据目录，并在默认浏览器中打开 HTML。报告 HTML 从不嵌入应用 webview。报告或导出失败时会说明失败原因和下一步。
+- **设置表单和配置输出。** Settings 屏幕是可编辑表单。Configuration 屏幕只读，包含 Overview、Effective、Source TOML、Diff、Validation、Doctor 和 Environment 标签页。Source TOML 已脱敏且只读；没有原始 TOML 编辑器。保存使用字段级补丁，保留注释和键顺序，用引擎校验，创建带时间戳的备份（保留最近五个）并原子替换文件。在 `0.4.0` 中，临时文件和备份在 POSIX 上权限为 `0600`，在 Windows 上带仅所有者 DACL，两者都会 fsync，重命名后还会 fsync 父目录。读取上限为 8 MiB；设置按字段加载；Windows 保留设备名和结尾点/空格在每个路径组件中都会被拒绝。
+- **报告。** 在本地运行周报，将 `report.json` 和 `report.html` 写入应用数据目录，并在默认浏览器中打开 HTML。报告 HTML 从不嵌入应用 webview。它比较两个最新存储的快照，导出 JSON（`lv24-seo.report/v1`）或 CSV，并渲染引擎的归因变更摘要，包含原因、置信度、证据行和下一步操作。
 - **建议与智能体队列。** 将报告和统计发现转换为有边界的 Markdown 提示词。你可以复制提示词、导出为 `.md`，或将其保存在带状态的本地智能体队列中。队列存储在 webview 的本地存储中；不会自动提交任何内容。
 - **通过 stdin 传递密钥。** token 输入是密码字段，只通过 IPC 发送一次。Rust 层将其传给 `lv24-seo auth set --provider <p> --stdin`，清零缓冲区，并且从不把值写入日志、MobX 存储、localStorage、剪贴板或诊断包。保存后，界面只显示是否存在及来源。
-- **Yandex Metrika 令牌。** `0.3.0` 在 TypeScript 和 Rust 允许列表、Settings 徽章、密钥对话框和 en/ru/zh 标签中保留独立的 `metrika` 提供商（`yandex_metrika_token`）。Metrika 计数器绝不借用 Webmaster 令牌。
+- **Yandex Metrika 令牌。** `0.4.0` 在 TypeScript 和 Rust 允许列表、Settings 徽章、密钥对话框和 en/ru/zh 标签中保留独立的 `metrika` 提供商（`yandex_metrika_token`）。Metrika 计数器绝不借用 Webmaster 令牌。
 - **与 CLI 共享密钥存储。** 桌面应用在同一操作系统用户下运行同一引擎，因此在终端通过 `lv24-seo auth set` 保存的 token 在桌面应用中可见，反之亦然。系统钥匙串条目使用服务名 `lv24-seo` 和相同的密钥名。`LV24_SEO_*` 环境变量会被继承，但在 UI 中显示为只读：桌面端无法删除环境变量，因此会明确说明，而不是提供一个无效的删除按钮。只有两个界面使用同一 workspace/data 目录时，才共享显式启用的 `<data-dir>/secrets.json` 回退文件。
+- **Logs 页面。** 原生 `pick_log_file` 选择一个 nginx JSON 访问日志（不超过 100 MiB）；其他路径会以 `PATH_NOT_APPROVED` 拒绝。页面显示机器人过滤、解析摘要、带按机器人拆分的抓取浪费、机器人汇总表和 JSON/CSV 导出。机器人仅按 User-Agent，结果标记为分诊。
+- **Tasks 页面。** 最新优先的发现，包含属性、类型、状态、规则、URL、时间和存储的证据；支持过滤和最多 500 行的限制。状态变化遵循允许的转换，添加表单幂等，证据上限 16 KiB。
+- **Backup 页面。** `backup create` 把可移植归档写入导出目录或原生对话框选择的目录；面板显示路径、大小、SHA-256、是否包含数据库、属性和快照数量以及成员表。未实现恢复，面板会说明。
 - **更新面板。** 在启动时和按需检查已签名的 `latest.json`，显示发行说明，并且只有在你确认后才安装。安装器启动前，只停止本应用实例登记的引擎 sidecar PID；如果无法停止，安装会被 `UPDATE_ENGINE_BUSY` 阻止。下载和安装都在 Rust 中执行，而不是在 webview 中，并且可以在安装器启动前取消下载。
 
 仪表板和报告屏幕基于与终端相同的引擎命令：
@@ -34,12 +37,12 @@ lv24-seo report weekly --days 7 --lag-days 2 --json
 
 | 包类型 | 安装方式 | 应用内更新 |
 |---|---|---|
-| Windows NSIS | `LV24.SEO.Optimizer_0.3.0_x64-setup.exe` | 是 |
-| Windows 便携 ZIP | `LV24-SEO-Optimizer_0.3.0_x64-portable.zip`；解压整个文件夹并运行 `lv24-seo-desktop.exe` | 否 |
-| Linux AppImage | `LV24.SEO.Optimizer_0.3.0_amd64.AppImage`；`chmod +x` 并运行 | 是 |
-| Linux deb | `LV24.SEO.Optimizer_0.3.0_amd64.deb`；`sudo apt install ./*_amd64.deb` | 否 |
-| Linux rpm | `LV24.SEO.Optimizer-0.3.0-1.x86_64.rpm`；`sudo dnf install ./*_amd64.rpm` | 否 |
-| macOS `.app`（来自 DMG） | `LV24.SEO.Optimizer_0.3.0_aarch64.dmg` 或 `LV24.SEO.Optimizer_0.3.0_x64.dmg`；拖到 Applications | 是 |
+| Windows NSIS | `LV24.SEO.Optimizer_0.4.0_x64-setup.exe` | 是 |
+| Windows 便携 ZIP | `LV24-SEO-Optimizer_0.4.0_x64-portable.zip`；解压整个文件夹并运行 `lv24-seo-desktop.exe` | 否 |
+| Linux AppImage | `LV24.SEO.Optimizer_0.4.0_amd64.AppImage`；`chmod +x` 并运行 | 是 |
+| Linux deb | `LV24.SEO.Optimizer_0.4.0_amd64.deb`；`sudo apt install ./*_amd64.deb` | 否 |
+| Linux rpm | `LV24.SEO.Optimizer-0.4.0-1.x86_64.rpm`；`sudo dnf install ./*_amd64.rpm` | 否 |
+| macOS `.app`（来自 DMG） | `LV24.SEO.Optimizer_0.4.0_aarch64.dmg` 或 `LV24.SEO.Optimizer_0.4.0_x64.dmg`；拖到 Applications | 是 |
 | MSI | 本项目不生产 | 否 |
 
 Windows 需要 Windows 10/11 x64 和 WebView2。Linux 仅提供 x64，基于 Ubuntu 22.04 构建，glibc 2.35 基线。macOS 需要 13 或更高；Apple silicon 使用 arm64 DMG，Intel 使用 x64 DMG。操作系统包未签名或仅 ad-hoc 签名，因此 SmartScreen 和 Gatekeeper 警告是预期行为。运行安装器前请校验 `SHA256SUMS.txt`。
@@ -73,9 +76,10 @@ Windows 需要 Windows 10/11 x64 和 WebView2。Linux 仅提供 x64，基于 Ubu
 `0.2.0 → 0.2.1` 更新已完成端到端验证。`0.2.1 → 0.2.2` 更新也已在 Windows 上验证：已安装的
 `0.2.1` 检测到 `0.2.2`，下载并验证已签名包，以 passive 模式安装，重启后报告 `0.2.2` 且引擎
 `0.5.2` 就绪。`0.2.2 → 0.2.3` 更新以同样方式验证：已安装的 `0.2.2` 在应用内更新后报告
-**Desktop 0.2.3**、**Engine 0.5.3** 且引擎就绪。`0.2.3 → 0.3.0` 更新通过新的 Rust 更新器验证：
-已安装的 `0.2.3` 报告 **Desktop 0.3.0**、**Engine 0.5.3** 且引擎就绪。任何 `0.2.x` 安装都可直接
-升级到 `0.3.0`。
+**Desktop 0.2.3**、**Engine 0.5.3** 且引擎就绪。`0.2.3 → 0.3.0` 更新通过 Rust 更新器验证：
+已安装的 `0.2.3` 报告 **Desktop 0.3.0**、**Engine 0.5.3** 且引擎就绪。`0.3.0 → 0.4.0` 更新以同样
+方式验证：已安装的 `0.3.0` 报告 **Desktop 0.4.0**、**Engine 0.6.0** 且引擎就绪。任何 `0.2.x`
+安装都可直接升级到 `0.4.0`。
 
 `0.2.2` 的安装也已在 macOS 和 Linux 上验证：macOS 27.2 上的 arm64 DMG 通过
 `codesign --verify --deep --strict`，启动后引擎 `0.5.2` 就绪并获取了 `0.2.2` 清单；
@@ -85,6 +89,16 @@ Ubuntu 24.04 上的 deb、AppImage extract-and-run fallback 和 Fedora 45 上的
 `0.2.1 → 0.2.2` 更新由旧的 `0.2.1` 更新器执行，其中没有新的受跟踪 PID 清理。如果首次更新期间
 有 sidecar 正在运行，请在其退出后重试，或手动安装 `0.2.2`。`0.2.2 → 0.2.3` 使用受跟踪 PID
 清理，并在无法停止受跟踪 sidecar 时以 `UPDATE_ENGINE_BUSY` 阻止。
+
+## 0.4.0 Logs、任务与备份
+
+2026-11-16 发布。捆绑 `lv24-seo 0.6.0` 并要求 `MIN_ENGINE_VERSION` `0.6.0`，因此 `0.5.x` 引擎会被报告为不兼容。
+
+- **Logs。** `pick_log_file` 选择一个 nginx JSON 访问日志（不超过 100 MiB）；不是来自对话框或应用自身数据/导出目录的路径会以 `PATH_NOT_APPROVED` 拒绝。页面显示机器人过滤、解析摘要（总数、已解析、已跳过）、带按机器人拆分的抓取浪费、机器人汇总表和 JSON/CSV 导出。机器人仅按 User-Agent，结果标记为分诊，而不是抓取覆盖的证明。
+- **Tasks。** 最新优先的发现，包含属性、类型、状态、规则、URL、时间和存储的证据；支持过滤和最多 500 行的限制。状态变化遵循允许的转换，非法转换会带允许集合被拒绝，添加表单幂等，证据上限 16 KiB 并拒绝形似凭据的键。
+- **Backup。** `backup create` 把一个可移植归档写入导出目录或原生对话框选择的目录；面板显示路径、大小、SHA-256、是否包含数据库、属性和快照数量、成员表以及引擎限制。未实现恢复，面板会说明。
+- **摘要卡片。** 周报渲染引擎的归因变更摘要，包含原因、置信度、最多三行证据和下一步操作，以及 `showing N of M`、最早证据日期和跳过行数。
+- **外壳与引擎。** 新增允许列表命令 `logs_analyze`、`tasks_list`、`tasks_add`、`tasks_update` 和 `backup_create`，都在外壳中校验参数；`pick_directory` 现在也批准备份输出目录。契约从 `lv24-seo 0.6.0` 重新生成。
 
 ## 0.3.0 工作流
 
@@ -143,7 +157,7 @@ webview 不再拥有更新器插件的下载和安装权限；其能力列表只
 
 在 Linux 上，CLI 运行器继承 Secret Service 所需的会话总线和 XDG 运行时变量（`DBUS_SESSION_BUS_ADDRESS`、`XDG_RUNTIME_DIR`、`TMPDIR` 及相关路径），同时过滤无关的主机变量。这使桌面进程可以访问操作系统钥匙串。密钥值仍然只通过 stdin 传递。如果钥匙串不可用，请使用 `LV24_SEO_*` 环境变量或引擎显式启用的文件回退。
 
-## 0.3.0 中的抓取
+## 0.4.0 中的抓取
 
 桌面端有专门的 Crawl 屏幕：起始 URL 和 URL 预算、汇总计数、严重性/规则/文本过滤，以及 JSON/CSV 导出。表格最多渲染 500 行，而导出包含引擎返回的每一行；切换工作区会重置屏幕。运行会显示耗时，但没有取消按钮，离开屏幕也不会把运行移入后台队列；需要停止运行或让它独立于窗口时，请在终端使用 `lv24-seo crawl`。
 
@@ -166,7 +180,7 @@ webview 不再拥有更新器插件的下载和安装权限；其能力列表只
 | `UPDATE_ENGINE_BUSY` | 应用无法停止的 sidecar 进程占用了已安装的引擎文件 | 关闭占用 `lv24-seo` 的终端或应用运行，然后再次点击 **Download and install** |
 | 卡片显示 `missing_token` | 缺少提供商 token | 运行 `lv24-seo auth set --provider <p> --stdin` |
 | 卡片显示 `no_data` | 提供商可访问，但该窗口没有数据行 | 扩大窗口，或检查资源和数据延迟 |
-| 长时间调用看起来卡住 | 0.3.0 没有取消，只显示耗时 | 等待命令完成，或在终端运行同一命令 |
+| 长时间调用看起来卡住 | 0.4.0 没有取消，只显示耗时 | 等待命令完成，或在终端运行同一命令 |
 
 ## 已知限制
 
@@ -177,7 +191,12 @@ webview 不再拥有更新器插件的下载和安装权限；其能力列表只
 - 更新器需要访问 GitHub Releases 端点。端点被阻止或离线时，应用会停留在当前版本。
 - 更新器只能停止它自己启动的 sidecar。从终端或另一个应用副本启动的引擎不会被杀死；如果它占用已安装 sidecar，安装会被 `UPDATE_ENGINE_BUSY` 阻止。
 - `0.2.1 → 0.2.2` 更新由旧的 `0.2.1` 更新器执行，其中没有受跟踪 PID 清理。如果首次更新期间有 sidecar 正在运行，请在其退出后重试，或手动安装 `0.2.2`。`0.2.2 → 0.2.3` 及后续更新使用清理。
-- `0.3.0` 没有取消，也没有后台运行：抓取、报告构建或统计刷新会运行到完成，离开屏幕不会把运行移入队列。
+- `0.4.0` 没有取消，也没有后台运行：抓取、日志分析、报告构建、任务刷新或备份会运行到完成，离开屏幕不会把运行移入队列。
+- `0.4.0` 未实现备份恢复；请手动解压归档，并在验证副本前保留源工作区。
+- 机器人分诊仅基于 User-Agent：伪造的 UA 不会被发现，非搜索爬虫归为 `other`。
+- 一次一个日志文件，最多 100 MiB；没有轮转、glob、远程获取或持久日志历史。
+- `MIN_ENGINE_VERSION` 为 `0.6.0`，因此 `0.5.x` 引擎会被拒绝；桌面端不会静默把命令降级到旧引擎。
+- 摘要是基于证据的分诊，不是因果证明；没有证据的条目保持 `unexplained`。
 - 计划运行仅打印：桌面端不会安装 cron 条目、unit 或任务，也不会编辑 MCP 客户端配置；它也不执行数据源写入。
 - 配置路径批准按进程生效，外加持久化的 `knownConfigs` 列表；两者之外的路径仍需要原生对话框。
 - Windows ACL 加固是尽力而为。如果 `icacls` 失败，保存仍会继续，草稿保留目录的继承 DACL。
@@ -186,4 +205,4 @@ webview 不再拥有更新器插件的下载和安装权限；其能力列表只
 - 建议文案已本地化为 en/ru/zh；在 `0.2.3` 之前排队的任务保留已存储的英文文本。
 - 这是 `0.x` 预览：配置输出、更新器行为和界面细节可能在 1.0 前变化。
 
-Source: `_source/desktop-README.md`, `_source/desktop-releases-0.3.0.md`, `_source/desktop-releases-0.2.3.md`, `_source/desktop-releases-0.2.2.md`, `_source/desktop-releases-0.2.1.md`, `_source/desktop-releases-0.2.0.md`, `_source/desktop-security.md`, `_source/desktop-architecture.md`.
+Source: `_source/desktop-README.md`, `_source/desktop-releases-0.4.0.md`, `_source/desktop-releases-0.3.0.md`, `_source/desktop-releases-0.2.3.md`, `_source/desktop-releases-0.2.2.md`, `_source/desktop-releases-0.2.1.md`, `_source/desktop-releases-0.2.0.md`, `_source/desktop-security.md`, `_source/desktop-architecture.md`.

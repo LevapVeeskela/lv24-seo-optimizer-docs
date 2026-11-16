@@ -23,5 +23,10 @@
   { "id": "mcp-serve", "group": "Agents and MCP", "command": "lv24-seo mcp serve --transport stdio", "description": "Run the MCP server over stdio or streamable HTTP." },
   { "id": "install", "group": "Agents and MCP", "command": "lv24-seo install --client claude --print", "description": "Merge the MCP server entry into a host client config; --print shows the JSON." },
   { "id": "export-tools", "group": "Agents and MCP", "command": "lv24-seo export tools --out schemas/tools.json", "description": "Write the MCP tool registry to schemas/tools.json." },
-  { "id": "export-skills", "group": "Agents and MCP", "command": "lv24-seo export skills --out skills", "description": "Copy the packaged agent skills to --out." }
+  { "id": "export-skills", "group": "Agents and MCP", "command": "lv24-seo export skills --out skills", "description": "Copy the packaged agent skills to --out." },
+  { "id": "logs-analyze", "group": "Logs", "command": "lv24-seo logs analyze --file /var/log/nginx/access.log --json", "description": "Analyse one local nginx JSON access log: bot rollup and crawl waste; read-only." },
+  { "id": "tasks-list", "group": "Tasks", "command": "lv24-seo tasks list --state open --limit 200 --json", "description": "List finding tasks newest-first with property, kind and state filters." },
+  { "id": "tasks-add", "group": "Tasks", "command": "lv24-seo tasks add --kind issue --url https://example.com/page --rule broken-internal-link --json", "description": "Create or refresh a finding task; idempotent per kind, property, URL and rule." },
+  { "id": "tasks-update", "group": "Tasks", "command": "lv24-seo tasks update TASK_ID --state verified --json", "description": "Move a task through the allowed lifecycle transitions." },
+  { "id": "backup-create", "group": "Backup", "command": "lv24-seo backup create --out /srv/backups --json", "description": "Write a portable workspace archive with a redacted config and a consistent database copy." }
 ]

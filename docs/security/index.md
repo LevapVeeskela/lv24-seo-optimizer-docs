@@ -117,7 +117,7 @@ Annotations describe intent; they are not an authorization mechanism. The regist
 | `seo_weekly_report` | read | `true` | `false` | `false` |
 | `seo_recrawl_request` | write | `false` | `false` | `true` |
 | `seo_sitemap_submit` | write | `false` | `false` | `true` |
-| Other seven tools | read | `false` | `true` | `false` |
+| Other eight tools | read | `false` | `true` | `false` |
 
 A client that branches on `readOnlyHint` may ask for confirmation before a crawl or a weekly report. That is intentional: both write local
 state. A client must not treat a read annotation as permission to skip its own confirmation for a gated write.

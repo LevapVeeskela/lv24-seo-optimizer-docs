@@ -1,6 +1,6 @@
 ---
 title: 发行与更新
-description: 引擎 0.5.3 与桌面 0.3.0 发行说明、0.5.2、0.2.3 与 0.2.2 历史、签名自动更新矩阵、发布流水线、版本固定与回滚。
+description: 引擎 0.6.0 与桌面 0.4.0 发行说明、0.5.3、0.3.0 及更早版本历史、签名自动更新矩阵、发布流水线、版本固定与回滚。
 ---
 
 # 发行与更新
@@ -9,10 +9,68 @@ description: 引擎 0.5.3 与桌面 0.3.0 发行说明、0.5.2、0.2.3 与 0.2.2
 
 | 产品 | 版本 | 发布日期 | 说明 |
 |---|---|---|---|
-| 引擎 | `lv24-seo 0.5.3` | 2026-11-16 | 诚实的数据源数据、加固抓取、`--strict`、类型化存储错误、两阶段 MCP 写入契约 |
-| 桌面 | `0.3.0` | 2026-11-16 | 项目向导、抓取屏幕、报告比较与导出、设置保存流程、集成、报告窗口与运行状态；捆绑引擎 0.5.3 |
+| 引擎 | `lv24-seo 0.6.0` | 2026-11-16 | 日志分析、归因变更摘要、任务生命周期（模式 v3）、可移植备份、第 12 个 MCP 工具和 20 个 CLI 命令 |
+| 桌面 | `0.4.0` | 2026-11-16 | Logs、Tasks 和 Backup 页面、摘要卡片、捆绑引擎 0.6.0 和 `MIN_ENGINE_VERSION` 0.6.0 |
 
-桌面版本与引擎版本相互独立，但桌面固定精确引擎，并拒绝低于最低版本的引擎。`0.3.0` 捆绑 `0.5.3`，并且仍接受低至 `0.5.2` 的引擎。
+桌面版本与引擎版本相互独立，但桌面固定精确引擎，并拒绝低于最低版本的引擎。`0.4.0` 捆绑 `0.6.0` 并要求至少 `0.6.0`，因此已安装的 `0.5.x` 引擎会被报告为不兼容。
+
+## 引擎 0.6.0
+
+2026-11-16 发布。它增加本地 nginx 日志分析、周报中的归因变更摘要、带模式 v3 的发现/任务生命周期、可移植项目备份和第 12 个 MCP 工具。CLI 现在有 20 个顶层命令。
+
+变更内容：
+
+- **日志分析。** `logs analyze --file ABS [--bot …]` 只读取一个不超过 100 MiB 的本地 nginx JSON 访问日志，返回 `bot_daily` 行（按日期、机器人和状态类的命中、字节和 p95 请求时间）以及带按机器人拆分的 `crawl_waste` 汇总。重定向、错误、资源、`/api/` 调用和带跟踪参数的请求都算浪费，每个请求只计一次。路径必须是绝对路径和普通文件；glob、UNC/设备路径和更大的文件会在读取前以 `INVALID_INPUT` 失败。文件只以只读方式打开一次，不会上传或存储。
+- **第 12 个 MCP 工具。** `seo_log_analysis(file, bot="")` 只读（`readOnlyHint: true`、`writes_local_state: false`），不需要服务、存储或工作区，返回与 CLI 相同的 `data`、`meta` 和 `warnings`。
+- **归因变更摘要。** 当两个 GSC 窗口可比较且存储中有抓取问题或页面时，周报增加 `Attributed change digest` 分区：每个重要变化都配上候选原因（`new_crawl_issue`、`resolved_crawl_issue`、`indexing_event`、`page_state`、`unexplained`）、置信度、最多三行证据和 `next_action`。没有匹配证据时保持 `unexplained` 并带限制；条目最多 8 个，每个条目证据最多 3 行。
+- **任务生命周期（模式 v3）。** `tasks list`、`tasks add` 和 `tasks update` 管理以 `(kind, property_id, url, rule_id)` 为键的发现，状态为 `open`、`in_progress`、`verified`、`dismissed`。`add` 幂等并报告 `created`、`existing` 或 `reopened`；再次发现的已验证项会重新打开，已忽略项保持忽略。只接受文档化的转换，`list` 最新优先且有界（1–1000，默认 200），`--payload` 拒绝形似凭据的键。迁移是增量的。
+- **可移植备份。** `backup create --out ABS [--force]` 写入 `lv24-seo-backup-YYYYMMDDTHHMMSSZ.zip`，包含 `manifest.json`（每个成员的大小和 SHA-256）、脱敏的 `seo.toml`（`storage.data_dir` 重置为 `./data`）以及通过 SQLite 备份 API 生成的一致 `data/seo.sqlite3` 副本。密钥、令牌、日志和缓存绝不包含；源为只读，归档原子写入。未实现恢复。
+- **接口与模式。** 20 个顶层 CLI 命令（13 个组和 7 个命令）、12 个 MCP 工具（10 个读取类，包括 `seo_log_analysis`，加 2 个仍返回 `WRITE_DISABLED` 的受限写入）、3 个资源和 3 个提示不变。模式版本为 3；`ReportSection` 增加可选的 `total`、`truncated` 和 `data_age` 字段，并发首次打开会重试 WAL 切换而不是在 `SQLITE_BUSY` 上失败。
+
+本次发行记录的验证：
+
+| 检查 | 结果 |
+|---|---|
+| PyPI | `lv24-seo 0.6.0` 已发布 |
+| npm | `@lv24/seo 0.6.0` 已发布 |
+| MCP Registry | `io.github.LevapVeeskela/lv24-seo 0.6.0` 已发布 |
+| CI | Linux、Windows 和 macOS 全绿 |
+
+0.6.0 的已知限制：
+
+- 机器人识别仅基于 User-Agent：伪造的 UA 不是已验证爬虫，非搜索爬虫归为 `other`。
+- 日志分析一次只接受一个不超过 100 MiB 的文件；没有轮转、glob、远程获取或持久日志历史。
+- `backup create` 没有恢复命令；清单是手动恢复的契约，令牌被排除。
+- 任务仅限 CLI；目前没有 MCP 工具或报告分区使用它们。
+- 摘要只解释 GSC 标题变化；Yandex、Metrika、Bing、CrUX 和 PSI 不归因，索引事件仅在调用方提供时出现。
+
+## 桌面 0.4.0
+
+2026-11-16 发布。它增加 Logs、Tasks 和 Backup 页面以及报告摘要卡片，捆绑 `lv24-seo 0.6.0`，并把 `MIN_ENGINE_VERSION` 提高到 `0.6.0`，因此 `0.5.x` 引擎被报告为不兼容。
+
+变更内容：
+
+- **Logs 页面。** 原生 `pick_log_file` 选择一个 nginx JSON 访问日志（不超过 100 MiB）；不是来自对话框或应用自身数据/导出目录的路径会以 `PATH_NOT_APPROVED` 拒绝。页面显示机器人过滤、解析摘要（总数、已解析、已跳过）、带按机器人拆分的抓取浪费、机器人汇总表和 JSON/CSV 导出。机器人仅按 User-Agent，结果标记为分诊。
+- **Tasks 页面。** 最新优先的发现，包含属性、类型、状态、规则、URL、时间和存储的证据；支持过滤和最多 500 行的限制。状态变化遵循允许的转换，非法转换会带允许集合被拒绝，添加表单幂等，证据上限 16 KiB 并拒绝形似凭据的键。
+- **Backup 页面。** `backup create` 把归档写入导出目录或原生对话框选择的目录；面板显示路径、大小、SHA-256、是否包含数据库、属性和快照数量、成员表以及引擎限制。未实现恢复，面板会说明。
+- **摘要卡片。** 周报渲染引擎的归因变更摘要，包含原因、置信度、最多三行证据和下一步操作，以及 `showing N of M`、最早证据日期和跳过行数。
+- **外壳与引擎。** 新增允许列表命令 `logs_analyze`、`tasks_list`、`tasks_add`、`tasks_update` 和 `backup_create`，都在外壳中校验参数；`pick_directory` 现在也批准备份输出目录。契约从 `lv24-seo 0.6.0` 重新生成。
+
+本次发行记录的验证：
+
+| 检查 | 结果 |
+|---|---|
+| 已发布产物 | `v0.4.0` 上共 18 个，包括 Windows 便携 `.zip.sha256` |
+| CI | 发布提交上 Linux x64、Windows x64 和 macOS arm64 + x64 全绿 |
+| 应用内更新 | `0.3.0 → 0.4.0` 通过 Rust 更新器在 Windows NSIS 上验证：**Desktop 0.4.0**、**Engine 0.6.0** 和 engine ready |
+
+0.4.0 的已知限制：
+
+- 未实现备份恢复；请手动解压归档，并在验证前保留源工作区。
+- 机器人分诊仅基于 User-Agent；没有反向 DNS 或已发布 IP 检查。
+- 没有取消和后台运行：抓取、日志分析、报告构建、任务刷新或备份都会运行到完成。
+- 一次一个日志文件，最多 100 MiB；没有轮转或持久日志历史。
+- 摘要是基于证据的分诊，不是因果证明。
 
 ## 引擎 0.5.3
 
@@ -250,10 +308,10 @@ PID**。不会按映像名称匹配，因此另一个已安装副本、便携构
 portable ZIP 没有可替换的安装器，且可能位于可移动介质上。桌面端报告已安装的包类型，并对这些
 情况禁用应用内安装器。它不会假装手动包已被更新。
 
-Windows NSIS 路径现已完成四次端到端验证：`0.2.0 → 0.2.1`、`0.2.1 → 0.2.2`、
-`0.2.2 → 0.2.3` 和 `0.2.3 → 0.3.0`。第四次运行中，已安装的 `0.2.3` 通过新的 Rust 更新器升级，
-下载并验证已签名包，以 passive 模式安装，重启后报告 **Desktop 0.3.0**、**Engine 0.5.3** 且引擎就绪。
-任何带应用内更新器的 `0.2.x` 安装都可直接升级到 `0.3.0`；`0.1.0` 没有更新器，需要一次手动安装。
+Windows NSIS 路径现已完成五次端到端验证：`0.2.0 → 0.2.1`、`0.2.1 → 0.2.2`、
+`0.2.2 → 0.2.3`、`0.2.3 → 0.3.0` 和 `0.3.0 → 0.4.0`。第五次运行中，已安装的 `0.3.0` 通过 Rust
+更新器升级，下载并验证已签名包，安装并重启后报告 **Desktop 0.4.0**、**Engine 0.6.0** 且引擎就绪。
+任何带应用内更新器的 `0.2.x` 安装都可直接升级到 `0.4.0`；`0.1.0` 没有更新器，需要一次手动安装。
 
 `0.2.1 → 0.2.2` 更新由旧的 `0.2.1` 更新器执行，其中没有新的受跟踪 PID 清理。如果首次更新期间
 有 sidecar 正在运行，请在其退出后重试，或手动安装 `0.2.2`。`0.2.2 → 0.2.3` 及后续更新使用受跟踪 PID
@@ -266,12 +324,12 @@ Windows NSIS 路径现已完成四次端到端验证：`0.2.0 → 0.2.1`、`0.2.
 
 | 输入 | 默认值 | 含义 |
 |---|---|---|
-| `engine_version` | `0.5.3` | sidecar 中捆绑的精确引擎版本 |
+| `engine_version` | `0.6.0` | sidecar 中捆绑的精确引擎版本 |
 | `signed` | `false` | 请求操作系统签名/公证；此零支出仓库未配置 |
 | `publish` | `false` | 所有矩阵构建通过后创建 GitHub release |
 | `tag` | 空 | `vX.Y.Z` 发布标签；`publish=true` 时必填 |
 
-默认值与 `0.3.0` 固定版本一致。如果传入不同版本，发布门控会拒绝清单不匹配。
+默认值与 `0.4.0` 固定版本一致。如果传入不同版本，发布门控会拒绝清单不匹配。
 
 | Runner | Target | 包 |
 |---|---|---|
@@ -286,8 +344,8 @@ Windows NSIS 路径现已完成四次端到端验证：`0.2.0 → 0.2.1`、`0.2.
 ## Sidecar 固定与校验和
 
 发布 sidecar 是 PyInstaller **onedir** 树，在匹配的主机上构建；PyInstaller 不交叉编译。引擎、
-Python、Pydantic、Typer 和 PyInstaller 版本固定在 `scripts/cli-checksums.json`。`0.3.0` 固定
-引擎 `0.5.3`（与 `0.2.3` 相同）、Python `3.12`、Pydantic `2.14.3`、Typer `0.29.0` 和 PyInstaller `6.22.3`。
+Python、Pydantic、Typer 和 PyInstaller 版本固定在 `scripts/cli-checksums.json`。`0.4.0` 固定
+引擎 `0.6.0`（高于 `0.5.3`）、Python `3.12`、Pydantic `2.14.3`、Typer `0.29.0` 和 PyInstaller `6.22.3`。
 
 PyInstaller onedir 输出不是字节可复现的。因此校验和政策分为三部分：
 
@@ -298,8 +356,8 @@ PyInstaller onedir 输出不是字节可复现的。因此校验和政策分为�
 - **发布门控 — 基于报告。** 发布 job 要求每个交付 target 都有有效报告：target 名称匹配、
   `hashPolicy: "rebuild"`、`ok: true`、64 位十六进制哈希、正大小和精确引擎版本。
 
-对于 `0.5.3`，Windows x64 有已审查的本地固定值；Linux 和 macOS sidecar 由发布 workflow 重新构建并通过
-rebuild-aware 报告，其已审查固定值仍为 `null`，直到在这些主机上审查本地构建。`0.5.2` 的 Windows 固定值没有沿用，因为可执行文件随引擎变化。校验和报告是 CI 证据，不是发布产物。
+对于 `0.6.0`，Windows x64 有已审查的本地固定值；Linux 和 macOS sidecar 由发布 workflow 重新构建并通过
+rebuild-aware 报告，其已审查固定值仍为 `null`，直到在这些主机上审查本地构建。`0.5.3` 的 Windows 固定值没有沿用，因为可执行文件随引擎变化。校验和报告是 CI 证据，不是发布产物。
 `SHA256SUMS.txt` 覆盖安装器、更新包、签名和 `latest.json`；sidecar 可执行文件位于这些包内，
 不单独列出。手动安装的用户应使用 `SHA256SUMS.txt` 校验下载的产物。
 
@@ -307,7 +365,7 @@ rebuild-aware 报告，其已审查固定值仍为 `null`，直到在这些主�
 node scripts/verify-sidecar.mjs \
   --root src-tauri/engine \
   --target x86_64-pc-windows-msvc \
-  --engine-version 0.5.3
+  --engine-version 0.6.0
 ```
 
 ## `latest.json`、签名与发布
@@ -339,20 +397,23 @@ node scripts/verify-sidecar.mjs \
 和发布标题中一致。引擎固定值位于 `scripts/cli-checksums.json`；workflow 显式传入
 `engine_version`，发布门控要求它与清单一致。
 
-当前源码中 `src-tauri/src/commands.rs` 的 `MIN_ENGINE_VERSION` 为 `0.5.2`。`0.3.0` 捆绑引擎
-`0.5.3`，因此最低版本故意落后一个引擎发行版。外壳接受不低于该
+当前源码中 `src-tauri/src/commands.rs` 的 `MIN_ENGINE_VERSION` 为 `0.6.0`。`0.4.0` 捆绑引擎
+`0.6.0`，因此最低版本与捆绑引擎一致，`0.5.x` 引擎会被视为不兼容。外壳接受不低于该
 版本的引擎，并把更旧版本标记为离线并显示通知。更新的引擎会通过门控，但不是发布测试过的固定
 版本。开发构建可通过 `LV24_SEO_BIN` 使用其他版本；UI 会将其标记为外部并仍检查最低版本。只有
 设置 `LV24_SEO_ALLOW_PATH_ENGINE=1` 时才使用 `PATH` 中的引擎。
 
 ## 从 0.1.0 一次性升级
 
-`0.1.0` 没有更新器、端点和公钥。它无法发现或安装 `0.3.0`。请手动下载并安装一次 `0.3.0`
-（Windows 上的 NSIS 安装器或便携 ZIP）。之后，`0.3.0` 安装在使用支持自动更新的包类型时，
+`0.1.0` 没有更新器、端点和公钥。它无法发现或安装 `0.4.0`。请手动下载并安装一次 `0.4.0`
+（Windows 上的 NSIS 安装器或便携 ZIP）。之后，`0.4.0` 安装在使用支持自动更新的包类型时，
 可以自动更新到后续版本。
 
 ## 更早的版本
 
+- **桌面 0.3.0** 增加了项目向导、抓取屏幕、报告比较与导出、设置保存流程、集成、按工作区的报告窗口和运行状态。
+- **引擎 0.5.3** 让 MCP 写入变成两阶段，把抓取移出事件循环，增加 `--strict` 退出码 `5`、类型化存储错误
+  和诚实的 GSC/Metrika/Bing/Yandex 数据。
 - **桌面 0.2.3** 把更新安装移入 Rust 并支持真实取消，让配置路径成为由对话框批准的权限，拒绝网络和设备
   路径，并在 webview 之前脱敏引擎输出。
 - **桌面 0.2.2** 修复了 sidecar 被锁定导致的更新失败，让配置写入持久且私密，清理了过期 UI 状态，
@@ -397,4 +458,4 @@ sha256sum -c SHA256SUMS.txt --ignore-missing
 
 更新信任见[安全与隐私](/zh/security/)，sidecar 布局见[架构](/zh/architecture/)。
 
-Source: `_source/engine-releases-0.5.3.md`, `_source/engine-releases-0.5.2.md`, `_source/desktop-releases-0.3.0.md`, `_source/desktop-releases-0.2.3.md`, `_source/desktop-releases-0.2.2.md`, `_source/desktop-releases-0.2.1.md`, `_source/desktop-releases-0.2.0.md`, `_source/desktop-release.md`, `_source/desktop-security.md`.
+Source: `_source/engine-releases-0.6.0.md`, `_source/engine-releases-0.5.3.md`, `_source/engine-releases-0.5.2.md`, `_source/desktop-releases-0.4.0.md`, `_source/desktop-releases-0.3.0.md`, `_source/desktop-releases-0.2.3.md`, `_source/desktop-releases-0.2.2.md`, `_source/desktop-releases-0.2.1.md`, `_source/desktop-releases-0.2.0.md`, `_source/desktop-release.md`, `_source/desktop-security.md`.

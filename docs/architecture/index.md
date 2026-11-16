@@ -54,7 +54,7 @@ python -m lv24_seo.mcp.registry --write
 python -m lv24_seo.mcp.registry --check
 ```
 
-There are 11 tools: nine read tools and two gated write tools. `seo_crawl_site` and `seo_weekly_report` are read tools that persist local snapshots, so the
+There are 12 tools: ten read tools and two gated write tools. `seo_crawl_site` and `seo_weekly_report` are read tools that persist local snapshots, so the
 generated schema adds `writes_local_state` and marks them `readOnlyHint: false`.
 
 ## Provider contract
