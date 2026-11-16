@@ -26,13 +26,13 @@ version.
 With `--json`, a command prints exactly one JSON document and nothing else:
 
 ```json
-{ "ok": true, "data": {}, "meta": { "version": "0.7.0", "duration_ms": 812 }, "warnings": [] }
+{ "ok": true, "data": {}, "meta": { "version": "0.8.0", "duration_ms": 812 }, "warnings": [] }
 ```
 
 A failed command uses the same shape with `ok: false` and an `error` object instead of `data`:
 
 ```json
-{ "ok": false, "error": { "code": "AUTH_REQUIRED", "message": "Google Search Console token is missing", "retryable": false, "next_action": "lv24-seo auth login --provider gsc" }, "meta": { "version": "0.7.0" }, "warnings": ["gsc: token missing"] }
+{ "ok": false, "error": { "code": "AUTH_REQUIRED", "message": "Google Search Console token is missing", "retryable": false, "next_action": "lv24-seo auth login --provider gsc" }, "meta": { "version": "0.8.0" }, "warnings": ["gsc: token missing"] }
 ```
 
 - `data` is command-specific. `meta` always carries `version` and often adds `duration_ms`,
@@ -152,18 +152,19 @@ envelope remains the stable diagnostic interface.
 | Authentication | `auth status`, `auth set`, `auth login`, `auth logout` | The local secret store; `login` only prints instructions. |
 | Configuration | `config show` | The effective config, with credentials redacted. |
 | Google Search Console | `gsc query`, `sitemap submit` | Read-only queries; sitemap submit is a gated write. |
-| Yandex Webmaster | `yandex queries`, `yandex indexing`, `yandex recrawl` | Read-only queries; recrawl is a gated write. |
+| Yandex Webmaster | `yandex queries`, `yandex indexing`, `yandex recrawl` | Read-only queries; recrawl is a gated write. `queries` keeps `avg_click_position`, `query_id` and `extra_indicators`; `indexing` merges the history series and reports `site_problems`. |
 | IndexNow | `indexnow submit` | A gated write that actually submits URLs. |
 | Crawl and audit | `crawl` | Provider-independent; stores local pages and issues when a store is configured. |
+| CWV | `cwv collect` | Queries CrUX per URL and device and persists field p75 rows; PSI lab rows are returned but never stored. |
 | Reports | `report weekly`, `report diff` | `weekly` stores a local snapshot; `diff` is read-only. |
-| Scheduling | `schedule print`, `schedule install` | `print` renders only; `install` writes host scheduler files. |
+| Scheduling | `schedule print`, `schedule install`, `schedule status`, `schedule uninstall` | `print` renders only; `install` and `uninstall` plan by default and write only with `--allow-write`; `status` is read-only. |
 | Logs | `logs analyze` | Reads one local nginx JSON access log; never stores or uploads it. |
 | Tasks | `tasks list`, `tasks add`, `tasks update` | The workspace task ledger; `add` is idempotent and `update` follows the allowed transitions. |
-| Backup | `backup create`, `backup restore` | `create` writes one portable workspace archive; `restore` validates a plan and replaces files only with `--allow-write --confirm TOKEN`. |
+| Backup | `backup create`, `backup restore` | `create` writes one portable workspace archive; `restore` plans an in-place replacement or extracts into a new directory with `--to`. |
 | Portfolio | `portfolio list` | Read-only rollup of local projects below one folder; no provider call, no token read, no write. |
 | Agents and MCP | `mcp serve`, `install`, `export tools`, `export skills` | Host config, generated files or a local server. |
 
-The CLI has 21 top-level commands: 14 groups and 7 commands (`version`, `doctor`, `init`, `properties`, `stats`, `crawl`, `install`).
+The CLI has 22 top-level commands: 15 groups and 7 commands (`version`, `doctor`, `init`, `properties`, `stats`, `crawl`, `install`).
 
 ## Examples
 
@@ -195,8 +196,25 @@ lv24-seo yandex indexing --json
 ```
 
 `yandex queries` returns top rows, not a full query-by-page join: Yandex exposes at most 3,000
-queries per period. `yandex indexing` reports indexing history, in-search counts, diagnostics and
-search-URL events for the configured `host_id`.
+queries per period. It keeps `avg_click_position`, returns `query_id` when the provider sends it and
+preserves an unmapped indicator under `extra_indicators` instead of dropping the row. `yandex indexing`
+reports indexing history, in-search counts, diagnostics, `site_problems` and search-URL events for the
+configured `host_id`, and merges the `indexing/history` series (`http_2xx` … `other`) into one row per
+date.
+
+### Core Web Vitals
+
+```bash
+lv24-seo cwv collect --url https://example.com/ --url https://example.com/blog/post --device phone --source crux --json
+```
+
+`cwv collect` is the writer behind the weekly `cwv` section. CrUX is queried per URL and device
+(`mobile` is an alias for `phone`) and each returned p75 becomes one `metric_daily` field row with
+`source=crux`, `scope`, the absolute URL, the metric and the fetch date in `report.timezone`. PSI rows
+stay in `data.lab` and are never persisted, and PSI has no `tablet`, so `tablet` is skipped as
+`psi_tablet_unsupported`. `--limit` caps URLs at 50 (default 10); a low-traffic URL writes no row, never
+a zero, and a capped run sets `meta.truncated: true` with `cwv_url_cap`. The command needs a CrUX key
+(`AUTH_REQUIRED` before any call) and an initialised store (`CONFIG_INVALID`).
 
 ### Crawl
 
@@ -218,6 +236,7 @@ lv24-seo tasks add --kind issue --url https://example.com/page --rule broken-int
 lv24-seo tasks update TASK_ID --state verified --json
 lv24-seo backup create --out /srv/backups --json
 lv24-seo backup restore --file /srv/backups/lv24-seo-backup-20261116T120000Z.zip --config /srv/site/seo.toml --json
+lv24-seo backup restore --file /srv/backups/lv24-seo-backup-20261116T120000Z.zip --to /srv/restored --json
 lv24-seo portfolio list --root /srv/sites --limit 50 --json
 ```
 
@@ -228,7 +247,10 @@ lv24-seo portfolio list --root /srv/sites --limit 50 --json
 `backup create` writes `lv24-seo-backup-YYYYMMDDTHHMMSSZ.zip` with a manifest, a redacted `seo.toml`
 and a consistent database copy; tokens, logs and caches are excluded. `backup restore` first validates
 and returns a plan with a 300-second `confirm_token`; applying needs `--allow-write` and the token, and
-the current database is copied to `<db>.pre-restore-<utc>` before replacement. `portfolio list` scans up
+the current database is copied to `<db>.pre-restore-<utc>` before replacement. `backup restore --to DIR`
+instead re-validates the archive and extracts it into a new directory: no token and no `--allow-write`
+are involved, the target must be an absolute path that does not exist, and zip-slip or link escapes are
+refused before extraction. `portfolio list` scans up
 to three levels below an absolute folder for `seo.toml`, inspects at most 50 sites, and reports local
 crawl, report and issue counts newest-activity first.
 
@@ -251,12 +273,20 @@ different periods. `--markdown` prints only Markdown on stdout; warnings go to s
 
 ```bash
 lv24-seo schedule print --cron "0 6 * * 1" --target systemd --json
-lv24-seo schedule install --kind weekly --print
+lv24-seo schedule install --kind weekly --json
+lv24-seo schedule install --kind weekly --allow-write --json
+lv24-seo schedule status --json
+lv24-seo schedule uninstall --kind weekly --allow-write --json
 ```
 
-`print` renders the artefact without touching the host. `install` writes the cron block, systemd user
-units or Task Scheduler XML, and the generated job runs `report weekly --send --json`. Only simple
-cron expressions (`M H * * *` and `M H * * DOW`) convert to systemd or Windows schedules.
+`print` renders the artefact without touching the host. `install` is plan-only by default: it prints the
+cron block, systemd user units or Task Scheduler XML plus the command it would run, with `dry_run: true`
+and `installed: false`, and writes only with `--allow-write` (`--print` stays an alias for the plan and
+wins over `--allow-write`). `status` is read-only and reports `installed`, `outdated`, `partial`,
+`missing` or `unknown` with per-artefact `exists`/`matches`. `uninstall` is plan-only by default and
+removes exactly the generated artefacts with `--allow-write`; unrelated cron lines and tasks are never
+touched. The generated job runs `report weekly --send --json`. Only simple cron expressions
+(`M H * * *` and `M H * * DOW`) convert to systemd or Windows schedules.
 
 ### MCP and agent clients
 
@@ -280,6 +310,13 @@ lv24-seo auth set --provider gsc --stdin
 opt-in `0600` file fallback. It prints only `{provider, stored, source}`. `auth status` reports
 presence and source (`env`, `keyring`, `file`, `missing`), never a value.
 
+GSC can also use a service account. Set `providers.gsc.service_account_file` to an absolute path or
+export `LV24_SEO_GSC_SERVICE_ACCOUNT_FILE`; the file wins over a stored `gsc_token`, and the
+environment wins over the file. A `gsc_token` that is a service-account JSON object is accepted too.
+The engine signs an RS256 JWT, exchanges it at the key's `token_uri` and refreshes it before expiry.
+`properties` reports `token_source: service_account_file|secret|missing`, and `doctor` adds a
+non-fatal `gsc_auth` check; neither prints the JSON or the private key.
+
 ### Export
 
 ```bash
@@ -297,4 +334,4 @@ packaged `SKILL.md` files and their manifest. Both write local files only.
 - [MCP and agent skills](/mcp/)
 - [Troubleshooting](/troubleshooting/)
 
-Source: `_source/engine-cli.md`, `_source/engine-mcp.md`, `_source/engine-releases-0.5.2.md`, `_source/engine-releases-0.5.3.md`, `_source/engine-releases-0.6.0.md`, `_source/engine-releases-0.7.0.md`; 0.7.0 `--help` output in the engine repository.
+Source: `_source/engine-cli.md`, `_source/engine-mcp.md`, `_source/engine-releases-0.5.2.md`, `_source/engine-releases-0.5.3.md`, `_source/engine-releases-0.6.0.md`, `_source/engine-releases-0.7.0.md`, `_source/engine-releases-0.8.0.md`; 0.8.0 `--help` output in the engine repository.

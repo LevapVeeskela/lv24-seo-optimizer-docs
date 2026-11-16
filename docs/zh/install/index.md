@@ -78,15 +78,19 @@ lv24-seo auth status --json
 
 支持的提供商名称有 `gsc`、`yandex`、`metrika`、`bing`、`crux`、`psi`、`smtp` 和 `telegram`。没有 `secrets` extra 时，请使用提供商专用的 `LV24_SEO_*` 环境变量，例如 `LV24_SEO_YANDEX_WEBMASTER_TOKEN`。无头环境的回退方式是 `LV24_SEO_ALLOW_FILE_SECRETS=1` 加上权限为 `0600` 的 `data/secrets.json`；该模式下引擎每次运行都会警告。
 
+GSC 也可以使用服务账号而不是粘贴 OAuth 令牌。把 `providers.gsc.service_account_file` 设为绝对路径，或导出 `LV24_SEO_GSC_SERVICE_ACCOUNT_FILE`；文件优先于已存储的 `gsc_token`，环境变量优先于文件。引擎签署 RS256 JWT，在密钥的 `token_uri` 交换并在过期前刷新，因此长期运行的 `mcp serve` 进程可以跨过令牌过期。`properties` 报告 `token_source: service_account_file`，`doctor` 增加非致命 `gsc_auth` 检查；两者都不打印密钥。普通 OAuth 令牌仍然可用。
+
 ## 桌面安装矩阵
 
-桌面端 `0.5.0` 是当前版本，内置 `lv24-seo 0.7.0`；它要求引擎 `0.7.0` 或更新。从项目的 Releases 页面下载资源文件；`SHA256SUMS.txt` 覆盖所有已发布资源。
+桌面端 `0.6.0` 是当前版本，内置 `lv24-seo 0.8.0`；它要求引擎 `0.8.0` 或更新。从项目的 Releases 页面下载资源文件；`SHA256SUMS.txt` 覆盖所有已发布资源。
 
 | 平台 | 文件 | 自动更新 |
 |---|---|---|
-| Windows 10/11 x64 | NSIS `LV24.SEO.Optimizer_0.5.0_x64-setup.exe`（+ `.sig`）、便携包 `LV24-SEO-Optimizer_0.5.0_x64-portable.zip`（+ `.zip.sha256`） | 仅 NSIS；便携包手动更新 |
-| Linux x64 | `LV24.SEO.Optimizer_0.5.0_amd64.AppImage`（+ `.AppImage.sig`）、`LV24.SEO.Optimizer_0.5.0_amd64.deb`、`LV24.SEO.Optimizer-0.5.0-1.x86_64.rpm` | 仅 AppImage；deb/rpm 手动更新 |
-| macOS 13+ arm64/x64 | 首次安装用 `LV24.SEO.Optimizer_0.5.0_aarch64.dmg` / `LV24.SEO.Optimizer_0.5.0_x64.dmg`，更新用 `LV24.SEO.Optimizer_0.5.0_aarch64.app.tar.gz` / `LV24.SEO.Optimizer_0.5.0_x64.app.tar.gz`（+ `.sig`） | 仅 `.app`；DMG 用于首次安装 |
+| Windows 10/11 x64 | NSIS `LV24.SEO.Optimizer_0.6.0_x64-setup.exe`（+ `.sig`）、便携包 `LV24-SEO-Optimizer_0.6.0_x64-portable.zip`（+ `.zip.sha256`） | 仅 NSIS；便携包手动更新 |
+| Linux x64 | `LV24.SEO.Optimizer_0.6.0_amd64.AppImage`（+ `.AppImage.sig`）、`LV24.SEO.Optimizer_0.6.0_amd64.deb`、`LV24.SEO.Optimizer-0.6.0-1.x86_64.rpm` | 仅 AppImage；deb/rpm 手动更新 |
+| macOS 13+ arm64/x64 | 首次安装用 `LV24.SEO.Optimizer_0.6.0_aarch64.dmg` / `LV24.SEO.Optimizer_0.6.0_x64.dmg`，更新用 `LV24.SEO.Optimizer_0.6.0_aarch64.app.tar.gz` / `LV24.SEO.Optimizer_0.6.0_x64.app.tar.gz`（+ `.sig`） | 仅 `.app`；DMG 用于首次安装 |
+
+引擎 `0.8.0` 增加 `cwv collect`、GSC 服务账号、`backup restore --to` 和 `schedule status`/`uninstall`；限制见[发行说明](/zh/release/)。
 
 ### Windows
 
@@ -111,7 +115,7 @@ Apple 芯片使用 `aarch64` DMG，Intel 使用 `x64` DMG。打开 DMG，将 **L
 
 ### 从桌面 0.1.0 升级
 
-`0.1.0` 是仅限 Windows 的预览，没有更新器、端点或公钥。请手动安装一次 `0.5.0`（NSIS 安装程序或便携 ZIP）。从 `0.2.0` 起，只有 Windows NSIS、macOS `.app` 和 Linux AppImage 可以自动更新。
+`0.1.0` 是仅限 Windows 的预览，没有更新器、端点或公钥。请手动安装一次 `0.6.0`（NSIS 安装程序或便携 ZIP）。从 `0.2.0` 起，只有 Windows NSIS、macOS `.app` 和 Linux AppImage 可以自动更新。
 
 ## 未签名构建
 
@@ -142,4 +146,4 @@ pip uninstall lv24-seo
 - [配置参考](/zh/reference/config/) — 所有 `seo.toml` 键。
 - [安全与隐私](/zh/security/) — token 存储和写操作门控。
 
-Source: `_source/engine-README.md`, `_source/engine-cli.md`, `_source/engine-config.md`, `_source/desktop-README.md`, `_source/desktop-releases-0.4.0.md`, `_source/desktop-releases-0.3.0.md`, `_source/desktop-releases-0.2.3.md`, `_source/desktop-releases-0.2.2.md`, `_source/desktop-releases-0.2.0.md`.
+Source: `_source/engine-README.md`, `_source/engine-cli.md`, `_source/engine-config.md`, `_source/desktop-README.md`, `_source/desktop-releases-0.6.0.md`, `_source/desktop-releases-0.5.0.md`, `_source/desktop-releases-0.4.0.md`, `_source/desktop-releases-0.3.0.md`, `_source/desktop-releases-0.2.3.md`, `_source/desktop-releases-0.2.2.md`, `_source/desktop-releases-0.2.0.md`.

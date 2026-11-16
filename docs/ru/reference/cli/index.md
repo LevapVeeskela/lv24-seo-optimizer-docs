@@ -25,13 +25,13 @@ description: Команды, глобальные флаги, JSON-конвер�
 С флагом `--json` команда печатает ровно один JSON-документ и ничего больше:
 
 ```json
-{ "ok": true, "data": {}, "meta": { "version": "0.7.0", "duration_ms": 812 }, "warnings": [] }
+{ "ok": true, "data": {}, "meta": { "version": "0.8.0", "duration_ms": 812 }, "warnings": [] }
 ```
 
 Неудачная команда использует ту же форму с `ok: false` и объектом `error` вместо `data`:
 
 ```json
-{ "ok": false, "error": { "code": "AUTH_REQUIRED", "message": "Google Search Console token is missing", "retryable": false, "next_action": "lv24-seo auth login --provider gsc" }, "meta": { "version": "0.7.0" }, "warnings": ["gsc: token missing"] }
+{ "ok": false, "error": { "code": "AUTH_REQUIRED", "message": "Google Search Console token is missing", "retryable": false, "next_action": "lv24-seo auth login --provider gsc" }, "meta": { "version": "0.8.0" }, "warnings": ["gsc: token missing"] }
 ```
 
 - `data` зависит от команды. В `meta` всегда есть `version`, часто добавляются `duration_ms`,
@@ -160,18 +160,19 @@ redacting-handler в CLI и `lv24-seo mcp serve`; если переменная 
 | Authentication | `auth status`, `auth set`, `auth login`, `auth logout` | Локальное хранилище секретов; `login` только печатает инструкции. |
 | Configuration | `config show` | Действующая конфигурация с замаскированными учётными данными. |
 | Google Search Console | `gsc query`, `sitemap submit` | Запросы только на чтение; sitemap submit — защищённая запись. |
-| Yandex Webmaster | `yandex queries`, `yandex indexing`, `yandex recrawl` | Запросы только на чтение; recrawl — защищённая запись. |
+| Yandex Webmaster | `yandex queries`, `yandex indexing`, `yandex recrawl` | Запросы только на чтение; recrawl — защищённая запись. `queries` сохраняет `avg_click_position`, `query_id` и `extra_indicators`; `indexing` объединяет серию истории и сообщает `site_problems`. |
 | IndexNow | `indexnow submit` | Защищённая запись, которая действительно отправляет URL. |
 | Crawl and audit | `crawl` | Не зависит от провайдеров; сохраняет локальные страницы и проблемы, если настроено хранилище. |
+| CWV | `cwv collect` | Опрашивает CrUX по URL и устройству и сохраняет полевые строки p75; лабораторные строки PSI возвращаются, но не сохраняются. |
 | Reports | `report weekly`, `report diff` | `weekly` сохраняет локальный снимок; `diff` только читает. |
-| Scheduling | `schedule print`, `schedule install` | `print` только рендерит; `install` пишет файлы планировщика хоста. |
+| Scheduling | `schedule print`, `schedule install`, `schedule status`, `schedule uninstall` | `print` только рендерит; `install` и `uninstall` по умолчанию планируют и пишут только с `--allow-write`; `status` только читает. |
 | Logs | `logs analyze` | Читает один локальный JSON access-лог nginx; не сохраняет и не отправляет его. |
 | Tasks | `tasks list`, `tasks add`, `tasks update` | Журнал задач рабочей области; `add` идемпотентен, `update` соблюдает разрешённые переходы. |
-| Backup | `backup create`, `backup restore` | `create` пишет один переносимый архив рабочей области; `restore` проверяет план и заменяет файлы только с `--allow-write --confirm TOKEN`. |
+| Backup | `backup create`, `backup restore` | `create` пишет один переносимый архив рабочей области; `restore` планирует замену на месте или распаковывает в новый каталог с `--to`. |
 | Portfolio | `portfolio list` | Сводка локальных проектов ниже одного каталога только для чтения; без вызова провайдера, чтения токена и записи. |
 | Agents and MCP | `mcp serve`, `install`, `export tools`, `export skills` | Конфиг хоста, сгенерированные файлы или локальный сервер. |
 
-В CLI 21 команда верхнего уровня: 14 групп и 7 команд (`version`, `doctor`, `init`, `properties`, `stats`, `crawl`, `install`).
+В CLI 22 команды верхнего уровня: 15 групп и 7 команд (`version`, `doctor`, `init`, `properties`, `stats`, `crawl`, `install`).
 
 ## Примеры
 
@@ -204,8 +205,26 @@ lv24-seo yandex indexing --json
 ```
 
 `yandex queries` возвращает верхние строки, а не полную связку запрос-страница: Яндекс отдаёт не
-более 3 000 запросов за период. `yandex indexing` показывает историю индексирования, число страниц
-в поиске, диагностику и события поисковых URL для настроенного `host_id`.
+более 3 000 запросов за период. Он сохраняет `avg_click_position`, возвращает `query_id`, когда
+провайдер его присылает, и сохраняет неизвестный индикатор в `extra_indicators` вместо отбрасывания
+строки. `yandex indexing` показывает историю индексирования, число страниц в поиске, диагностику,
+`site_problems` и события поисковых URL для настроенного `host_id`, а также объединяет серию
+`indexing/history` (`http_2xx` … `other`) в одну строку на дату.
+
+### Core Web Vitals
+
+```bash
+lv24-seo cwv collect --url https://example.com/ --url https://example.com/blog/post --device phone --source crux --json
+```
+
+`cwv collect` — писатель, стоящий за недельным разделом `cwv`. CrUX опрашивается по каждому URL и
+устройству (`mobile` — псевдоним `phone`), и каждый полученный p75 становится полевой строкой
+`metric_daily` с `source=crux`, `scope`, абсолютным URL, метрикой и датой получения в
+`report.timezone`. Строки PSI остаются в `data.lab` и никогда не сохраняются, а у PSI нет `tablet`,
+поэтому `tablet` пропускается как `psi_tablet_unsupported`. `--limit` ограничивает URL 50 (по
+умолчанию 10); URL с низким трафиком не пишет строку, а не ноль, а усечённый запуск ставит
+`meta.truncated: true` с `cwv_url_cap`. Команде нужен ключ CrUX (`AUTH_REQUIRED` до любого вызова) и
+инициализированное хранилище (`CONFIG_INVALID`).
 
 ### Обход
 
@@ -227,6 +246,7 @@ lv24-seo tasks add --kind issue --url https://example.com/page --rule broken-int
 lv24-seo tasks update TASK_ID --state verified --json
 lv24-seo backup create --out /srv/backups --json
 lv24-seo backup restore --file /srv/backups/lv24-seo-backup-20261116T120000Z.zip --config /srv/site/seo.toml --json
+lv24-seo backup restore --file /srv/backups/lv24-seo-backup-20261116T120000Z.zip --to /srv/restored --json
 lv24-seo portfolio list --root /srv/sites --limit 50 --json
 ```
 
@@ -237,7 +257,10 @@ lv24-seo portfolio list --root /srv/sites --limit 50 --json
 `backup create` пишет `lv24-seo-backup-YYYYMMDDTHHMMSSZ.zip` с манифестом, отредактированным `seo.toml`
 и согласованной копией базы; токены, логи и кэши исключены. `backup restore` сначала проверяет архив и
 возвращает план с `confirm_token` на 300 секунд; для применения нужны `--allow-write` и токен, а текущая
-база копируется в `<db>.pre-restore-<utc>` до замены. `portfolio list` сканирует до трёх уровней ниже
+база копируется в `<db>.pre-restore-<utc>` до замены. `backup restore --to DIR` вместо этого
+перепроверяет архив и распаковывает его в новый каталог: токен и `--allow-write` не нужны, цель должна
+быть абсолютным несуществующим путём, а zip-slip и побег через ссылки отклоняются до распаковки.
+`portfolio list` сканирует до трёх уровней ниже
 абсолютного каталога в поисках `seo.toml`, проверяет не более 50 сайтов и сообщает локальные счётчики
 обхода, отчётов и проблем, сначала самые активные.
 
@@ -261,13 +284,20 @@ Markdown; предупреждения идут в stderr.
 
 ```bash
 lv24-seo schedule print --cron "0 6 * * 1" --target systemd --json
-lv24-seo schedule install --kind weekly --print
+lv24-seo schedule install --kind weekly --json
+lv24-seo schedule install --kind weekly --allow-write --json
+lv24-seo schedule status --json
+lv24-seo schedule uninstall --kind weekly --allow-write --json
 ```
 
-`print` рендерит артефакт, не трогая хост. `install` пишет блок cron, пользовательские unit-файлы
-systemd или XML Планировщика заданий, а сгенерированная задача запускает
-`report weekly --send --json`. В systemd и Windows конвертируются только простые выражения cron
-(`M H * * *` и `M H * * DOW`).
+`print` рендерит артефакт, не трогая хост. `install` по умолчанию только планирует: печатает блок cron,
+пользовательские unit-файлы systemd или XML Планировщика заданий плюс команду, которую он запустит, с
+`dry_run: true` и `installed: false`, и пишет только с `--allow-write` (`--print` остаётся синонимом
+плана и важнее `--allow-write`). `status` только читает и сообщает `installed`, `outdated`, `partial`,
+`missing` или `unknown` с `exists`/`matches` по артефактам. `uninstall` по умолчанию только планирует,
+а с `--allow-write` удаляет ровно сгенерированные артефакты; чужие строки cron и задачи никогда не
+трогаются. Сгенерированная задача запускает `report weekly --send --json`. В systemd и Windows
+конвертируются только простые выражения cron (`M H * * *` и `M H * * DOW`).
 
 ### MCP и клиенты агентов
 
@@ -292,6 +322,13 @@ lv24-seo auth set --provider gsc --stdin
 `auth status` показывает наличие и источник (`env`, `keyring`, `file`, `missing`), но никогда —
 значение.
 
+GSC также может использовать сервисный аккаунт. Задайте `providers.gsc.service_account_file` с
+абсолютным путём или экспортируйте `LV24_SEO_GSC_SERVICE_ACCOUNT_FILE`; файл важнее сохранённого
+`gsc_token`, а окружение важнее файла. `gsc_token`, являющийся JSON-объектом сервисного аккаунта,
+тоже принимается. Движок подписывает RS256 JWT, обменивает его в `token_uri` ключа и обновляет до
+истечения. `properties` сообщает `token_source: service_account_file|secret|missing`, а `doctor`
+добавляет некритичную проверку `gsc_auth`; ни один не печатает JSON или приватный ключ.
+
 ### Экспорт
 
 ```bash
@@ -309,4 +346,4 @@ lv24-seo export skills --out skills/
 - [MCP и навыки агентов](/ru/mcp/)
 - [Устранение неполадок](/ru/troubleshooting/)
 
-Source: `_source/engine-cli.md`, `_source/engine-mcp.md`, `_source/engine-releases-0.5.2.md`, `_source/engine-releases-0.5.3.md`, `_source/engine-releases-0.6.0.md`, `_source/engine-releases-0.7.0.md`; вывод `--help` версии 0.7.0 в репозитории движка.
+Source: `_source/engine-cli.md`, `_source/engine-mcp.md`, `_source/engine-releases-0.5.2.md`, `_source/engine-releases-0.5.3.md`, `_source/engine-releases-0.6.0.md`, `_source/engine-releases-0.7.0.md`, `_source/engine-releases-0.8.0.md`; вывод `--help` версии 0.8.0 в репозитории движка.

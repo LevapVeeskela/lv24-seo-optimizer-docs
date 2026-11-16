@@ -78,15 +78,19 @@ lv24-seo auth status --json
 
 Поддерживаемые имена провайдеров: `gsc`, `yandex`, `metrika`, `bing`, `crux`, `psi`, `smtp` и `telegram`. Без extra `secrets` используйте переменные окружения `LV24_SEO_*` для нужного провайдера, например `LV24_SEO_YANDEX_WEBMASTER_TOKEN`. Резервный вариант для headless — `LV24_SEO_ALLOW_FILE_SECRETS=1` плюс `data/secrets.json` с правами `0600`; в этом режиме движок предупреждает при каждом запуске.
 
+GSC также принимает сервисный аккаунт вместо вставленного OAuth-токена. Задайте `providers.gsc.service_account_file` с абсолютным путём или экспортируйте `LV24_SEO_GSC_SERVICE_ACCOUNT_FILE`; файл важнее сохранённого `gsc_token`, а окружение важнее файла. Движок подписывает RS256 JWT, обменивает его в `token_uri` ключа и обновляет до истечения, поэтому долгоживущий процесс `mcp serve` переживает истечение токена. `properties` сообщает `token_source: service_account_file`, а `doctor` добавляет некритичную проверку `gsc_auth`; ни один не печатает ключ. Обычный OAuth-токен продолжает работать.
+
 ## Матрица установки приложения
 
-Настольное приложение `0.5.0` — текущий релиз с движком `lv24-seo 0.7.0`; оно требует движок `0.7.0` или новее. Скачивайте файлы со страницы релизов проекта; `SHA256SUMS.txt` покрывает все опубликованные файлы.
+Настольное приложение `0.6.0` — текущий релиз с движком `lv24-seo 0.8.0`; оно требует движок `0.8.0` или новее. Скачивайте файлы со страницы релизов проекта; `SHA256SUMS.txt` покрывает все опубликованные файлы.
 
 | Платформа | Файлы | Автообновление |
 |---|---|---|
-| Windows 10/11 x64 | NSIS `LV24.SEO.Optimizer_0.5.0_x64-setup.exe` (+ `.sig`), portable `LV24-SEO-Optimizer_0.5.0_x64-portable.zip` (+ `.zip.sha256`) | Только NSIS; portable вручную |
-| Linux x64 | `LV24.SEO.Optimizer_0.5.0_amd64.AppImage` (+ `.AppImage.sig`), `LV24.SEO.Optimizer_0.5.0_amd64.deb`, `LV24.SEO.Optimizer-0.5.0-1.x86_64.rpm` | Только AppImage; deb/rpm вручную |
-| macOS 13+ arm64/x64 | `LV24.SEO.Optimizer_0.5.0_aarch64.dmg` / `LV24.SEO.Optimizer_0.5.0_x64.dmg` для первой установки, `LV24.SEO.Optimizer_0.5.0_aarch64.app.tar.gz` / `LV24.SEO.Optimizer_0.5.0_x64.app.tar.gz` (+ `.sig`) для обновлений | Только `.app`; DMG — первая установка |
+| Windows 10/11 x64 | NSIS `LV24.SEO.Optimizer_0.6.0_x64-setup.exe` (+ `.sig`), portable `LV24-SEO-Optimizer_0.6.0_x64-portable.zip` (+ `.zip.sha256`) | Только NSIS; portable вручную |
+| Linux x64 | `LV24.SEO.Optimizer_0.6.0_amd64.AppImage` (+ `.AppImage.sig`), `LV24.SEO.Optimizer_0.6.0_amd64.deb`, `LV24.SEO.Optimizer-0.6.0-1.x86_64.rpm` | Только AppImage; deb/rpm вручную |
+| macOS 13+ arm64/x64 | `LV24.SEO.Optimizer_0.6.0_aarch64.dmg` / `LV24.SEO.Optimizer_0.6.0_x64.dmg` для первой установки, `LV24.SEO.Optimizer_0.6.0_aarch64.app.tar.gz` / `LV24.SEO.Optimizer_0.6.0_x64.app.tar.gz` (+ `.sig`) для обновлений | Только `.app`; DMG — первая установка |
+
+Движок `0.8.0` добавляет `cwv collect`, сервисные аккаунты GSC, `backup restore --to` и `schedule status`/`uninstall`; ограничения перечислены в [заметках к релизу](/ru/release/).
 
 ### Windows
 
@@ -111,7 +115,7 @@ sudo dnf install ./*_amd64.rpm
 
 ### Обновление с версии 0.1.0
 
-`0.1.0` была превью только для Windows без обновлятора, endpoint и публичного ключа. Установите `0.5.0` вручную один раз (установщик NSIS или portable ZIP). Автообновление работает с `0.2.0` и далее только для Windows NSIS, macOS `.app` и Linux AppImage.
+`0.1.0` была превью только для Windows без обновлятора, endpoint и публичного ключа. Установите `0.6.0` вручную один раз (установщик NSIS или portable ZIP). Автообновление работает с `0.2.0` и далее только для Windows NSIS, macOS `.app` и Linux AppImage.
 
 ## Неподписанные сборки
 
@@ -142,4 +146,4 @@ pip uninstall lv24-seo
 - [Справочник конфигурации](/ru/reference/config/) — все ключи `seo.toml`.
 - [Безопасность и приватность](/ru/security/) — хранение токенов и защита записи.
 
-Source: `_source/engine-README.md`, `_source/engine-cli.md`, `_source/engine-config.md`, `_source/desktop-README.md`, `_source/desktop-releases-0.5.0.md`, `_source/desktop-releases-0.4.0.md`, `_source/desktop-releases-0.3.0.md`, `_source/desktop-releases-0.2.3.md`, `_source/desktop-releases-0.2.2.md`, `_source/desktop-releases-0.2.0.md`.
+Source: `_source/engine-README.md`, `_source/engine-cli.md`, `_source/engine-config.md`, `_source/desktop-README.md`, `_source/desktop-releases-0.6.0.md`, `_source/desktop-releases-0.5.0.md`, `_source/desktop-releases-0.4.0.md`, `_source/desktop-releases-0.3.0.md`, `_source/desktop-releases-0.2.3.md`, `_source/desktop-releases-0.2.2.md`, `_source/desktop-releases-0.2.0.md`.

@@ -53,7 +53,7 @@ python -m lv24_seo.mcp.registry --write
 python -m lv24_seo.mcp.registry --check
 ```
 
-共有 11 个工具：九个读取工具和两个受门禁的写入工具。`seo_crawl_site` 和
+共有 12 个工具：10 个读取类工具（7 个纯只读加 3 个本地状态写入者）和两个受门禁的写入工具。`seo_crawl_site` 和
 `seo_weekly_report` 是读取工具，但会保存本地快照，因此生成的 schema 增加
 `writes_local_state` 并把它们标记为 `readOnlyHint: false`。
 

@@ -1,6 +1,6 @@
 ---
 title: Releases and updates
-description: Engine 0.7.0 and desktop 0.5.0 releases, the 0.6.0, 0.5.3, 0.3.0 and older history, signed auto-update matrix, release pipeline, version pinning and rollback.
+description: Engine 0.8.0 and desktop 0.6.0 releases, the 0.7.0, 0.6.0, 0.5.3, 0.3.0 and older history, signed auto-update matrix, release pipeline, version pinning and rollback.
 ---
 
 # Releases and updates
@@ -9,10 +9,82 @@ The current releases are:
 
 | Product | Version | Released | Notes |
 |---|---|---|---|
-| Engine | `lv24-seo 0.7.0` | 2026-11-16 | Two-phase restore, multi-site portfolio, CWV by template and device, schema v4 indexing events, 21 CLI commands and 10 read-class MCP tools |
-| Desktop | `0.5.0` | 2026-11-16 | Restore UI, confirmed schedule install, Portfolio page, CWV card, bundled engine 0.7.0 and `MIN_ENGINE_VERSION` 0.7.0 |
+| Engine | `lv24-seo 0.8.0` | 2026-11-16 | CWV writer, GSC service accounts, richer Yandex indicators, non-destructive restore, scheduler lifecycle, 22 CLI commands and 12 MCP tools |
+| Desktop | `0.6.0` | 2026-11-16 | Cancellable background runs, confirmed schedule install with `--allow-write`, bundled engine 0.8.0 and `MIN_ENGINE_VERSION` 0.8.0 |
 
-The desktop version and the engine version are independent, but the desktop pins an exact engine and refuses one below its minimum. `0.5.0` bundles `0.7.0` and requires at least `0.7.0`, so an installed `0.6.x` engine is reported as incompatible.
+The desktop version and the engine version are independent, but the desktop pins an exact engine and refuses one below its minimum. `0.6.0` bundles `0.8.0` and requires at least `0.8.0`, so an installed `0.7.x` engine is reported as incompatible.
+
+## Engine 0.8.0
+
+Released on 2026-11-16. It adds the Core Web Vitals writer, Google Search Console service-account
+authentication, richer Yandex Webmaster indicators, a non-destructive `backup restore --to`, a
+scheduler lifecycle, and two provider fixes. The CLI now has 22 top-level commands; the MCP surface
+stays at 12 tools and the SQLite schema stays at version 4.
+
+What changed:
+
+- **CWV writer.** `cwv collect --url ABS [--url ABS …] [--device phone|desktop|tablet|all] [--source crux|psi|both] [--limit 1..50]` is the writer behind the weekly `cwv` section. CrUX is queried per URL and device (`mobile` is an alias for `phone`) and every returned p75 becomes one `metric_daily` field row (`source=crux`, `scope`, `key=<absolute URL>`, `metric`, `value`, the fetch date in `report.timezone`, `accuracy=crux_field_28d`). PSI rows stay in `data.lab` and are never persisted, so a lab score cannot pollute the field series; every run with PSI reports `cwv_lab_ignored`, and PSI has no `tablet`, so `tablet` is skipped as `psi_tablet_unsupported`. CrUX is a 28-day rolling window, so `meta.data_age_days` is at least 2; a low-traffic URL is `low_traffic` and writes no row, never a zero. `--limit` caps URLs at 50 (default 10); `meta.total`, `meta.processed`, `meta.pairs_total`, `meta.pairs_processed` and `meta.calls` make the cap explicit, and a capped run sets `meta.truncated: true` with `cwv_url_cap`. CrUX needs a key (`AUTH_REQUIRED` before any call) and persistence needs a store (`CONFIG_INVALID`). `report weekly` and `seo_weekly_report` read stored CWV rows through today, so a collection appears in the same run.
+- **GSC service accounts.** `providers.gsc.service_account_file` (absolute path) and `LV24_SEO_GSC_SERVICE_ACCOUNT_FILE` are read; the file wins over a stored `gsc_token`, and the environment wins over the file. A `gsc_token` that is a service-account JSON object (`type: service_account` plus `private_key`) is also accepted. The adapter signs an RS256 JWT (`iss`, `scope=webmasters.readonly`, `aud`, `iat`, `exp`), exchanges it at the key's `token_uri` with the JWT-bearer grant and refreshes it 60 seconds before expiry; a plain token keeps the historical `Authorization: Bearer` behaviour and is not refreshed. `properties` reports `token_source: service_account_file|secret|missing` and marks GSC ready; `doctor` adds a non-fatal `gsc_auth` check. Neither prints the JSON or the private key, and `auth status` still inspects only keychain, environment and file secrets. A relative, missing, unreadable or invalid file is `CONFIG_INVALID`; a rejected exchange is `AUTH_INVALID` and never echoes the body. `cryptography>=43` (Apache-2.0 OR BSD-3-Clause) is now required.
+- **Richer Yandex indicators.** `yandex queries` and `yandex_query_performance` expose `avg_click_position` next to shows, clicks and position, return `query_id` when the provider sends it, and keep an unmapped indicator under `extra_indicators` instead of dropping the row; the legacy list form of `indicators` is still accepted. `yandex indexing` and `yandex_indexing_state` merge the `indexing/history` series (`HTTP_2XX` … `OTHER`, either case) into one row per date (`http_2xx` … `other`); an omitted series stays absent and unknown series are kept in `extra_indicators`. `summary.site_problems` carries severity → count next to the existing counters, and an omitted counter stays absent rather than becoming `0`.
+- **Non-destructive restore.** `backup restore --file ABS --to ABS_DIR` unpacks an archive into a new directory and never touches the current workspace. The archive is re-validated exactly like the in-place plan (manifest, member set and names, sizes, every SHA-256). The target must be an absolute path that does not exist with an existing parent; an existing, non-empty or symlinked target is `INVALID_INPUT` and is never merged or overwritten. Absolute paths, `..`, backslashes and symlinks inside the archive are refused before extraction, the database passes `PRAGMA quick_check` before and after it is moved into place, and the staging directory is removed. An archive without a database yields a config-only directory with `database.in_archive: false` and an explicit warning; no empty database is invented. No `--allow-write` and no token are involved; passing either with `--to`, or `--to` with `--config`, is `INVALID_INPUT`. The two-phase in-place restore is unchanged.
+- **Scheduler lifecycle.** `schedule install` is plan-only by default: it prints the cron block, the systemd user units or the Task Scheduler XML plus the command it would run, with `dry_run: true` and `installed: false`. Nothing is written until `--allow-write`; `--print` remains an alias for the default and wins over `--allow-write`. Generated jobs embed the absolute `--config` path and run from the config directory. `schedule status` is read-only and reports `installed|outdated|partial|missing|unknown` plus the expected paths and per-artefact `exists`/`matches`; `unknown` means the host scheduler could not be inspected and `matches` is then `null`. `schedule uninstall` is plan-only by default and with `--allow-write` removes exactly its own managed cron block, the two `<job>.service`/`<job>.timer` units or the named task; a second run is a no-op (`removed: false`, `state: missing`) and unrelated lines and tasks are never touched. A cron block that lost its end marker is repaired conservatively and the envelope warns.
+- **Fixes.** Yandex Metrika `stat/v1/data` now sends the documented 1-based `offset`; the previous `0` was rejected with HTTP 400 on every call, which made the Metrika card look configured but empty. Pagination advances by the rows already returned. CLI `--json` output is ASCII-escaped, and human output degrades unencodable glyphs instead of aborting, so a completed report redirected on a legacy Windows code page (cp1251/cp866) no longer fails with `UnicodeEncodeError` while printing a warning.
+- **Surface and schema.** 22 top-level CLI commands (15 groups and 7 commands, adding `cwv`), 12 MCP tools (10 read-class: 7 pure read-only plus 3 local-state writers; 2 gated writes still return `WRITE_DISABLED`), 3 resources and 3 prompts unchanged. The schema stays at version 4 and no migration is applied; `schemas/tools.json` is unchanged. Portfolio and restore remain CLI-only, and `schedule status`/`uninstall` have no desktop screen yet.
+
+Verification recorded for this release:
+
+| Check | Result |
+|---|---|
+| PyPI | `lv24-seo 0.8.0` published |
+| npm | `@lv24/seo 0.8.0` published |
+| MCP Registry | `io.github.LevapVeeskela/lv24-seo 0.8.0` published |
+| CI matrix | run `43962847574` green on Ubuntu, Windows and macOS |
+| Release workflow | run `43964671274` green |
+| Desktop | `0.6.0` published with engine `0.8.0`; assets named `0.6.0` / `-0.6.0-` |
+
+Known limits in 0.8.0:
+
+- `cwv collect` needs a CrUX API key and a local store; without the key it is `AUTH_REQUIRED` before any network call, and PSI alone cannot populate the weekly `cwv` section.
+- PSI is lab data and is never stored; `tablet` is skipped because PSI has no such form factor.
+- The CWV fetch date uses `report.timezone`, not UTC, so a collection near midnight can land on a different date than a UTC-based consumer expects.
+- `schedule status` is file-level: it compares the generated artefacts with the current spec and does not ask the host scheduler whether a job is enabled, last ran or succeeded. On Windows a task edited outside `schedule install` may still show as `outdated`.
+- `backup restore --to` extracts files and never merges rows or settings; tokens are not in the archive, so re-authenticate afterwards.
+- Yandex indicator coverage follows what the provider returns; a missing indicator stays absent (`null`), and `extra_indicators` is not a stable schema across API versions.
+
+## Desktop 0.6.0
+
+Released on 2026-11-16. It adds cancellable background runs, sends the scheduler write opt-in only
+after confirmation, bundles `lv24-seo 0.8.0` and raises `MIN_ENGINE_VERSION` to `0.8.0`, so an
+installed `0.7.x` engine is reported as incompatible.
+
+What changed:
+
+- **Cancellable background runs.** `crawl`, `report_weekly`, `logs_analyze`, `backup_create`, `backup_restore` and `schedule_install` accept a stable run id from the webview. The Rust runner registers `run id → exact child PID` before the spawn; a run id for any other command is `RUN_NOT_CANCELLABLE`, so short reads keep their synchronous path. The run lives in one root `RunStore`, not on a page: the app layout shows a persistent banner with kind, elapsed time, status and **Cancel**, leaving the route does not clear it, every active run is listed, and the newest cancelled run stays until dismissed. `run_cancel(runId)` signals only the exact registered child (and its process group on Unix) after checking it is still an engine image or a tracked child; it never matches by name. An unknown or finished run returns `false`, and the UI does not claim a cancellation then. A cancelled run returns `RUN_CANCELLED`, shown separately from succeeded and failed runs.
+- **Schedule install sends the opt-in.** Engine `0.8.0` made `schedule install` plan-only by default; the desktop asks for confirmation and appends `--allow-write` only after the user confirms the plan it showed. The shell still refuses an install without `allowWrite=true` with `CONFIRM_REQUIRED` before spawning the engine, so the webview cannot bypass the new default. A plan-only preview and the print-only artifact remain available, and an install is cancellable like the other long jobs.
+- **Engine 0.8.0.** The sidecar adds GSC service accounts, the `cwv collect` writer, `backup restore --to`, `schedule status`/`uninstall`, richer Yandex indicators, the Metrika 1-based offset fix and the Windows JSON output fix. `properties` gains `token_source` and `doctor` gains `gsc_auth`. `MIN_ENGINE_VERSION` is `0.8.0` because the mandatory `schedule install --allow-write` opt-in needs it; restore, portfolio and CWV already required `0.7.0`.
+- **Shell and contracts.** Contracts were regenerated from `lv24-seo 0.8.0`; the additive changes are the `gsc_auth` check, `properties.token_source` and `providers.gsc.service_account_file` in `config.schema.json`. The contract generator pins `PYTHON_KEYRING_BACKEND` to the null backend so a developer machine with real provider tokens cannot leak token presence into the fixtures. The desktop adds no screens for `schedule status`/`uninstall` or `cwv collect` yet.
+
+Verification recorded for this release:
+
+| Check | Result |
+|---|---|
+| Published assets | 18 on `v0.6.0` for Windows x64, Linux x64 and macOS arm64/x64, including the Windows portable `.zip.sha256` |
+| Updater manifest | `latest.json` reports `0.6.0` |
+| CI | run `43966588931` green |
+| Release workflow | run `43969832204` green |
+| In-app update | `0.5.0 → 0.6.0` verified through the Rust updater on Windows NSIS: **Desktop 0.6.0**, **Engine 0.8.0** and engine ready |
+| Workspace smoke test | a real workspace loaded with the bundled engine; provider readiness and coverage were checked without exposing query data |
+| Sidecars | Windows x64 pinned from PyPI `0.8.0` (`sha256 5fb932c8…`, 14,365,502 bytes); Linux and macOS rebuilt with passing rebuild-aware reports |
+
+Known limits in 0.6.0:
+
+- Cancel is not rollback and there is no job queue. A cancelled run may leave a partial report, crawl, backup or scheduler artefact; a cancelled in-place restore keeps the pre-restore copy but may have replaced one file, so build a fresh plan before retrying.
+- Schedule install mutates the host only after confirmation and only on this computer. The desktop does not manage, repair or uninstall the job; use `schedule status`/`schedule uninstall` in the CLI.
+- Restore replaces the database and config and never merges; tokens are excluded, so re-authenticate. `backup restore --to` is CLI-only.
+- GSC service accounts are configured outside the form: the desktop has no `service_account_file` field; set it in `seo.toml` or the environment.
+- The CWV card is empty without stored field rows; `cwv collect` is a CLI command and at most five templates are shown.
+- `MIN_ENGINE_VERSION` is `0.8.0`, so a `0.7.x` engine is rejected.
+- Linux and macOS sidecar pins remain `null`; the release gate relies on rebuild-aware reports.
 
 ## Engine 0.7.0
 
@@ -525,11 +597,12 @@ Manual-only is deliberate. A deb or rpm install is owned by the package database
 replace it; a portable ZIP has no installer to replace and may live on removable media. The desktop reports the installed bundle type and disables the in-app
 installer for those cases. It does not pretend that a manual package was updated.
 
-The Windows NSIS path has now been verified end-to-end six times: `0.2.0 → 0.2.1`, `0.2.1 → 0.2.2`,
-`0.2.2 → 0.2.3`, `0.2.3 → 0.3.0`, `0.3.0 → 0.4.0`, and `0.4.0 → 0.5.0`. For the sixth run, an installed `0.4.0` build
-updated through the Rust updater, downloaded and verified the signed package, installed it, relaunched,
-and reported **Desktop 0.5.0** with **Engine 0.7.0** and the engine ready. Any `0.2.x` install with the
-in-app updater can jump straight to `0.5.0`; `0.1.0` has no updater and needs one manual install.
+The Windows NSIS path has now been verified end-to-end seven times: `0.2.0 → 0.2.1`, `0.2.1 → 0.2.2`,
+`0.2.2 → 0.2.3`, `0.2.3 → 0.3.0`, `0.3.0 → 0.4.0`, `0.4.0 → 0.5.0` and `0.5.0 → 0.6.0`. For the
+seventh run, an installed `0.5.0` build updated through the Rust updater, downloaded and verified the
+signed package, installed it, relaunched, and reported **Desktop 0.6.0** with **Engine 0.8.0** and the
+engine ready. Any `0.2.x` install with the in-app updater can jump straight to `0.6.0`; `0.1.0` has no
+updater and needs one manual install.
 
 The `0.2.1 → 0.2.2` update runs the old `0.2.1` updater, which does not include the new tracked-PID
 cleanup. If a sidecar is active during that first update, retry after it exits or install `0.2.2`
@@ -543,12 +616,12 @@ approves the `desktop-release` environment; a non-owner run is skipped.
 
 | Input | Default | Meaning |
 |---|---|---|
-| `engine_version` | `0.7.0` | Exact engine bundled in the sidecar |
+| `engine_version` | `0.8.0` | Exact engine bundled in the sidecar |
 | `signed` | `false` | Request OS signing/notarization; not configured in this zero-spend repository |
 | `publish` | `false` | Create a GitHub release after every matrix build passes |
 | `tag` | Empty | `vX.Y.Z` release tag; required when `publish=true` |
 
-The default matches the `0.5.0` pin. The release gate rejects a manifest mismatch if a different version is passed.
+The default matches the `0.6.0` pin. The release gate rejects a manifest mismatch if a different version is passed.
 
 | Runner | Target | Bundles |
 |---|---|---|
@@ -563,7 +636,7 @@ days; the GitHub release is the durable distribution channel.
 ## Sidecar pin and checksums
 
 The release sidecar is a PyInstaller **onedir** tree, built on the matching host; PyInstaller does not cross-compile. The engine, Python, Pydantic, Typer and
-PyInstaller versions are pinned in `scripts/cli-checksums.json`. `0.5.0` pins engine `0.7.0` (up from `0.6.0`), Python `3.12`, Pydantic `2.14.3`, Typer `0.29.0` and PyInstaller
+PyInstaller versions are pinned in `scripts/cli-checksums.json`. `0.6.0` pins engine `0.8.0` (up from `0.7.0`), Python `3.12`, Pydantic `2.14.3`, Typer `0.29.0` and PyInstaller
 `6.22.3`.
 
 PyInstaller onedir output is not byte-reproducible. The checksum policy is therefore split:
@@ -577,9 +650,9 @@ PyInstaller onedir output is not byte-reproducible. The checksum policy is there
   shipped target: matching target name, `hashPolicy: "rebuild"`, `ok: true`, a 64-hex
   hash, a positive size and the exact engine version.
 
-For `0.7.0`, Windows x64 has a reviewed local pin; Linux and macOS were rebuilt by the release workflow
+For `0.8.0`, Windows x64 has a reviewed local pin; Linux and macOS were rebuilt by the release workflow
 with passing rebuild-aware checksum reports, and their reviewed pins remain `null` until a local build is
-reviewed on those hosts. The `0.6.0` Windows pin did not carry over because the executable changes with
+reviewed on those hosts. The `0.7.0` Windows pin did not carry over because the executable changes with
 the engine.
 The checksum reports are CI evidence, not release assets. `SHA256SUMS.txt` covers the installers,
 updater packages, signatures and `latest.json`; the sidecar executable is inside those packages and
@@ -590,7 +663,7 @@ is not listed separately. Users who install manually verify the downloaded asset
 node scripts/verify-sidecar.mjs \
   --root src-tauri/engine \
   --target x86_64-pc-windows-msvc \
-  --engine-version 0.7.0
+  --engine-version 0.8.0
 ```
 
 ## `latest.json`, signing and publishing
@@ -622,18 +695,22 @@ uploaded manifest. A rerun reuses an existing draft, clears its assets and refus
 The desktop version must agree in `package.json`, `src-tauri/tauri.conf.json`, `src-tauri/Cargo.toml`, the Git tag and the release title. The engine pin lives
 in `scripts/cli-checksums.json`; the workflow passes `engine_version` explicitly and the release gate requires it to match the manifest.
 
-`MIN_ENGINE_VERSION` in `src-tauri/src/commands.rs` is `0.7.0` in the current source. The `0.5.0` bundle ships engine `0.7.0`,
-so the minimum matches the bundled engine and a `0.6.x` engine is reported as incompatible. The shell accepts an engine at least that new and marks an older one
+`MIN_ENGINE_VERSION` in `src-tauri/src/commands.rs` is `0.8.0` in the current source. The `0.6.0` bundle ships engine `0.8.0`,
+so the minimum matches the bundled engine and a `0.7.x` engine is reported as incompatible. The shell accepts an engine at least that new and marks an older one
 offline with a notice. A newer engine passes the gate but is not the release-tested pin. A development build may use `LV24_SEO_BIN` with another version; the UI
 labels it external and still checks the minimum. A `PATH` engine is used only when `LV24_SEO_ALLOW_PATH_ENGINE=1`.
 
 ## One-time 0.1.0 upgrade
 
-`0.1.0` has no updater, endpoint or public key. It cannot discover or install `0.5.0`. Download and install `0.5.0` manually once (NSIS installer or portable
-ZIP on Windows). After that, the `0.5.0` installation can auto-update to later releases when it uses an auto-update-capable bundle.
+`0.1.0` has no updater, endpoint or public key. It cannot discover or install `0.6.0`. Download and install `0.6.0` manually once (NSIS installer or portable
+ZIP on Windows). After that, the `0.6.0` installation can auto-update to later releases when it uses an auto-update-capable bundle.
 
 ## Earlier releases
 
+- **Desktop 0.5.0** added the restore flow, a confirmed schedule install, the Portfolio page and the CWV card,
+  bundled engine `0.7.0` and raised `MIN_ENGINE_VERSION` to `0.7.0`.
+- **Engine 0.7.0** added two-phase restore, the read-only portfolio, CWV by URL template and device, schema v4
+  with `indexing_events`, and 21 CLI commands.
 - **Desktop 0.4.0** added the Logs, Tasks and Backup pages and the report digest card, bundled engine `0.6.0`
   and raised `MIN_ENGINE_VERSION` to `0.6.0`.
 - **Engine 0.6.0** added local nginx log analysis and the twelfth MCP tool, the attributed change digest,
@@ -688,4 +765,4 @@ those protections system-wide.
 
 See [Security and privacy](/security/) for updater trust and [Architecture](/architecture/) for the sidecar layout.
 
-Source: `_source/engine-releases-0.7.0.md`, `_source/engine-releases-0.6.0.md`, `_source/engine-releases-0.5.3.md`, `_source/engine-releases-0.5.2.md`, `_source/desktop-releases-0.5.0.md`, `_source/desktop-releases-0.4.0.md`, `_source/desktop-releases-0.3.0.md`, `_source/desktop-releases-0.2.3.md`, `_source/desktop-releases-0.2.2.md`, `_source/desktop-releases-0.2.1.md`, `_source/desktop-releases-0.2.0.md`, `_source/desktop-release.md`, `_source/desktop-security.md`.
+Source: `_source/engine-releases-0.8.0.md`, `_source/engine-releases-0.7.0.md`, `_source/engine-releases-0.6.0.md`, `_source/engine-releases-0.5.3.md`, `_source/engine-releases-0.5.2.md`, `_source/desktop-releases-0.6.0.md`, `_source/desktop-releases-0.5.0.md`, `_source/desktop-releases-0.4.0.md`, `_source/desktop-releases-0.3.0.md`, `_source/desktop-releases-0.2.3.md`, `_source/desktop-releases-0.2.2.md`, `_source/desktop-releases-0.2.1.md`, `_source/desktop-releases-0.2.0.md`, `_source/desktop-release.md`, `_source/desktop-security.md`.

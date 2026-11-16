@@ -33,7 +33,7 @@ Yandex Business。参见[数据源与配额](/zh/providers/)。
 ## 应该用 CLI 还是 MCP？
 
 两者基于同一个引擎并返回相同的数据。CLI 面向终端、cron 和 CI。MCP 服务器通过 stdio 或可流式
-HTTP 向编码智能体提供 11 个工具。参见 [MCP 与智能体技能](/zh/mcp/)。
+HTTP 向编码智能体提供 12 个工具。参见 [MCP 与智能体技能](/zh/mcp/)。
 
 ## 桌面应用还是 CLI？
 

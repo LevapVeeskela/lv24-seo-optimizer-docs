@@ -21,7 +21,7 @@ MCP 服务器提供一个小而明确的能力面：12 个工具、3 个资源�
 | `seo_crawl_site` | read | `true` | `false` | `false` | `false` |
 | `seo_weekly_report` | read | `true` | `false` | `false` | `false` |
 
-它们保存索引事件、抓取或周报快照，但从不改变提供商状态，也不需要确认令牌。依据 `readOnlyHint` 分支的 MCP 客户端可能会在调用前请求确认；这是有意为之。其余九个工具是七个纯只读工具加上两个在此构建中仍返回 `WRITE_DISABLED` 的受限写入。
+它们保存索引事件、抓取或周报快照，但从不改变提供商状态，也不需要确认令牌。依据 `readOnlyHint` 分支的 MCP 客户端可能会在调用前请求确认；这是有意为之。十二个工具分为 10 个读取类（7 个纯只读加这 3 个本地状态写入者）和 2 个受限写入，后者在此构建中仍返回 `WRITE_DISABLED`。
 
 两个写入工具带有 `destructiveHint: true`，并且需要显式开启：`allow_write` 默认为 `false`，任何不带它的调用都会在构建计划之前返回 `WRITE_DISABLED`。它们遵循与 CLI 相同的两阶段契约，见下文。
 
@@ -54,12 +54,12 @@ dry run 的 `data` 对象：
 
 | 工具 | 输入 | 返回 |
 |---|---|---|
-| `seo_properties` | 无 | 已配置的提供商、目标和令牌是否存在 |
+| `seo_properties` | 无 | 已配置的提供商、目标、令牌是否存在以及 `token_source`（`service_account_file`、`secret` 或 `missing`） |
 | `gsc_search_analytics` | `property`、`start_date`、`end_date`、`dimensions`、`limit` 1–500（默认 50） | 按查询、页面、国家或设备分组的点击、展示、CTR 和排名行 |
-| `yandex_query_stats` | `host_id`、`limit` 1–500、`order_by` `TOTAL_SHOWS` 或 `TOTAL_CLICKS` | 热门查询的展示、点击和排名 |
-| `yandex_indexing_state` | 除已配置主机外无输入 | 索引历史、搜索中页面数和诊断；存在工作区存储时把按 URL 事件保存到 `indexing_events`（模式 v4） |
+| `yandex_query_stats` | `host_id`、`limit` 1–500、`order_by` `TOTAL_SHOWS` 或 `TOTAL_CLICKS` | 热门查询的展示、点击、排名、`avg_click_position`、`query_id` 和 `extra_indicators` |
+| `yandex_indexing_state` | 除已配置主机外无输入 | 索引历史、搜索中页面数、诊断、合并的 `http_2xx` … `other` 系列和 `site_problems`；存在工作区存储时把按 URL 事件保存到 `indexing_events`（模式 v4） |
 | `seo_crawl_site` | `start_url`、`max_urls` 0 或 1–5000、`include_rules` | 抓取摘要、问题、链接图和站点地图覆盖 |
-| `seo_weekly_report` | `days` 1–90、`lag_days` 0–14 | 周报各部分以及信封 meta |
+| `seo_weekly_report` | `days` 1–90、`lag_days` 0–14 | 周报各部分，包括截至今天读取的已存储 CWV 行，以及信封 meta |
 | `seo_report_diff` | `base`、`head`，格式 `START..END` | 标题变化、问题数量、机会变动、限制、Markdown |
 | `seo_indexing_triage` | 无 | 带原因、数量、示例和 `next_action` 的桶 |
 | `seo_opportunities` | `days` 1–90（默认 28）、`limit` 1–500、`min_impressions` | 带证据和 `expected_gain` 的排序机会 |
@@ -75,7 +75,11 @@ MCP 周报工具会把 `days` 上限设为 90、`lag_days` 上限设为 14，并
 
 `seo_log_analysis` 是第十二个工具，也是唯一不需要服务、存储或工作区的工具。它读取一个不超过 100 MiB 的本地 nginx JSON 访问日志，返回与 `lv24-seo logs analyze` 相同的 `data`、`meta` 和 `warnings`，并且只读：文件只打开一次，不会上传或存储。机器人分类仅基于 User-Agent，因此结果是分诊，不是抓取身份的证明。
 
-`yandex_indexing_state` 在存在存储时把提供商报告的按 URL 事件保存到 `indexing_events` 表。重放会更新 `last_seen` 而不重复，`first_seen` 不可变，`meta.indexing_events` 报告 `new`、`existing`、`skipped` 和 `truncated`，每次调用最多考虑 500 行提供商数据。存储失败变成警告，而不是提供商读取失败。周报会把这些事件作为摘要证据读取。
+`yandex_indexing_state` 在存在存储时把提供商报告的按 URL 事件保存到 `indexing_events` 表。重放会更新 `last_seen` 而不重复，`first_seen` 不可变，`meta.indexing_events` 报告 `new`、`existing`、`skipped` 和 `truncated`，每次调用最多考虑 500 行提供商数据。存储失败变成警告，而不是提供商读取失败。周报会把这些事件作为摘要证据读取。同一调用把文档化的 `indexing/history` 系列（`http_2xx` … `other`）合并为每个日期一行，把未知系列保留在 `extra_indicators` 中，并报告 `summary.site_problems`；省略的计数器保持缺失而不是变成 `0`。
+
+`cwv collect` 是 CLI 写入器，不是第 13 个工具：MCP 接口仍为 12。`seo_weekly_report` 读取 CLI 已持久化的字段行，并增加按 URL 模板和设备分组的 `cwv` 分区，最多五个模板。PSI 实验室行绝不存储，因此单独的 `--source psi` 无法填充该分区。
+
+GSC 可以使用服务账号而不是粘贴 OAuth 令牌。把 `providers.gsc.service_account_file`（绝对路径）或 `LV24_SEO_GSC_SERVICE_ACCOUNT_FILE` 设为服务账号；文件优先于已存储的 `gsc_token`，环境变量优先于文件。适配器签署 RS256 JWT，在密钥的 `token_uri` 交换并在过期前刷新，因此长期运行的 MCP 进程可以跨过令牌过期。`seo_properties` 报告 `token_source`，`doctor` 增加非致命 `gsc_auth` 检查；两者都不打印 JSON 或私钥。
 
 ## 资源
 
@@ -187,4 +191,4 @@ lv24-seo export skills --out .opencode/skills
 - **技术审计。** 用 `seo_crawl_site` 抓取最多 500 个 URL，按规则 id 汇总 critical 和 high 问题。不要把未抓取的 URL 说成失效。
 - **写入请求。** 为这些 URL 准备重新抓取计划，先显示配额。在我批准计划前不要写入任何内容。
 
-Source: `_source/engine-mcp.md`, `_source/engine-skills.md`, `_source/engine-cli.md`, `_source/engine-releases-0.5.2.md`, `_source/engine-releases-0.5.3.md`, `_source/engine-releases-0.6.0.md`, `_source/engine-releases-0.7.0.md`.
+Source: `_source/engine-mcp.md`, `_source/engine-skills.md`, `_source/engine-cli.md`, `_source/engine-releases-0.5.2.md`, `_source/engine-releases-0.5.3.md`, `_source/engine-releases-0.6.0.md`, `_source/engine-releases-0.7.0.md`, `_source/engine-releases-0.8.0.md`.

@@ -48,7 +48,7 @@ lv24-seo auth set --provider gsc --stdin
 - 能访问提供商 API。工具没有遥测，不会自行发送任何内容。
 - 桌面应用：Windows 10/11 x64 与 WebView2，Linux x64 与 glibc 2.35 或更高版本，或 macOS 13 或更高版本。
 
-GSC 目前使用手动提供的 OAuth 访问令牌；服务账号流程已计划但尚未发布。Yandex、Bing 和其他适配器也使用手动提供的令牌或密钥。
+GSC 接受手动提供的 OAuth 访问令牌或服务账号（`providers.gsc.service_account_file` / `LV24_SEO_GSC_SERVICE_ACCOUNT_FILE`，`0.8.0` 起提供）；普通令牌仍然可用。Yandex、Bing 和其他适配器使用手动提供的令牌或密钥。
 
 ## 默认只读
 
@@ -63,7 +63,7 @@ MCP 服务器默认只读；其写工具带注解并受门控，部分提供商�
 | 使用界面 | 提供什么 |
 |---|---|
 | CLI | 每条命令都支持 `--json`、稳定信封和文档化的退出码。 |
-| MCP | 面向 Claude、OpenCode、Cursor 和其他客户端的 stdio 服务器，包含 11 个工具、3 个资源和 3 个提示词。 |
+| MCP | 面向 Claude、OpenCode、Cursor 和其他客户端的 stdio 服务器，包含 12 个工具、3 个资源和 3 个提示词。 |
 | 桌面端 | Tauri 2 + React 外壳，包含工作区选择器、统计仪表板、设置表单、配置输出、报告、建议和签名更新。 |
 | 自动化 | cron、systemd timer 和 Windows 任务计划程序生成器，以及 SMTP 和 Telegram 投递。 |
 
@@ -71,16 +71,17 @@ CLI 信封为 `{ok, data, meta, warnings}`。当输入缺失、被截断或采�
 
 ## 可选桌面端
 
-桌面端是 `0.5.0`，内置 `lv24-seo 0.7.0`；它要求引擎 `0.7.0` 或更新。当你不想记参数时它很有用：在应用内创建或选择 `seo.toml`，查看仪表板，通过带校验的表单编辑配置，运行有边界的抓取，分析 nginx 日志，分诊任务，创建或恢复可移植备份，扫描组合文件夹，比较并导出带归因摘要和 CWV 卡片的周报，并把有边界的建议复制为给智能体的 Markdown 提示词。Windows NSIS、macOS `.app` 和 Linux AppImage 可以自动更新；便携 ZIP、deb 和 rpm 仅手动更新。更新器只停止它启动的 sidecar，如果无法停止会以 `UPDATE_ENGINE_BUSY` 阻止安装。
+桌面端是 `0.6.0`，内置 `lv24-seo 0.8.0`；它要求引擎 `0.8.0` 或更新。当你不想记参数时它很有用：在应用内创建或选择 `seo.toml`，查看仪表板，通过带校验的表单编辑配置，运行有边界的抓取，分析 nginx 日志，分诊任务，创建或恢复可移植备份，扫描组合文件夹，比较并导出带归因摘要和 CWV 卡片的周报，并把有边界的建议复制为给智能体的 Markdown 提示词。长时间引擎任务在后台运行，带窗口级横幅和 **Cancel** 按钮。Windows NSIS、macOS `.app` 和 Linux AppImage 可以自动更新；便携 ZIP、deb 和 rpm 仅手动更新。更新器只停止它启动的 sidecar，如果无法停止会以 `UPDATE_ENGINE_BUSY` 阻止安装。
 
 ## 状态与限制
 
-引擎为 `0.7.0`；桌面端为 `0.5.0`。1.0 之前的已知缺口：
+引擎为 `0.8.0`；桌面端为 `0.6.0`。1.0 之前的已知缺口：
 
-- GSC 目前支持手动提供的 OAuth 访问令牌；服务账号流程已计划。
+- GSC 支持手动提供的 OAuth 访问令牌或服务账号；普通令牌不会刷新。
 - GSC sitemap 提交和 Yandex 重新抓取返回 `WRITE_DISABLED`；IndexNow 会真正提交。
 - `storage.raw_retention_days` 已保留；目前不会写入原始归档。
-- 桌面端 `0.5.0` 有抓取、日志、任务、备份、恢复、计划任务安装和组合屏幕并显示耗时，但长时间引擎调用没有取消和后台运行；只有更新器下载可以取消。
+- 桌面端 `0.6.0` 有抓取、日志、任务、备份、恢复、计划任务安装和组合屏幕。长时间引擎调用在后台运行，带窗口级横幅和 **Cancel** 按钮，但取消不是回滚，也没有任务队列。
+- `cwv collect`、`backup restore --to` 和 `schedule status`/`uninstall` 仅限 CLI；桌面端渲染已存储的 CWV 行、规划就地恢复并在确认后安装调度器任务。
 - `report indexing`、`report opportunities` 和 `report history` 已计划，尚未发布。
 - 日志是可选项：设置 `LV24_SEO_LOG_LEVEL` 才会在 CLI 和 `mcp serve` 中安装脱敏处理器。稳定的诊断接口仍是 `--json` 信封。
 

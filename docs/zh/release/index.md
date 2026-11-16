@@ -1,6 +1,6 @@
 ---
 title: 发行与更新
-description: 引擎 0.7.0 与桌面 0.5.0 发行说明、0.6.0、0.5.3、0.3.0 及更早版本历史、签名自动更新矩阵、发布流水线、版本固定与回滚。
+description: 引擎 0.8.0 与桌面 0.6.0 发行说明、0.7.0、0.6.0、0.5.3、0.3.0 及更早版本历史、签名自动更新矩阵、发布流水线、版本固定与回滚。
 ---
 
 # 发行与更新
@@ -9,10 +9,77 @@ description: 引擎 0.7.0 与桌面 0.5.0 发行说明、0.6.0、0.5.3、0.3.0 �
 
 | 产品 | 版本 | 发布日期 | 说明 |
 |---|---|---|---|
-| 引擎 | `lv24-seo 0.7.0` | 2026-11-16 | 两阶段恢复、多站点组合、按模板和设备的 CWV、带索引事件模式 v4、21 个 CLI 命令和 10 个读取类 MCP 工具 |
-| 桌面 | `0.5.0` | 2026-11-16 | 恢复界面、经确认的计划任务安装、Portfolio 页面、CWV 卡片、捆绑引擎 0.7.0 和 `MIN_ENGINE_VERSION` 0.7.0 |
+| 引擎 | `lv24-seo 0.8.0` | 2026-11-16 | CWV 写入器、GSC 服务账号、更丰富的 Yandex 指标、非破坏性恢复、调度器生命周期、22 个 CLI 命令和 12 个 MCP 工具 |
+| 桌面 | `0.6.0` | 2026-11-16 | 可取消的后台运行、经确认的计划任务安装（带 `--allow-write`）、捆绑引擎 0.8.0 和 `MIN_ENGINE_VERSION` 0.8.0 |
 
-桌面版本与引擎版本相互独立，但桌面固定精确引擎，并拒绝低于最低版本的引擎。`0.5.0` 捆绑 `0.7.0` 并要求至少 `0.7.0`，因此已安装的 `0.6.x` 引擎会被报告为不兼容。
+桌面版本与引擎版本相互独立，但桌面固定精确引擎，并拒绝低于最低版本的引擎。`0.6.0` 捆绑 `0.8.0` 并要求至少 `0.8.0`，因此已安装的 `0.7.x` 引擎会被报告为不兼容。
+
+## 引擎 0.8.0
+
+2026-11-16 发布。它增加 Core Web Vitals 写入器、Google Search Console 服务账号认证、更丰富的 Yandex Webmaster 指标、非破坏性的 `backup restore --to`、调度器生命周期以及两项提供商修复。CLI 现在有 22 个顶层命令；MCP 接口仍为 12 个工具，SQLite 模式仍为版本 4。
+
+变更内容：
+
+- **CWV 写入器。** `cwv collect --url ABS [--url ABS …] [--device phone|desktop|tablet|all] [--source crux|psi|both] [--limit 1..50]` 是周报 `cwv` 分区背后的写入器。CrUX 按 URL 和设备查询（`mobile` 是 `phone` 的别名），每个返回的 p75 成为一行 `metric_daily` 字段行（`source=crux`、`scope`、`key=<绝对 URL>`、`metric`、`value`、`report.timezone` 中的获取日期、`accuracy=crux_field_28d`）。PSI 行保留在 `data.lab` 中且绝不持久化，因此实验室分数不会污染字段序列；每次包含 PSI 的运行都会报告 `cwv_lab_ignored`，而 PSI 没有 `tablet`，所以 `tablet` 会以 `psi_tablet_unsupported` 跳过。CrUX 是 28 天滚动窗口，因此 `meta.data_age_days` 至少为 2；低流量 URL 为 `low_traffic` 且不写行，绝不写零。`--limit` 将 URL 限制为 50（默认 10）；`meta.total`、`meta.processed`、`meta.pairs_total`、`meta.pairs_processed` 和 `meta.calls` 明确上限，达到上限的运行设置 `meta.truncated: true` 和 `cwv_url_cap`。CrUX 需要密钥（任何调用前 `AUTH_REQUIRED`），持久化需要存储（`CONFIG_INVALID`）。`report weekly` 和 `seo_weekly_report` 读取截至今天的已存储 CWV 行，因此一次采集会出现在同一运行中。
+- **GSC 服务账号。** 读取 `providers.gsc.service_account_file`（绝对路径）和 `LV24_SEO_GSC_SERVICE_ACCOUNT_FILE`；文件优先于已存储的 `gsc_token`，环境变量优先于文件。`gsc_token` 若是服务账号 JSON 对象（`type: service_account` 加 `private_key`）也会被接受。适配器签署 RS256 JWT（`iss`、`scope=webmasters.readonly`、`aud`、`iat`、`exp`），在密钥的 `token_uri` 用 JWT-bearer grant 交换，并在过期前 60 秒刷新；普通令牌保留历史 `Authorization: Bearer` 行为且不刷新。`properties` 报告 `token_source: service_account_file|secret|missing` 并标记 GSC 就绪；`doctor` 增加非致命 `gsc_auth` 检查。两者都不打印 JSON 或私钥，`auth status` 仍只检查钥匙串、环境和文件密钥。相对、缺失、不可读或无效文件为 `CONFIG_INVALID`；被拒绝的交换为 `AUTH_INVALID` 且绝不回显响应体。现在需要 `cryptography>=43`（Apache-2.0 OR BSD-3-Clause）。
+- **更丰富的 Yandex 指标。** `yandex queries` 和 `yandex_query_performance` 在展示、点击和位置旁提供 `avg_click_position`，提供商发送时返回 `query_id`，并把未映射指标保留在 `extra_indicators` 中而不是丢弃整行；旧版 `indicators` 列表形式仍被接受。`yandex indexing` 和 `yandex_indexing_state` 将 `indexing/history` 系列（`HTTP_2XX` … `OTHER`，大小写均可）合并为每个日期一行（`http_2xx` … `other`）；省略的系列保持缺失，未知系列保留在 `extra_indicators` 中。`summary.site_problems` 在现有计数器旁携带严重性 → 数量，省略的计数器保持缺失而不是变成 `0`。
+- **非破坏性恢复。** `backup restore --file ABS --to ABS_DIR` 把归档解压到新目录，绝不触碰当前工作区。归档会像就地计划一样重新校验（清单、成员集合和名称、大小、每个 SHA-256）。目标必须是绝对路径、不存在且父目录存在；已存在、非空或符号链接目标为 `INVALID_INPUT`，绝不合并或覆盖。归档中的绝对路径、`..`、反斜杠和符号链接在解压前被拒绝，数据库在移入前后都通过 `PRAGMA quick_check`，暂存目录会被删除。没有数据库的归档生成仅配置目录，带 `database.in_archive: false` 和明确警告；不会凭空创建空数据库。不涉及 `--allow-write` 和令牌；与 `--to` 一起传任一者，或 `--to` 与 `--config` 一起传，都是 `INVALID_INPUT`。两阶段就地恢复不变。
+- **调度器生命周期。** `schedule install` 默认只生成计划：打印 cron 块、systemd 用户单元或任务计划程序 XML 以及它将运行的命令，带 `dry_run: true` 和 `installed: false`。只有 `--allow-write` 才写入；`--print` 仍是默认计划的别名，并优先于 `--allow-write`。生成的任务嵌入绝对 `--config` 路径并从配置目录运行。`schedule status` 只读，报告 `installed|outdated|partial|missing|unknown`、预期路径以及每个产物的 `exists`/`matches`；`unknown` 表示无法检查主机调度器，此时 `matches` 为 `null`。`schedule uninstall` 默认只生成计划，带 `--allow-write` 时只删除自己管理的 cron 块、两个 `<job>.service`/`<job>.timer` 单元或命名任务；第二次运行是 no-op（`removed: false`、`state: missing`），绝不动无关行和任务。丢失结束标记的 cron 块会被保守修复，信封会警告。
+- **修复。** Yandex Metrika `stat/v1/data` 现在发送文档化的 1-based `offset`；此前的 `0` 在每次调用时被 HTTP 400 拒绝，使 Metrika 卡片看起来已配置但为空。分页按已返回行推进。CLI `--json` 输出进行 ASCII 转义，人类输出会降级不可编码字形而不是中止，因此在旧版 Windows 代码页（cp1251/cp866）上重定向的已完成报告不再在打印警告时因 `UnicodeEncodeError` 失败。
+- **接口与模式。** 22 个顶层 CLI 命令（15 个组和 7 个命令，新增 `cwv`）、12 个 MCP 工具（10 个读取类：7 个纯只读加 3 个持久化本地状态的工具；2 个受限写入仍返回 `WRITE_DISABLED`）、3 个资源和 3 个提示不变。模式保持版本 4，不应用迁移；`schemas/tools.json` 不变。组合和恢复仍仅限 CLI，`schedule status`/`uninstall` 尚无桌面屏幕。
+
+本次发行记录的验证：
+
+| 检查 | 结果 |
+|---|---|
+| PyPI | `lv24-seo 0.8.0` 已发布 |
+| npm | `@lv24/seo 0.8.0` 已发布 |
+| MCP Registry | `io.github.LevapVeeskela/lv24-seo 0.8.0` 已发布 |
+| CI 矩阵 | 运行 `43962847574` 在 Ubuntu、Windows 和 macOS 上全绿 |
+| 发布 workflow | 运行 `43964671274` 全绿 |
+| 桌面 | `0.6.0` 已发布并捆绑引擎 `0.8.0`；资产名为 `0.6.0` / `-0.6.0-` |
+
+0.8.0 的已知限制：
+
+- `cwv collect` 需要 CrUX API 密钥和本地存储；没有密钥时在任何网络调用前返回 `AUTH_REQUIRED`，仅 PSI 无法填充周报 `cwv` 分区。
+- PSI 是实验室数据且绝不存储；`tablet` 会被跳过，因为 PSI 没有该形态。
+- CWV 获取日期使用 `report.timezone` 而不是 UTC，因此午夜附近的采集可能落在与 UTC 消费者不同的日期。
+- `schedule status` 是文件级的：它将生成的产物与当前规格比较，不询问主机调度器任务是否启用、上次运行或是否成功。在 Windows 上，在 `schedule install` 之外编辑的任务可能仍显示为 `outdated`。
+- `backup restore --to` 只解压文件，绝不合并行或设置；归档中没有令牌，因此之后需要重新认证。
+- Yandex 指标覆盖取决于提供商返回的内容；缺失指标保持缺失（`null`），`extra_indicators` 不是跨 API 版本的稳定模式。
+
+## 桌面 0.6.0
+
+2026-11-16 发布。它增加可取消的后台运行，只在确认后发送调度器写入同意，捆绑 `lv24-seo 0.8.0`，并把 `MIN_ENGINE_VERSION` 提高到 `0.8.0`，因此已安装的 `0.7.x` 引擎会被报告为不兼容。
+
+变更内容：
+
+- **可取消的后台运行。** `crawl`、`report_weekly`、`logs_analyze`、`backup_create`、`backup_restore` 和 `schedule_install` 接受来自 webview 的稳定 run id。Rust 运行器在 spawn 前注册 `run id → 确切子进程 PID`；其他命令的 run id 会以 `RUN_NOT_CANCELLABLE` 拒绝，因此短读取保持同步路径。运行存在于一个根 `RunStore` 而不是页面上：应用布局显示带类型、耗时、状态和 **Cancel** 的持久横幅，离开路由不会清除它，所有活动运行都会列出，最新的已取消运行会保留到关闭。`run_cancel(runId)` 在确认仍是引擎映像或受跟踪子进程后，只向该确切注册子进程（以及 Unix 上的进程组）发信号；绝不按名称匹配。未知或已完成的运行返回 `false`，UI 不会声称取消。已取消运行返回 `RUN_CANCELLED`，与成功和失败运行分开显示。
+- **计划任务安装发送同意。** 引擎 `0.8.0` 使 `schedule install` 默认只生成计划；桌面端请求确认，并只在用户确认其显示的计划后追加 `--allow-write`。外壳仍在 spawn 引擎前以 `CONFIRM_REQUIRED` 拒绝没有 `allowWrite=true` 的安装，因此 webview 无法绕过新的默认值。仅计划预览和仅打印产物仍然可用，安装像其他长任务一样可取消。
+- **引擎 0.8.0。** Sidecar 增加 GSC 服务账号、`cwv collect` 写入器、`backup restore --to`、`schedule status`/`uninstall`、更丰富的 Yandex 指标、Metrika 1-based offset 修复和 Windows JSON 输出修复。`properties` 增加 `token_source`，`doctor` 增加 `gsc_auth`。`MIN_ENGINE_VERSION` 为 `0.8.0`，因为强制性的 `schedule install --allow-write` 同意需要它；恢复、组合和 CWV 已经要求 `0.7.0`。
+- **外壳与契约。** 契约从 `lv24-seo 0.8.0` 重新生成；增量变化是 `gsc_auth` 检查、`properties.token_source` 和 `config.schema.json` 中的 `providers.gsc.service_account_file`。契约生成器把 `PYTHON_KEYRING_BACKEND` 固定为 null 后端，因此带有真实提供商令牌的开发机不会把令牌存在性泄漏到固定装置中。桌面端尚未为 `schedule status`/`uninstall` 或 `cwv collect` 增加屏幕。
+
+本次发行记录的验证：
+
+| 检查 | 结果 |
+|---|---|
+| 已发布资产 | `v0.6.0` 上 18 个，覆盖 Windows x64、Linux x64 和 macOS arm64/x64，包括 Windows portable `.zip.sha256` |
+| 更新清单 | `latest.json` 报告 `0.6.0` |
+| CI | 运行 `43966588931` 全绿 |
+| 发布 workflow | 运行 `43969832204` 全绿 |
+| 应用内更新 | 在 Windows NSIS 上通过 Rust 更新器验证 `0.5.0 → 0.6.0`：**Desktop 0.6.0**、**Engine 0.8.0** 和引擎就绪 |
+| 工作区冒烟测试 | 真实工作区已使用捆绑引擎加载；已检查提供商就绪状态和覆盖率，未暴露查询数据 |
+| Sidecar | Windows x64 固定自 PyPI `0.8.0`（`sha256 5fb932c8…`，14,365,502 字节）；Linux 和 macOS 重新构建并通过 rebuild-aware 报告 |
+
+0.6.0 的已知限制：
+
+- 取消不是回滚，也没有任务队列。已取消运行可能留下部分报告、抓取、备份或调度器产物；已取消的就地恢复保留恢复前副本，但可能已替换一个文件，因此重试前请构建新计划。
+- 计划任务安装只在确认后、只在本机修改主机。桌面端不管理、修复或卸载任务；请使用 CLI 的 `schedule status`/`schedule uninstall`。
+- 恢复替换数据库和配置，绝不合并；令牌被排除，因此需要重新认证。`backup restore --to` 仅限 CLI。
+- GSC 服务账号在表单外配置：桌面端没有 `service_account_file` 字段；请在 `seo.toml` 或环境中设置。
+- 没有存储的字段行时 CWV 卡片为空；`cwv collect` 是 CLI 命令，最多显示五个模板。
+- `MIN_ENGINE_VERSION` 为 `0.8.0`，因此 `0.7.x` 引擎会被拒绝。
+- Linux 和 macOS sidecar 固定值仍为 `null`；发布门控依赖 rebuild-aware 报告。
 
 ## 引擎 0.7.0
 
@@ -368,10 +435,10 @@ PID**。不会按映像名称匹配，因此另一个已安装副本、便携构
 portable ZIP 没有可替换的安装器，且可能位于可移动介质上。桌面端报告已安装的包类型，并对这些
 情况禁用应用内安装器。它不会假装手动包已被更新。
 
-Windows NSIS 路径现已完成六次端到端验证：`0.2.0 → 0.2.1`、`0.2.1 → 0.2.2`、
-`0.2.2 → 0.2.3`、`0.2.3 → 0.3.0`、`0.3.0 → 0.4.0` 和 `0.4.0 → 0.5.0`。第六次运行中，已安装的 `0.4.0`
-通过 Rust 更新器升级，下载并验证已签名包，安装并重启后报告 **Desktop 0.5.0**、**Engine 0.7.0** 且引擎就绪。
-任何带应用内更新器的 `0.2.x` 安装都可直接升级到 `0.5.0`；`0.1.0` 没有更新器，需要一次手动安装。
+Windows NSIS 路径现已完成七次端到端验证：`0.2.0 → 0.2.1`、`0.2.1 → 0.2.2`、
+`0.2.2 → 0.2.3`、`0.2.3 → 0.3.0`、`0.3.0 → 0.4.0`、`0.4.0 → 0.5.0` 和 `0.5.0 → 0.6.0`。第七次运行中，已安装的
+`0.5.0` 通过 Rust 更新器升级，下载并验证已签名包，安装并重启后报告 **Desktop 0.6.0**、**Engine 0.8.0** 且引擎就绪。
+任何带应用内更新器的 `0.2.x` 安装都可直接升级到 `0.6.0`；`0.1.0` 没有更新器，需要一次手动安装。
 
 `0.2.1 → 0.2.2` 更新由旧的 `0.2.1` 更新器执行，其中没有新的受跟踪 PID 清理。如果首次更新期间
 有 sidecar 正在运行，请在其退出后重试，或手动安装 `0.2.2`。`0.2.2 → 0.2.3` 及后续更新使用受跟踪 PID
@@ -384,12 +451,12 @@ Windows NSIS 路径现已完成六次端到端验证：`0.2.0 → 0.2.1`、`0.2.
 
 | 输入 | 默认值 | 含义 |
 |---|---|---|
-| `engine_version` | `0.7.0` | sidecar 中捆绑的精确引擎版本 |
+| `engine_version` | `0.8.0` | sidecar 中捆绑的精确引擎版本 |
 | `signed` | `false` | 请求操作系统签名/公证；此零支出仓库未配置 |
 | `publish` | `false` | 所有矩阵构建通过后创建 GitHub release |
 | `tag` | 空 | `vX.Y.Z` 发布标签；`publish=true` 时必填 |
 
-默认值与 `0.5.0` 固定版本一致。如果传入不同版本，发布门控会拒绝清单不匹配。
+默认值与 `0.6.0` 固定版本一致。如果传入不同版本，发布门控会拒绝清单不匹配。
 
 | Runner | Target | 包 |
 |---|---|---|
@@ -404,8 +471,8 @@ Windows NSIS 路径现已完成六次端到端验证：`0.2.0 → 0.2.1`、`0.2.
 ## Sidecar 固定与校验和
 
 发布 sidecar 是 PyInstaller **onedir** 树，在匹配的主机上构建；PyInstaller 不交叉编译。引擎、
-Python、Pydantic、Typer 和 PyInstaller 版本固定在 `scripts/cli-checksums.json`。`0.5.0` 固定
-引擎 `0.7.0`（高于 `0.6.0`）、Python `3.12`、Pydantic `2.14.3`、Typer `0.29.0` 和 PyInstaller `6.22.3`。
+Python、Pydantic、Typer 和 PyInstaller 版本固定在 `scripts/cli-checksums.json`。`0.6.0` 固定
+引擎 `0.8.0`（高于 `0.7.0`）、Python `3.12`、Pydantic `2.14.3`、Typer `0.29.0` 和 PyInstaller `6.22.3`。
 
 PyInstaller onedir 输出不是字节可复现的。因此校验和政策分为三部分：
 
@@ -416,8 +483,8 @@ PyInstaller onedir 输出不是字节可复现的。因此校验和政策分为�
 - **发布门控 — 基于报告。** 发布 job 要求每个交付 target 都有有效报告：target 名称匹配、
   `hashPolicy: "rebuild"`、`ok: true`、64 位十六进制哈希、正大小和精确引擎版本。
 
-对于 `0.7.0`，Windows x64 有已审查的本地固定值；Linux 和 macOS sidecar 由发布 workflow 重新构建并通过
-rebuild-aware 报告，其已审查固定值仍为 `null`，直到在这些主机上审查本地构建。`0.6.0` 的 Windows 固定值没有沿用，因为可执行文件随引擎变化。校验和报告是 CI 证据，不是发布产物。
+对于 `0.8.0`，Windows x64 有已审查的本地固定值；Linux 和 macOS sidecar 由发布 workflow 重新构建并通过
+rebuild-aware 报告，其已审查固定值仍为 `null`，直到在这些主机上审查本地构建。`0.7.0` 的 Windows 固定值没有沿用，因为可执行文件随引擎变化。校验和报告是 CI 证据，不是发布产物。
 `SHA256SUMS.txt` 覆盖安装器、更新包、签名和 `latest.json`；sidecar 可执行文件位于这些包内，
 不单独列出。手动安装的用户应使用 `SHA256SUMS.txt` 校验下载的产物。
 
@@ -425,7 +492,7 @@ rebuild-aware 报告，其已审查固定值仍为 `null`，直到在这些主�
 node scripts/verify-sidecar.mjs \
   --root src-tauri/engine \
   --target x86_64-pc-windows-msvc \
-  --engine-version 0.7.0
+  --engine-version 0.8.0
 ```
 
 ## `latest.json`、签名与发布
@@ -457,20 +524,22 @@ node scripts/verify-sidecar.mjs \
 和发布标题中一致。引擎固定值位于 `scripts/cli-checksums.json`；workflow 显式传入
 `engine_version`，发布门控要求它与清单一致。
 
-当前源码中 `src-tauri/src/commands.rs` 的 `MIN_ENGINE_VERSION` 为 `0.7.0`。`0.5.0` 捆绑引擎
-`0.7.0`，因此最低版本与捆绑引擎一致，`0.6.x` 引擎会被视为不兼容。外壳接受不低于该
+当前源码中 `src-tauri/src/commands.rs` 的 `MIN_ENGINE_VERSION` 为 `0.8.0`。`0.6.0` 捆绑引擎
+`0.8.0`，因此最低版本与捆绑引擎一致，`0.7.x` 引擎会被视为不兼容。外壳接受不低于该
 版本的引擎，并把更旧版本标记为离线并显示通知。更新的引擎会通过门控，但不是发布测试过的固定
 版本。开发构建可通过 `LV24_SEO_BIN` 使用其他版本；UI 会将其标记为外部并仍检查最低版本。只有
 设置 `LV24_SEO_ALLOW_PATH_ENGINE=1` 时才使用 `PATH` 中的引擎。
 
 ## 从 0.1.0 一次性升级
 
-`0.1.0` 没有更新器、端点和公钥。它无法发现或安装 `0.5.0`。请手动下载并安装一次 `0.5.0`
-（Windows 上的 NSIS 安装器或便携 ZIP）。之后，`0.5.0` 安装在使用支持自动更新的包类型时，
+`0.1.0` 没有更新器、端点和公钥。它无法发现或安装 `0.6.0`。请手动下载并安装一次 `0.6.0`
+（Windows 上的 NSIS 安装器或便携 ZIP）。之后，`0.6.0` 安装在使用支持自动更新的包类型时，
 可以自动更新到后续版本。
 
 ## 更早的版本
 
+- **桌面 0.5.0** 增加了恢复流程、经确认的计划任务安装、Portfolio 页面和 CWV 卡片，捆绑引擎 `0.7.0`，并把 `MIN_ENGINE_VERSION` 提高到 `0.7.0`。
+- **引擎 0.7.0** 增加了两阶段恢复、只读组合、按 URL 模板和设备的 CWV、带 `indexing_events` 的模式 v4 和 21 个 CLI 命令。
 - **桌面 0.4.0** 增加了 Logs、Tasks 和 Backup 页面及报告摘要卡片，捆绑引擎 `0.6.0`，并把 `MIN_ENGINE_VERSION` 提高到 `0.6.0`。
 - **引擎 0.6.0** 增加了本地 nginx 日志分析和第 12 个 MCP 工具、归因变更摘要、带模式 v3 的任务生命周期、可移植备份和 20 个 CLI 命令。
 - **桌面 0.3.0** 增加了项目向导、抓取屏幕、报告比较与导出、设置保存流程、集成、按工作区的报告窗口和运行状态。
@@ -520,4 +589,4 @@ sha256sum -c SHA256SUMS.txt --ignore-missing
 
 更新信任见[安全与隐私](/zh/security/)，sidecar 布局见[架构](/zh/architecture/)。
 
-Source: `_source/engine-releases-0.7.0.md`, `_source/engine-releases-0.6.0.md`, `_source/engine-releases-0.5.3.md`, `_source/engine-releases-0.5.2.md`, `_source/desktop-releases-0.5.0.md`, `_source/desktop-releases-0.4.0.md`, `_source/desktop-releases-0.3.0.md`, `_source/desktop-releases-0.2.3.md`, `_source/desktop-releases-0.2.2.md`, `_source/desktop-releases-0.2.1.md`, `_source/desktop-releases-0.2.0.md`, `_source/desktop-release.md`, `_source/desktop-security.md`.
+Source: `_source/engine-releases-0.8.0.md`, `_source/engine-releases-0.7.0.md`, `_source/engine-releases-0.6.0.md`, `_source/engine-releases-0.5.3.md`, `_source/engine-releases-0.5.2.md`, `_source/desktop-releases-0.6.0.md`, `_source/desktop-releases-0.5.0.md`, `_source/desktop-releases-0.4.0.md`, `_source/desktop-releases-0.3.0.md`, `_source/desktop-releases-0.2.3.md`, `_source/desktop-releases-0.2.2.md`, `_source/desktop-releases-0.2.1.md`, `_source/desktop-releases-0.2.0.md`, `_source/desktop-release.md`, `_source/desktop-security.md`.

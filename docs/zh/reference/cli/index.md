@@ -24,13 +24,13 @@ description: lv24-seo 命令行的命令、全局参数、JSON 信封、退出�
 使用 `--json` 时，命令只输出一个 JSON 文档，不会输出其他内容：
 
 ```json
-{ "ok": true, "data": {}, "meta": { "version": "0.7.0", "duration_ms": 812 }, "warnings": [] }
+{ "ok": true, "data": {}, "meta": { "version": "0.8.0", "duration_ms": 812 }, "warnings": [] }
 ```
 
 失败的命令使用相同结构，但 `ok: false`，并用 `error` 对象代替 `data`：
 
 ```json
-{ "ok": false, "error": { "code": "AUTH_REQUIRED", "message": "Google Search Console token is missing", "retryable": false, "next_action": "lv24-seo auth login --provider gsc" }, "meta": { "version": "0.7.0" }, "warnings": ["gsc: token missing"] }
+{ "ok": false, "error": { "code": "AUTH_REQUIRED", "message": "Google Search Console token is missing", "retryable": false, "next_action": "lv24-seo auth login --provider gsc" }, "meta": { "version": "0.8.0" }, "warnings": ["gsc: token missing"] }
 ```
 
 - `data` 因命令而异。`meta` 始终包含 `version`，通常还会加入 `duration_ms`、`truncated`、
@@ -146,18 +146,19 @@ recrawl 目前返回 `WRITE_DISABLED`，不会假装提供方调用已经发生�
 | Authentication | `auth status`, `auth set`, `auth login`, `auth logout` | 本地密钥存储；`login` 只打印说明。 |
 | Configuration | `config show` | 有效配置，凭据已掩码。 |
 | Google Search Console | `gsc query`, `sitemap submit` | 查询只读；sitemap submit 是受控写入。 |
-| Yandex Webmaster | `yandex queries`, `yandex indexing`, `yandex recrawl` | 查询只读；recrawl 是受控写入。 |
+| Yandex Webmaster | `yandex queries`, `yandex indexing`, `yandex recrawl` | 查询只读；recrawl 是受控写入。`queries` 保留 `avg_click_position`、`query_id` 和 `extra_indicators`；`indexing` 合并历史系列并报告 `site_problems`。 |
 | IndexNow | `indexnow submit` | 受控写入，会真正提交 URL。 |
 | Crawl and audit | `crawl` | 与提供方无关；配置了存储时保存本地页面和问题。 |
+| CWV | `cwv collect` | 按 URL 和设备查询 CrUX 并持久化字段 p75 行；PSI 实验室行会返回但绝不存储。 |
 | Reports | `report weekly`, `report diff` | `weekly` 保存本地快照；`diff` 只读。 |
+| Scheduling | `schedule print`, `schedule install`, `schedule status`, `schedule uninstall` | `print` 只渲染；`install` 和 `uninstall` 默认只生成计划，只有 `--allow-write` 才写入；`status` 只读。 |
 | Logs | `logs analyze` | 只读分析一个本地 nginx JSON 访问日志；不会存储或上传。 |
 | Tasks | `tasks list`, `tasks add`, `tasks update` | 工作区任务账本；`add` 幂等，`update` 遵循允许的状态转换。 |
-| Backup | `backup create`, `backup restore` | `create` 写入一个可移植工作区归档；`restore` 校验计划，并且只在 `--allow-write --confirm TOKEN` 时替换文件。 |
+| Backup | `backup create`, `backup restore` | `create` 写入一个可移植工作区归档；`restore` 规划就地替换或用 `--to` 解压到新目录。 |
 | Portfolio | `portfolio list` | 只读汇总一个目录下的本地项目；不调用提供方、不读取令牌、不写入。 |
-| Scheduling | `schedule print`, `schedule install` | `print` 只渲染；`install` 写入主机计划任务文件。 |
 | Agents and MCP | `mcp serve`, `install`, `export tools`, `export skills` | 主机配置、生成文件或本地服务器。 |
 
-CLI 有 21 个顶层命令：14 个组和 7 个命令（`version`、`doctor`、`init`、`properties`、`stats`、`crawl`、`install`）。
+CLI 有 22 个顶层命令：15 个组和 7 个命令（`version`、`doctor`、`init`、`properties`、`stats`、`crawl`、`install`）。
 
 ## 示例
 
@@ -188,8 +189,23 @@ lv24-seo yandex queries --limit 100 --json
 lv24-seo yandex indexing --json
 ```
 
-`yandex queries` 返回顶部行，而不是完整的查询与页面关联：Yandex 每个周期最多提供 3,000 个查询。
-`yandex indexing` 显示配置的 `host_id` 的索引历史、搜索中页面数、诊断和搜索 URL 事件。
+`yandex queries` 返回顶部行，而不是完整的查询与页面关联：Yandex 每个周期最多提供 3,000 个查询。它保留
+`avg_click_position`，在提供商发送时返回 `query_id`，并把未映射指标保留在 `extra_indicators` 中而不是
+丢弃整行。`yandex indexing` 显示配置的 `host_id` 的索引历史、搜索中页面数、诊断、`site_problems` 和
+搜索 URL 事件，并把 `indexing/history` 系列（`http_2xx` … `other`）合并为每个日期一行。
+
+### Core Web Vitals
+
+```bash
+lv24-seo cwv collect --url https://example.com/ --url https://example.com/blog/post --device phone --source crux --json
+```
+
+`cwv collect` 是周报 `cwv` 分区背后的写入器。CrUX 按 URL 和设备查询（`mobile` 是 `phone` 的别名），
+每个返回的 p75 成为一行 `metric_daily` 字段行，包含 `source=crux`、`scope`、绝对 URL、指标和
+`report.timezone` 中的获取日期。PSI 行保留在 `data.lab` 中且绝不持久化，而 PSI 没有 `tablet`，所以
+`tablet` 会以 `psi_tablet_unsupported` 跳过。`--limit` 将 URL 限制为 50（默认 10）；低流量 URL 不写行，
+绝不写零，达到上限的运行设置 `meta.truncated: true` 和 `cwv_url_cap`。该命令需要 CrUX 密钥
+（任何调用前 `AUTH_REQUIRED`）和已初始化存储（`CONFIG_INVALID`）。
 
 ### 抓取
 
@@ -210,10 +226,11 @@ lv24-seo tasks add --kind issue --url https://example.com/page --rule broken-int
 lv24-seo tasks update TASK_ID --state verified --json
 lv24-seo backup create --out /srv/backups --json
 lv24-seo backup restore --file /srv/backups/lv24-seo-backup-20261116T120000Z.zip --config /srv/site/seo.toml --json
+lv24-seo backup restore --file /srv/backups/lv24-seo-backup-20261116T120000Z.zip --to /srv/restored --json
 lv24-seo portfolio list --root /srv/sites --limit 50 --json
 ```
 
-`logs analyze` 只读取一个不超过 100 MiB 的绝对路径 nginx JSON 访问日志，返回按日期、bot 和状态分组的 `bot_daily` 以及 `crawl_waste` 汇总；文件不会上传或写入 SQLite。`tasks list` 按最新优先返回有界任务，`tasks add` 幂等，`tasks update` 只接受允许的状态转换。`backup create` 写入一个带 manifest、脱敏 `seo.toml` 和一致 SQLite 副本的归档。`backup restore` 先校验并返回带 300 秒 `confirm_token` 的计划；应用需要 `--allow-write` 和令牌，替换前当前数据库会复制到 `<db>.pre-restore-<utc>`。`portfolio list` 在绝对目录下最多三层扫描 `seo.toml`，最多检查 50 个站点，按最新活动优先报告本地抓取、报告和问题计数。
+`logs analyze` 只读取一个不超过 100 MiB 的绝对路径 nginx JSON 访问日志，返回按日期、bot 和状态分组的 `bot_daily` 以及 `crawl_waste` 汇总；文件不会上传或写入 SQLite。`tasks list` 按最新优先返回有界任务，`tasks add` 幂等，`tasks update` 只接受允许的状态转换。`backup create` 写入一个带 manifest、脱敏 `seo.toml` 和一致 SQLite 副本的归档。`backup restore` 先校验并返回带 300 秒 `confirm_token` 的计划；应用需要 `--allow-write` 和令牌，替换前当前数据库会复制到 `<db>.pre-restore-<utc>`。`backup restore --to DIR` 则重新校验归档并解压到新目录：不涉及令牌和 `--allow-write`，目标必须是绝对且不存在的路径，zip-slip 或链接逃逸会在解压前被拒绝。`portfolio list` 在绝对目录下最多三层扫描 `seo.toml`，最多检查 50 个站点，按最新活动优先报告本地抓取、报告和问题计数。
 
 ### 报告
 
@@ -231,12 +248,19 @@ lv24-seo report diff --markdown
 
 ```bash
 lv24-seo schedule print --cron "0 6 * * 1" --target systemd --json
-lv24-seo schedule install --kind weekly --print
+lv24-seo schedule install --kind weekly --json
+lv24-seo schedule install --kind weekly --allow-write --json
+lv24-seo schedule status --json
+lv24-seo schedule uninstall --kind weekly --allow-write --json
 ```
 
-`print` 只渲染产物，不修改主机。`install` 写入 cron 块、systemd 用户单元或任务计划程序 XML，
-生成的任务会运行 `report weekly --send --json`。只有简单的 cron 表达式（`M H * * *` 和
-`M H * * DOW`）能转换为 systemd 或 Windows 计划。
+`print` 只渲染产物，不修改主机。`install` 默认只生成计划：打印 cron 块、systemd 用户单元或任务计划
+程序 XML 以及它将运行的命令，带 `dry_run: true` 和 `installed: false`，只有 `--allow-write` 才写入
+（`--print` 仍是计划的别名，并优先于 `--allow-write`）。`status` 只读，报告 `installed`、`outdated`、
+`partial`、`missing` 或 `unknown` 以及每个产物的 `exists`/`matches`。`uninstall` 默认只生成计划，带
+`--allow-write` 时只删除生成的产物；无关 cron 行和任务绝不被触碰。生成的任务会运行
+`report weekly --send --json`。只有简单的 cron 表达式（`M H * * *` 和 `M H * * DOW`）能转换为
+systemd 或 Windows 计划。
 
 ### MCP 与智能体客户端
 
@@ -259,6 +283,12 @@ lv24-seo auth set --provider gsc --stdin
 它只输出 `{provider, stored, source}`。`auth status` 报告存在性和来源（`env`、`keyring`、`file`、
 `missing`），从不输出值。
 
+GSC 也可以使用服务账号。把 `providers.gsc.service_account_file` 设为绝对路径，或导出
+`LV24_SEO_GSC_SERVICE_ACCOUNT_FILE`；文件优先于已存储的 `gsc_token`，环境变量优先于文件。
+`gsc_token` 若是服务账号 JSON 对象也会被接受。引擎签署 RS256 JWT，在密钥的 `token_uri` 交换并在
+过期前刷新。`properties` 报告 `token_source: service_account_file|secret|missing`，`doctor` 增加
+非致命 `gsc_auth` 检查；两者都不打印 JSON 或私钥。
+
 ### 导出
 
 ```bash
@@ -276,4 +306,4 @@ lv24-seo export skills --out skills/
 - [MCP 与智能体技能](/zh/mcp/)
 - [故障排查](/zh/troubleshooting/)
 
-Source: `_source/engine-cli.md`, `_source/engine-mcp.md`, `_source/engine-releases-0.5.2.md`, `_source/engine-releases-0.5.3.md`, `_source/engine-releases-0.6.0.md`, `_source/engine-releases-0.7.0.md`; 引擎仓库中 0.7.0 的 `--help` 输出。
+Source: `_source/engine-cli.md`, `_source/engine-mcp.md`, `_source/engine-releases-0.5.2.md`, `_source/engine-releases-0.5.3.md`, `_source/engine-releases-0.6.0.md`, `_source/engine-releases-0.7.0.md`, `_source/engine-releases-0.8.0.md`; 引擎仓库中 0.8.0 的 `--help` 输出。
