@@ -25,13 +25,13 @@ description: Команды, глобальные флаги, JSON-конвер�
 С флагом `--json` команда печатает ровно один JSON-документ и ничего больше:
 
 ```json
-{ "ok": true, "data": {}, "meta": { "version": "0.5.2", "duration_ms": 812 }, "warnings": [] }
+{ "ok": true, "data": {}, "meta": { "version": "0.5.3", "duration_ms": 812 }, "warnings": [] }
 ```
 
 Неудачная команда использует ту же форму с `ok: false` и объектом `error` вместо `data`:
 
 ```json
-{ "ok": false, "error": { "code": "AUTH_REQUIRED", "message": "Google Search Console token is missing", "retryable": false, "next_action": "lv24-seo auth login --provider gsc" }, "meta": { "version": "0.5.2" }, "warnings": ["gsc: token missing"] }
+{ "ok": false, "error": { "code": "AUTH_REQUIRED", "message": "Google Search Console token is missing", "retryable": false, "next_action": "lv24-seo auth login --provider gsc" }, "meta": { "version": "0.5.3" }, "warnings": ["gsc: token missing"] }
 ```
 
 - `data` зависит от команды. В `meta` всегда есть `version`, часто добавляются `duration_ms`,

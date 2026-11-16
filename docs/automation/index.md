@@ -74,9 +74,9 @@ Provider writes are separate from report delivery. The CLI uses a dry run follow
 2. Review the plan, `plan_hash` and `confirm_token`. The token is an HMAC over the action, target, plan hash and expiry, valid for 300 seconds.
 3. Apply with the same flags plus `--confirm <token>`. A changed plan, wrong secret, malformed token or expired token fails with `CONFIRM_REQUIRED`.
 
-The gate supports a pending-to-sent idempotency claim. With an initialised workspace the CLI attaches the SQLite ledger, so a failed provider call releases the claim and a retry is allowed; a completed or in-flight claim is a duplicate and returns `skipped`. Without a data directory the apply still runs, but the envelope warns that replay protection is off for the token's five-minute lifetime. A dry run opens no ledger and creates no database. A crash can leave a pending claim with no TTL in 0.5.2, which is treated as in-flight until an operator releases it.
+The gate supports a pending-to-sent idempotency claim. With an initialised workspace the CLI attaches the SQLite ledger, so a failed provider call releases the claim and a retry is allowed; a completed or in-flight claim is a duplicate and returns `skipped`. Without a data directory the apply still runs, but the envelope warns that replay protection is off for the token's five-minute lifetime. A dry run opens no ledger and creates no database. A crash can leave a pending claim with no TTL, which is treated as in-flight until an operator releases it.
 
-In 0.5.2, only IndexNow actually submits. GSC sitemap submit and Yandex recrawl refuse with `WRITE_DISABLED` instead of pretending. MCP write tools require `allow_write=true`; their handlers are not wired in this build either, so they return `WRITE_DISABLED`.
+In 0.5.3, only IndexNow actually submits. GSC sitemap submit and Yandex recrawl refuse with `WRITE_DISABLED` instead of pretending. MCP write tools require `allow_write=true`; their handlers are not wired in this build either, so they return `WRITE_DISABLED`.
 
 ## GitHub Actions
 

@@ -5,8 +5,8 @@ description: LV24 SEO Optimizer 的威胁模型、密钥处理、写入门禁、
 
 # 安全与隐私
 
-LV24 SEO Optimizer 以本地为先。引擎（`lv24-seo 0.5.2`）负责数据源、抓取、存储和报告；
-桌面应用（`0.2.2`）只是引擎之上的界面和进程外壳，不重新实现数据源客户端，也不代理
+LV24 SEO Optimizer 以本地为先。引擎（`lv24-seo 0.5.3`）负责数据源、抓取、存储和报告；
+桌面应用（`0.2.3`）只是引擎之上的界面和进程外壳，不重新实现数据源客户端，也不代理
 数据源流量。
 
 本页区分两个产品和两种签名：
@@ -191,7 +191,7 @@ PID；没有通配符进程清理，因为多个 LV24 应用可以同时运行�
 上一个项目的数据。无法执行的操作会被禁用，而不是点击后失败。en/ru/zh 消息目录保持一致；
 缺少键是测试失败。
 
-生产 webview CSP 不允许远程脚本、样式、字体、图片或连接目标；它允许自有资源、内联样式、asset:/data: 图片和 IPC。`withGlobalTauri` 为 false，UI 使用类型化 API 导入。`0.2.2` 没有本地 HTTP API；未来版本需要自己的认证和回环绑定。
+生产 webview CSP 不允许远程脚本、样式、字体、图片或连接目标；它允许自有资源、内联样式、asset:/data: 图片和 IPC。`withGlobalTauri` 为 false，UI 使用类型化 API 导入。`0.2.3` 没有本地 HTTP API；未来版本需要自己的认证和回环绑定。
 
 ## 更新信任
 
@@ -215,7 +215,7 @@ webview 不能自行下载或安装更新。其能力列表只包含 `updater:al
 
 自动更新仅适用于 Windows NSIS、macOS `.app` 和 Linux AppImage。deb、rpm、MSI 和
 portable ZIP 只能手动更新：UI 禁用应用内安装器并链接到发布页。`0.1.0` 没有更新器、
-端点和公钥，因此其用户需要手动安装一次 `0.2.2`。
+端点和公钥，因此其用户需要手动安装一次 `0.2.3`。
 
 操作系统包签名是另一回事。默认情况下，Windows 构建没有 Authenticode 签名，macOS 仅 ad-hoc 签名，
 Linux 包未签名。更新器签名不会让操作系统包对 SmartScreen、Gatekeeper 或发行版策略

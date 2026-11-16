@@ -13,8 +13,8 @@ description: LV24 SEO Optimizer 的提供商能力矩阵、认证、配额、数
 
 | 来源 | 读取 | 写入（需确认） | 认证 | 免费配额 | 数据延迟 |
 |---|---|---|---|---|---|
-| Google Search Console | 搜索分析、站点、站点地图、URL Inspection | 提交站点地图；0.5.2 中返回 `WRITE_DISABLED` | Bearer 访问令牌（读取用 `webmasters.readonly`，站点地图用 `webmasters`） | 每个站点和每个用户 1,200 次/分钟；每天每站点每类型 50,000 行；URL Inspection 每天 2,000 次、每分钟 600 次 | 2–3 天；`data_age_days` 下限为 3 |
-| Yandex Webmaster | 摘要、SQI 历史、索引、搜索中的 URL 与事件、查询、诊断、失效链接、站点地图 | 重新抓取队列；0.5.2 中返回 `WRITE_DISABLED` | OAuth 令牌，scope `webmaster:hostinfo` | 免费；未公布全局 RPD/RPS；查询分析在约每小时 1 万次请求以上不稳定 | 约 4 天 |
+| Google Search Console | 搜索分析、站点、站点地图、URL Inspection | 提交站点地图；0.5.3 中返回 `WRITE_DISABLED` | Bearer 访问令牌（读取用 `webmasters.readonly`，站点地图用 `webmasters`） | 每个站点和每个用户 1,200 次/分钟；每天每站点每类型 50,000 行；URL Inspection 每天 2,000 次、每分钟 600 次 | 2–3 天；`data_age_days` 下限为 3 |
+| Yandex Webmaster | 摘要、SQI 历史、索引、搜索中的 URL 与事件、查询、诊断、失效链接、站点地图 | 重新抓取队列；0.5.3 中返回 `WRITE_DISABLED` | OAuth 令牌，scope `webmaster:hostinfo` | 免费；未公布全局 RPD/RPS；查询分析在约每小时 1 万次请求以上不稳定 | 约 4 天 |
 | Yandex Metrika | 会话、流量来源、搜索词、落地页、目标 | 无 | OAuth 令牌，scope `metrika:read` | 每天每用户 5,000 次请求；30 rps/IP；3 个并发；`/stat/v1/data` 每 5 分钟 200 次；每次请求最多 10 万行、20 个指标、10 个维度 | Reporting API；会报告抽样 |
 | Bing Webmaster | 查询统计、排名与流量、抓取问题 | IndexNow 提交（可用）；站点地图提交路径未接通 | 每个用户一个 API 密钥 | 免费；每域名每天约 1 万次 URL 提交，每批 500 条 | API 中没有按时间窗口的统计；年龄取最新行的日期 |
 | Chrome UX Report (CrUX) | 字段 p75 LCP、INP 和 CLS | 无 | API 密钥 | 每个项目每分钟 150 次，无法提高 | 28 天滚动窗口 |
@@ -23,7 +23,7 @@ description: LV24 SEO Optimizer 的提供商能力矩阵、认证、配额、数
 | 自有抓取 | 页面、问题、链接图、站点地图覆盖 | 无 | 无 | 本地 | 当前运行 |
 | 日志 | 对 nginx JSON 访问日志按 User-Agent 做机器人分诊；不能证明是已验证的爬虫 | 无 | 本地文件 | 本地 | 日志窗口 |
 
-GA4 是可选的集成点，不在默认路径中。随版本提供的提供商是 GSC、Yandex Webmaster、Yandex Metrika、Bing、CrUX 和 PSI。付费 SERP 或外链适配器（DataForSEO、SerpApi 等）仅处于计划或文档阶段；0.5.2 不随版本提供任何此类适配器。
+GA4 是可选的集成点，不在默认路径中。随版本提供的提供商是 GSC、Yandex Webmaster、Yandex Metrika、Bing、CrUX 和 PSI。付费 SERP 或外链适配器（DataForSEO、SerpApi 等）仅处于计划或文档阶段；0.5.3 不随版本提供任何此类适配器。
 
 ## 认证
 

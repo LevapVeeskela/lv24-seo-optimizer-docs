@@ -1,14 +1,15 @@
 # LV24 SEO Optimizer Desktop 0.2.3
 
-**Status: draft.** This page describes work on the `0.2.3` branch. `0.2.3` is **not released**, no
-build or date is promised here, and the platform list is the intended set, not a published one.
-The latest published line remains `0.2.2`; see [`0.2.2.md`](0.2.2.md).
+**Status: released (2026-11-16).** `0.2.3` is published on GitHub Releases for Windows x64, Linux x64
+and macOS arm64/x64. The latest published line is `0.2.3`; `0.2.2` remains available for rollback and
+as the previous in-app update source. See [`0.2.2.md`](0.2.2.md) for that release's notes.
 
 | | |
 |---|---|
-| Desktop version | `0.2.3` (draft) |
-| Bundled engine | `lv24-seo 0.5.2` |
-| Intended platforms | Windows x64, Linux x64, macOS arm64 and x64 |
+| Desktop version | `0.2.3` (released 2026-11-16) |
+| Bundled engine | `lv24-seo 0.5.3` |
+| Minimum engine | `lv24-seo 0.5.2` (`MIN_ENGINE_VERSION`) |
+| Platforms | Windows x64, Linux x64, macOS arm64 and x64 |
 | Auto-update | Windows NSIS, macOS `.app`, Linux AppImage (unchanged) |
 | Manual-only | deb, rpm, MSI, portable ZIP (unchanged) |
 | OS signing | Windows unsigned, macOS ad-hoc, Linux unsigned (unchanged) |
@@ -81,6 +82,10 @@ echoes the offending line.
 
 ## Changed
 
+- The bundled engine moves to `lv24-seo 0.5.3`: honest GSC/Metrika/Bing
+  data age and caps, hardened crawl parsing, typed store errors, `--strict` exit codes and the
+  two-phase MCP write contract. `MIN_ENGINE_VERSION` stays `0.5.2`, so an installed `0.5.2` engine is
+  still accepted; see the engine's `docs/releases/0.5.3.md`.
 - Release scripts are covered by tests (`scripts/*.test.mjs`, `npm run test:release`): `latest.json`
   merging, the published-asset allowlist, `SHA256SUMS.txt`, the portable ZIP and its checksum, and
   schema validation.
@@ -97,20 +102,29 @@ echoes the offending line.
 
 ## Verification
 
-To be completed when the release is built; nothing below is a claim that a build has shipped.
-
-- Unit tests cover the new behaviour: Rust tests for path/UNC rejection, the owner-only draft ACL,
-  backup-name matching, stderr and preview redaction, and the update gate; vitest tests for the
-  update store, config store revision guard, tri-state validation, skip link, error boundary and
-  recommendation copy.
-- Release-script tests run with `npm run test:release`.
-- Expected gates before any publication: `npm run typecheck`, `npm test`, `npm run build`,
-  `npm run contract:check`, `cargo fmt --check`, `cargo clippy --all-targets -- -D warnings`,
-  `cargo test --all-targets`, the `audit` job and the four-platform Rust matrix.
-- The updater install path must be verified end-to-end on Windows NSIS (version re-check, cancel
-  during download, tracked sidecar stopped before install), plus a macOS `.app` and Linux AppImage
-  install, before the draft is undrafted.
-- The portable `.zip.sha256` must match the published archive.
+- **Published:** 18 assets on the `v0.2.3` GitHub release for Windows x64, Linux x64 and macOS
+  arm64/x64, including the Windows portable `.zip.sha256` sidecar; the release gate recomputed it
+  against the archive and `SHA256SUMS.txt` covers every published asset.
+- **CI:** green for Linux x64, Windows x64 and macOS arm64 + x64 on the release commit.
+- **In-app update:** `0.2.2 → 0.2.3` was verified end-to-end on Windows NSIS — download, signature
+  verification, passive install and relaunch. The relaunched UI reports Desktop `0.2.3`,
+  Engine `0.5.3` and engine ready. The Rust-side version re-check is part of that path; cancellation
+  and `UPDATE_ENGINE_BUSY` are covered by unit tests.
+- **Sidecars:** the Linux and macOS sidecars were built by the release workflow and their
+  rebuild-aware checksum reports passed the release gate. The Windows x64 sidecar was built from PyPI
+  `lv24-seo 0.5.3` (Python 3.12, PyInstaller 6.22.3), passed the `version --json` smoke test and is
+  pinned in `scripts/cli-checksums.json` (`sha256 24b51f43…`, 14,175,608 bytes). The Linux and macOS
+  reviewed pins remain `null`; CI records rebuild-aware hashes for those targets.
+- **Engine and contracts:** `lv24-seo 0.5.3` is published to PyPI; the contracts were regenerated from
+  it (`node scripts/check-contracts.mjs --update`) and `--static` passes. The only fixture changes are
+  the version strings and the new `meta.data_dir_declared` in `doctor`.
+- **Tests:** unit tests cover the new behaviour — Rust tests for path/UNC rejection, the owner-only
+  draft ACL, backup-name matching, stderr and preview redaction, and the update gate; vitest tests for
+  the update store, config store revision guard, tri-state validation, skip link, error boundary and
+  recommendation copy. Release-script tests run with `npm run test:release`.
+- **Gates:** `npm run typecheck`, `npm test`, `npm run build`, `npm run contract:check`,
+  `cargo fmt --check`, `cargo clippy --all-targets -- -D warnings`, `cargo test --all-targets`, the
+  `audit` job and the four-platform Rust matrix passed on the release commit.
 
 ## Upgrade and known limitations
 
@@ -128,3 +142,6 @@ To be completed when the release is built; nothing below is a claim that a build
   is no rollback.
 - The updater can stop only sidecars it started itself. An engine launched from a terminal, another
   installed copy or a portable build is untouched and can still hold a locked file.
+- Only the Windows x64 sidecar has a reviewed local pin. The Linux and macOS reviewed pins remain
+  `null`; those sidecars were built by the release workflow and are covered by rebuild-aware CI
+  checksum reports, not by a byte-identical local rebuild.

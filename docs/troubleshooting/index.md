@@ -100,7 +100,7 @@ with robots `Crawl-delay` pacing; `concurrency` is reserved and has no effect.
 
 Memory is bounded: page bodies are capped at 5 MB, retained page text at 20,000 characters, and the request budget is `1 + max_urls * (max_redirects + 1)`.
 `word_count` still uses the full visible text. If a crawl is too large or slow, lower `--max-urls` and crawl a section at a time. There is no resume or job
-queue in `0.5.2`; the desktop has a 600-second crawl timeout and no cancel button.
+queue in `0.5.3`; the desktop has a 600-second crawl timeout and no cancel button.
 
 ## `--days` limits
 
@@ -143,7 +143,7 @@ The command merges the host configuration and prints what it changed.
 | Symptom | Fix |
 |---|---|
 | “not valid JSON” but the file looks valid | UTF-8 BOM, often from PowerShell 5.1; rewrite without BOM or delete and rerun |
-| `No such command 'mcp'` | Old build without `mcp serve`; upgrade to 0.5.2 |
+| `No such command 'mcp'` | Old build without `mcp serve`; upgrade to 0.5.3 |
 | GUI client cannot start the server | Put the absolute `uvx` path in `command`; the app does not inherit the shell `PATH` |
 | VS Code lists nothing | `install` writes `mcpServers`; VS Code uses `servers`; rename the key |
 
@@ -157,7 +157,7 @@ because the document can contain other servers' tokens.
 The npm package is a thin launcher. It forwards arguments to an installed `lv24-seo` binary or to `uvx --from lv24-seo==<version> lv24-seo`. On Windows, Node
 cannot spawn a `.cmd` shim with `shell: false`; it fails with `EINVAL`.
 
-Version 0.5.2 ignores `lv24-seo.cmd` and `.bat` shims and prefers `lv24-seo.exe` or an extensionless binary before falling back to `uvx`. If the launcher still
+Version 0.5.3 ignores `lv24-seo.cmd` and `.bat` shims and prefers `lv24-seo.exe` or an extensionless binary before falling back to `uvx`. If the launcher still
 picks the wrong binary, set an absolute override:
 
 ```bash

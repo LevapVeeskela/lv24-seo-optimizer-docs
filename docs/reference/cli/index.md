@@ -26,13 +26,13 @@ version.
 With `--json`, a command prints exactly one JSON document and nothing else:
 
 ```json
-{ "ok": true, "data": {}, "meta": { "version": "0.5.2", "duration_ms": 812 }, "warnings": [] }
+{ "ok": true, "data": {}, "meta": { "version": "0.5.3", "duration_ms": 812 }, "warnings": [] }
 ```
 
 A failed command uses the same shape with `ok: false` and an `error` object instead of `data`:
 
 ```json
-{ "ok": false, "error": { "code": "AUTH_REQUIRED", "message": "Google Search Console token is missing", "retryable": false, "next_action": "lv24-seo auth login --provider gsc" }, "meta": { "version": "0.5.2" }, "warnings": ["gsc: token missing"] }
+{ "ok": false, "error": { "code": "AUTH_REQUIRED", "message": "Google Search Console token is missing", "retryable": false, "next_action": "lv24-seo auth login --provider gsc" }, "meta": { "version": "0.5.3" }, "warnings": ["gsc: token missing"] }
 ```
 
 - `data` is command-specific. `meta` always carries `version` and often adds `duration_ms`,

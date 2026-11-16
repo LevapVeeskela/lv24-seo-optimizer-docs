@@ -18,13 +18,13 @@ to site routes.
 | `engine-troubleshooting.md` | `/troubleshooting/` | Common failures and diagnostics. |
 | `engine-releases-0.5.1.md` | `/release/` | Engine 0.5.1 notes, kept for the previous bugfix release. |
 | `engine-releases-0.5.2.md` | `/release/` | Engine 0.5.2 notes: data-dir anchoring, replay-safe writes, sitemap redaction, GSC cap honesty, opt-in logging. |
-| `engine-releases-0.5.3.md` | `/release/` | Draft engine 0.5.3 notes: two-phase MCP writes, crawl off-loop, `--strict`, typed store errors, provider honesty. |
+| `engine-releases-0.5.3.md` | `/release/` | Engine 0.5.3 notes: two-phase MCP writes, crawl off-loop, `--strict`, typed store errors, provider honesty. |
 | `desktop-README.md` | `/desktop/`, `/install/` | Desktop install matrix, update, troubleshooting. |
 | `desktop-release.md` | `/release/` | Release pipeline, signing, assets, rollback. |
 | `desktop-security.md` | `/security/`, `/desktop/` | Shell boundary, secrets, updater trust. |
 | `desktop-architecture.md` | `/architecture/`, `/desktop/` | FSD layout, commands, stores, resources. |
 | `desktop-releases-0.2.2.md` | `/release/` | Desktop 0.2.2 hardening notes: sidecar cleanup, `UPDATE_ENGINE_BUSY`, secrets, durable writes, engine 0.5.2. |
-| `desktop-releases-0.2.3.md` | `/release/` | Draft desktop 0.2.3 notes: Rust updater and cancel, dialog-approved config path, path rejection, redaction, UI state, release CI. |
+| `desktop-releases-0.2.3.md` | `/release/` | Desktop 0.2.3 notes: Rust updater and cancel, dialog-approved config path, path rejection, redaction, UI state, release CI. |
 | `desktop-releases-0.2.1.md` | `/release/` | Desktop 0.2.1 patch notes: Metrika token and shared CLI keychain. |
 | `desktop-releases-0.2.0.md` | `/release/` | Desktop 0.2.0 release notes, kept for the first multi-platform release. |
 

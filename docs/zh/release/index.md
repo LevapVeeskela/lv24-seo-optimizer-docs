@@ -1,24 +1,22 @@
 ---
 title: 发行与更新
-description: 引擎 0.5.2 变更与 0.5.3 草稿说明、桌面 0.2.2 产物与 0.2.3 草稿加固、签名自动更新矩阵、发布流水线、版本固定与回滚。
+description: 引擎 0.5.3 与桌面 0.2.3 发行说明、0.5.2 与 0.2.2 历史、签名自动更新矩阵、发布流水线、版本固定与回滚。
 ---
 
 # 发行与更新
 
 当前发行版本：
 
-| 产品 | 版本 | 说明 |
-|---|---|---|
-| 引擎 | `lv24-seo 0.5.2` | 缺陷修复版本；无模式迁移、无新 CLI 命令或 MCP 工具 |
-| 桌面 | `0.2.2` | 加固补丁：更新前清理 sidecar、持久写入、密钥与过期状态修复；捆绑引擎 0.5.2 |
+| 产品 | 版本 | 发布日期 | 说明 |
+|---|---|---|---|
+| 引擎 | `lv24-seo 0.5.3` | 2026-11-16 | 诚实的数据源数据、加固抓取、`--strict`、类型化存储错误、两阶段 MCP 写入契约 |
+| 桌面 | `0.2.3` | 2026-11-16 | Rust 更新器与真实取消、对话框批准的配置路径、脱敏与路径加固；捆绑引擎 0.5.3 |
 
-桌面版本与引擎版本相互独立，但桌面固定精确引擎，并拒绝低于最低版本的引擎。
+桌面版本与引擎版本相互独立，但桌面固定精确引擎，并拒绝低于最低版本的引擎。`0.2.3` 捆绑 `0.5.3`，并且仍接受低至 `0.5.2` 的引擎。
 
-下一波尚未发布：引擎 `0.5.3` 和桌面 `0.2.3` 在下方作为草稿列出。上表中的版本是用户今天可以安装的版本。
+## 引擎 0.5.3
 
-## 引擎 0.5.3（草稿）
-
-这是下一个引擎补丁。它让代理写入变成两阶段，把抓取移出 MCP 事件循环，为 CI 增加 `--strict`
+2026-11-16 发布。它让代理写入变成两阶段，把抓取移出 MCP 事件循环，为 CI 增加 `--strict`
 退出码，并用类型化代码替换通用存储故障。没有模式迁移，也没有新的 CLI 命令或 MCP 工具：接口仍为
 十一个工具，变化在于输入、退出码和错误码。
 
@@ -34,13 +32,30 @@ description: 引擎 0.5.2 变更与 0.5.3 草稿说明、桌面 0.2.2 产物与 
 - **`doctor` 把已声明数据目录视为致命项。** 当配置或 `LV24_SEO_DATA_DIR` 指定目录时，缺失或不可用的目录会导致检查失败；`meta.data_dir_declared` 说明属于哪种情况。
 - **较小修复。** 含未终止托管块的 crontab 会被保守修复：只删除看起来像 lv24-seo 条目的行，并警告操作员检查 `crontab -l`。抓取会遵守一次 `429` `Retry-After`，而不是把限流当成页面答案。
 
-发布时会记录验证结果；本节是 `wave/0.2.3-p0` 分支上的草稿。
+本次发行记录的验证：
 
-## 桌面 0.2.3（草稿）
+| 检查 | 结果 |
+|---|---|
+| PyPI | `lv24-seo 0.5.3` wheel 和 sdist 已发布 |
+| npm | `@lv24/seo 0.5.3` 已发布并带 `latest` 标签 |
+| MCP Registry | `io.github.LevapVeeskela/lv24-seo 0.5.3` 已发布 |
+| 发布 workflow | 在打标签的提交上全绿：verify、build、PyPI、npm 和 MCP Registry 任务 |
+| 测试 | 1,205 个离线测试通过，包括已安装 wheel 的 CLI 信封契约；Ubuntu、Windows 和 macOS CI 通过 |
 
-`0.2.3` 是下一个桌面补丁，尚未发布。它把更新下载移入 Rust，让配置路径成为由对话框批准的权限，
-在打开之前拒绝网络路径，并修复可能误报保存或工作区状态的 UI。在发布提交提升版本之前，捆绑引擎
-的固定版本保持不变。
+0.5.3 的已知限制：
+
+- 引擎服务仍未提供重新抓取或站点地图写入处理器：CLI 应用和每次 MCP 写入调用都返回 `WRITE_DISABLED`，不会发送任何内容。只有 IndexNow 会到达数据源。
+- Metrika 遍历每次调用停在 10,000 行和 100 页；更大的表会被截断并说明。
+- Bing 对空或没有日期的数据源报告 `data_age_days: 0`；这不是新鲜的证据。
+- `STORE_LOCKED`、`STORE_CORRUPT` 和 `STORE_UNAVAILABLE` 没有专用 CLI 退出码；它们退出 `1`，必须从 `error.code` 读取。
+- `--strict` 不适用于写入命令；计划有效时 dry run 退出 `0`。
+- `doctor` 把不可用的已声明数据目录视为致命项，因此故意缺失的目录现在会导致检查失败而不是警告。
+
+## 桌面 0.2.3
+
+2026-11-16 发布。它把更新下载移入 Rust，让配置路径成为由对话框批准的权限，在打开之前拒绝网络路径，
+并修复可能误报保存或工作区状态的 UI。它捆绑 `lv24-seo 0.5.3`，并让 `MIN_ENGINE_VERSION` 保持 `0.5.2`，
+因此已安装的 `0.5.2` 引擎仍被接受。
 
 变更内容：
 
@@ -50,8 +65,32 @@ description: 引擎 0.5.2 变更与 0.5.3 草稿说明、桌面 0.2.2 产物与 
 - **工作区与 UI 状态。** `shell_status` 报告 `configExists`；被移动或删除的配置显示带 **Choose config** 的工作区缺失横幅，而不是通用统计错误。提供商区块有显式启用开关，它是 `providers.<id>.present` 的唯一写入者。校验是三态的（`valid`、`invalid`、`skipped`），因此双击或切换工作区不再把有效草稿报为无效。跳过链接保持 hash 路由不变，路由级错误边界隔离渲染失败并提供重新加载。
 - **发布流水线。** 拉取请求 CI 运行发布脚本测试；Rust 矩阵包含发布所用的 Intel macOS runner；Rust 固定为 `1.95.0`。`latest.json` 在创建草稿之前按 `contracts/latest.schema.json` 校验。一个经过测试的允许列表同时驱动校验和文件与上传列表，Windows 便携 ZIP 附带 `.sha256` sidecar，由发布闸门重新计算并比较。
 
-产物名称沿用 `0.2.2` 模式并替换为 `0.2.3`。发布时会记录验证结果；本节是 `wave/0.2.3-p0`
-分支上的草稿。
+### 桌面 0.2.3 产物
+
+`0.2.3` 发布 18 个产物：安装器、已签名更新包、Windows 便携 ZIP 及其 `.sha256` sidecar、`latest.json` 和
+`SHA256SUMS.txt`。
+
+| 产物 | 平台 | 用途 |
+|---|---|---|
+| `LV24.SEO.Optimizer_0.2.3_x64-setup.exe` + `.exe.sig` | Windows x64 | NSIS 用户安装器；已签名更新包 |
+| `LV24-SEO-Optimizer_0.2.3_x64-portable.zip` + `.zip.sha256` | Windows x64 | 便携构建；仅手动，校验和由发布闸门重新计算 |
+| `LV24.SEO.Optimizer_0.2.3_aarch64.dmg` | macOS Apple silicon | 首次安装 |
+| `LV24.SEO.Optimizer_0.2.3_x64.dmg` | macOS Intel | 首次安装 |
+| `LV24.SEO.Optimizer_0.2.3_aarch64.app.tar.gz` + `.sig` | macOS Apple silicon | 已签名更新包 |
+| `LV24.SEO.Optimizer_0.2.3_x64.app.tar.gz` + `.sig` | macOS Intel | 已签名更新包 |
+| `LV24.SEO.Optimizer_0.2.3_amd64.AppImage` + `.AppImage.sig` | Linux x64 | AppImage；已签名更新包 |
+| `LV24.SEO.Optimizer_0.2.3_amd64.deb`, `LV24.SEO.Optimizer-0.2.3-1.x86_64.rpm` | Linux x64 | 包管理器安装；仅手动 |
+| `latest.json` | 全部 | 已签名更新清单 |
+| `SHA256SUMS.txt` | 全部 | 每个已发布产物的 SHA-256 |
+
+### 桌面 0.2.3 验证
+
+| 检查 | 结果 |
+|---|---|
+| 已发布产物 | `v0.2.3` 上共 18 个，包括按归档重新计算的 Windows 便携 `.zip.sha256`；`SHA256SUMS.txt` 覆盖每个已发布产物 |
+| CI | 发布提交上 Linux x64、Windows x64 和 macOS arm64 + x64 全绿 |
+| 应用内更新 | `0.2.2 → 0.2.3` 在 Windows NSIS 上完成端到端验证：下载、签名验证、passive 安装和重启；界面报告 **Desktop 0.2.3**、**Engine 0.5.3** 和 engine ready |
+| Sidecar | Linux 和 macOS sidecar 由发布 workflow 重新构建，rebuild-aware 校验和报告通过；Windows x64 从 PyPI `0.5.3` 固定（`sha256 24b51f43…`，14,175,608 字节） |
 
 ## 引擎 0.5.2
 
@@ -176,12 +215,13 @@ PID**。不会按映像名称匹配，因此另一个已安装副本、便携构
 portable ZIP 没有可替换的安装器，且可能位于可移动介质上。桌面端报告已安装的包类型，并对这些
 情况禁用应用内安装器。它不会假装手动包已被更新。
 
-Windows NSIS 路径现已完成两次端到端验证：`0.2.0 → 0.2.1` 和 `0.2.1 → 0.2.2`。第二次运行中，
-已安装的 `0.2.1` 检测到 `0.2.2`，下载并验证已签名包，以 passive 模式安装，重启后报告 `0.2.2`
-且引擎 `0.5.2` 就绪。`0.2.2` 可从 `0.2.0` 直接更新；`0.1.0` 没有更新器，需要一次手动安装。
+Windows NSIS 路径现已完成三次端到端验证：`0.2.0 → 0.2.1`、`0.2.1 → 0.2.2` 和
+`0.2.2 → 0.2.3`。第三次运行中，已安装的 `0.2.2` 检测到 `0.2.3`，下载并验证已签名包，以 passive
+模式安装，重启后报告 **Desktop 0.2.3**、**Engine 0.5.3** 且引擎就绪。任何带应用内更新器的
+`0.2.x` 安装都可直接升级到 `0.2.3`；`0.1.0` 没有更新器，需要一次手动安装。
 
 `0.2.1 → 0.2.2` 更新由旧的 `0.2.1` 更新器执行，其中没有新的受跟踪 PID 清理。如果首次更新期间
-有 sidecar 正在运行，请在其退出后重试，或手动安装 `0.2.2`。`0.2.2 → later` 使用受跟踪 PID
+有 sidecar 正在运行，请在其退出后重试，或手动安装 `0.2.2`。`0.2.2 → 0.2.3` 使用受跟踪 PID
 清理，并在无法停止受跟踪 sidecar 时以 `UPDATE_ENGINE_BUSY` 阻止。
 
 ## 发布流水线
@@ -191,12 +231,12 @@ Windows NSIS 路径现已完成两次端到端验证：`0.2.0 → 0.2.1` 和 `0.
 
 | 输入 | 默认值 | 含义 |
 |---|---|---|
-| `engine_version` | `0.5.2` | sidecar 中捆绑的精确引擎版本 |
+| `engine_version` | `0.5.3` | sidecar 中捆绑的精确引擎版本 |
 | `signed` | `false` | 请求操作系统签名/公证；此零支出仓库未配置 |
 | `publish` | `false` | 所有矩阵构建通过后创建 GitHub release |
 | `tag` | 空 | `vX.Y.Z` 发布标签；`publish=true` 时必填 |
 
-默认值与 `0.2.2` 固定版本一致。如果传入不同版本，发布门控会拒绝清单不匹配。
+默认值与 `0.2.3` 固定版本一致。如果传入不同版本，发布门控会拒绝清单不匹配。
 
 | Runner | Target | 包 |
 |---|---|---|
@@ -211,8 +251,8 @@ Windows NSIS 路径现已完成两次端到端验证：`0.2.0 → 0.2.1` 和 `0.
 ## Sidecar 固定与校验和
 
 发布 sidecar 是 PyInstaller **onedir** 树，在匹配的主机上构建；PyInstaller 不交叉编译。引擎、
-Python、Pydantic、Typer 和 PyInstaller 版本固定在 `scripts/cli-checksums.json`。`0.2.2` 固定
-引擎 `0.5.2`、Python `3.12`、Pydantic `2.14.3`、Typer `0.29.0` 和 PyInstaller `6.22.3`。
+Python、Pydantic、Typer 和 PyInstaller 版本固定在 `scripts/cli-checksums.json`。`0.2.3` 固定
+引擎 `0.5.3`、Python `3.12`、Pydantic `2.14.3`、Typer `0.29.0` 和 PyInstaller `6.22.3`。
 
 PyInstaller onedir 输出不是字节可复现的。因此校验和政策分为三部分：
 
@@ -223,8 +263,8 @@ PyInstaller onedir 输出不是字节可复现的。因此校验和政策分为�
 - **发布门控 — 基于报告。** 发布 job 要求每个交付 target 都有有效报告：target 名称匹配、
   `hashPolicy: "rebuild"`、`ok: true`、64 位十六进制哈希、正大小和精确引擎版本。
 
-对于 `0.5.2`，Windows x64 有已审查的本地固定值；Linux 和 macOS target 在匹配主机上重建并审查
-`0.5.2` sidecar 之前仍为 `null`。`0.5.1` 的 Windows 固定值没有沿用，因为可执行文件随引擎变化。校验和报告是 CI 证据，不是发布产物。
+对于 `0.5.3`，Windows x64 有已审查的本地固定值；Linux 和 macOS sidecar 由发布 workflow 重新构建并通过
+rebuild-aware 报告，其已审查固定值仍为 `null`，直到在这些主机上审查本地构建。`0.5.2` 的 Windows 固定值没有沿用，因为可执行文件随引擎变化。校验和报告是 CI 证据，不是发布产物。
 `SHA256SUMS.txt` 覆盖安装器、更新包、签名和 `latest.json`；sidecar 可执行文件位于这些包内，
 不单独列出。手动安装的用户应使用 `SHA256SUMS.txt` 校验下载的产物。
 
@@ -232,7 +272,7 @@ PyInstaller onedir 输出不是字节可复现的。因此校验和政策分为�
 node scripts/verify-sidecar.mjs \
   --root src-tauri/engine \
   --target x86_64-pc-windows-msvc \
-  --engine-version 0.5.2
+  --engine-version 0.5.3
 ```
 
 ## `latest.json`、签名与发布
@@ -264,19 +304,24 @@ node scripts/verify-sidecar.mjs \
 和发布标题中一致。引擎固定值位于 `scripts/cli-checksums.json`；workflow 显式传入
 `engine_version`，发布门控要求它与清单一致。
 
-当前源码中 `src-tauri/src/commands.rs` 的 `MIN_ENGINE_VERSION` 为 `0.5.2`。外壳接受不低于该
+当前源码中 `src-tauri/src/commands.rs` 的 `MIN_ENGINE_VERSION` 为 `0.5.2`。`0.2.3` 捆绑引擎
+`0.5.3`，因此最低版本故意落后一个引擎发行版。外壳接受不低于该
 版本的引擎，并把更旧版本标记为离线并显示通知。更新的引擎会通过门控，但不是发布测试过的固定
 版本。开发构建可通过 `LV24_SEO_BIN` 使用其他版本；UI 会将其标记为外部并仍检查最低版本。只有
 设置 `LV24_SEO_ALLOW_PATH_ENGINE=1` 时才使用 `PATH` 中的引擎。
 
 ## 从 0.1.0 一次性升级
 
-`0.1.0` 没有更新器、端点和公钥。它无法发现或安装 `0.2.2`。请手动下载并安装一次 `0.2.2`
-（Windows 上的 NSIS 安装器或便携 ZIP）。之后，`0.2.2` 安装在使用支持自动更新的包类型时，
+`0.1.0` 没有更新器、端点和公钥。它无法发现或安装 `0.2.3`。请手动下载并安装一次 `0.2.3`
+（Windows 上的 NSIS 安装器或便携 ZIP）。之后，`0.2.3` 安装在使用支持自动更新的包类型时，
 可以自动更新到后续版本。
 
 ## 更早的版本
 
+- **桌面 0.2.2** 修复了 sidecar 被锁定导致的更新失败，让配置写入持久且私密，清理了过期 UI 状态，
+  并捆绑引擎 `0.5.2`。
+- **引擎 0.5.2** 把相对 `storage.data_dir` 锚定到配置文件，把写入账本接入 CLI 应用，脱敏站点地图
+  抓取错误，并把恰好填满上限的 GSC 页面报告为截断。
 - **桌面 0.2.1** 修复了 Yandex Metrika 令牌接口，并明确了 CLI/桌面共享钥匙串。它是第一个通过
   应用内更新器从 `0.2.0` 交付的版本。
 - **桌面 0.2.0** 是首个多平台版本：Windows NSIS 和便携 ZIP、Linux AppImage/deb/rpm、macOS

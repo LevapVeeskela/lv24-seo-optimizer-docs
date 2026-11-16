@@ -116,7 +116,7 @@ sitemap 50,000 个 URL；索引遍历限制为 20 个文档、深度 2。
 
 内存有界：页面响应体上限 5 MB，保留的页面文本上限 20,000 字符，请求预算为
 `1 + max_urls * (max_redirects + 1)`。`word_count` 仍使用完整可见文本。如果抓取太大
-或太慢，降低 `--max-urls` 并分段抓取。`0.5.2` 没有恢复或任务队列；桌面抓取超时为
+或太慢，降低 `--max-urls` 并分段抓取。`0.5.3` 没有恢复或任务队列；桌面抓取超时为
 600 秒，没有取消按钮。
 
 ## `--days` 限制
@@ -161,7 +161,7 @@ lv24-seo install --client vscode --print
 | 症状 | 原因 | 修复 |
 |---|---|---|
 | 文件看起来有效，却提示 “not valid JSON” | UTF-8 BOM，常见于 PowerShell 5.1 | 重写为无 BOM，或删除文件后重试 |
-| `No such command 'mcp'` | 旧构建没有 `mcp serve` | 升级到 0.5.2 |
+| `No such command 'mcp'` | 旧构建没有 `mcp serve` | 升级到 0.5.3 |
 | GUI 客户端无法启动服务器 | 应用不继承 shell 的 `PATH` | 在 `command` 中写绝对 `uvx` 路径 |
 | VS Code 什么都不显示 | `install` 写入 `mcpServers`；VS Code 使用 `servers` | 重命名键或使用 VS Code 专用块 |
 
@@ -176,7 +176,7 @@ npm 包是薄启动器。它把参数转发给已安装的 `lv24-seo` 二进制�
 `uvx --from lv24-seo==<version> lv24-seo`。在 Windows 上，Node 无法用
 `shell: false` 启动 `.cmd` shim；会以 `EINVAL` 失败。
 
-0.5.2 忽略 `lv24-seo.cmd` 和 `.bat` shim，优先使用 `lv24-seo.exe` 或无扩展名二进制，
+0.5.3 忽略 `lv24-seo.cmd` 和 `.bat` shim，优先使用 `lv24-seo.exe` 或无扩展名二进制，
 然后才回退到 `uvx`。如果启动器仍选错二进制，请设置绝对覆盖：
 
 ```bash

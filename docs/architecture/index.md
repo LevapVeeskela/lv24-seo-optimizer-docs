@@ -7,9 +7,9 @@ description: Engine package layout, provider envelopes, storage, report snapshot
 
 The product has one engine of record and one shell:
 
-- `lv24-seo 0.5.2` owns provider clients, crawl, analysis, reports, storage, MCP tools,
+- `lv24-seo 0.5.3` owns provider clients, crawl, analysis, reports, storage, MCP tools,
   CLI commands and automation.
-- The desktop app `0.2.2` is a React webview plus a Rust process shell. It renders
+- The desktop app `0.2.3` is a React webview plus a Rust process shell. It renders
   screens, edits configuration and launches the bundled engine; it does not reimplement
   engine behaviour.
 
@@ -158,7 +158,7 @@ entities/   config, engine, report, stats, recommendation, update
 shared/     CLI transport, desktop settings/files, i18n, UI primitives, formatting
 ```
 
-There is no `widgets/` layer in `0.2.2`. The header, navigation and update badge live in `app/layout` and `features/update`; a widget layer is added only when a
+There is no `widgets/` layer in `0.2.3`. The header, navigation and update badge live in `app/layout` and `features/update`; a widget layer is added only when a
 slice is genuinely reused across pages.
 
 Each slice exposes one public API and never imports another slice's internals. The envelope parser and error mapping live in `shared`; screens never parse raw

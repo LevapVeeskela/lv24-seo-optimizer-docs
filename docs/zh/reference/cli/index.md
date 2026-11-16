@@ -24,13 +24,13 @@ description: lv24-seo 命令行的命令、全局参数、JSON 信封、退出�
 使用 `--json` 时，命令只输出一个 JSON 文档，不会输出其他内容：
 
 ```json
-{ "ok": true, "data": {}, "meta": { "version": "0.5.2", "duration_ms": 812 }, "warnings": [] }
+{ "ok": true, "data": {}, "meta": { "version": "0.5.3", "duration_ms": 812 }, "warnings": [] }
 ```
 
 失败的命令使用相同结构，但 `ok: false`，并用 `error` 对象代替 `data`：
 
 ```json
-{ "ok": false, "error": { "code": "AUTH_REQUIRED", "message": "Google Search Console token is missing", "retryable": false, "next_action": "lv24-seo auth login --provider gsc" }, "meta": { "version": "0.5.2" }, "warnings": ["gsc: token missing"] }
+{ "ok": false, "error": { "code": "AUTH_REQUIRED", "message": "Google Search Console token is missing", "retryable": false, "next_action": "lv24-seo auth login --provider gsc" }, "meta": { "version": "0.5.3" }, "warnings": ["gsc: token missing"] }
 ```
 
 - `data` 因命令而异。`meta` 始终包含 `version`，通常还会加入 `duration_ms`、`truncated`、

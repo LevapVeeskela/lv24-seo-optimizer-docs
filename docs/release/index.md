@@ -1,24 +1,22 @@
 ---
 title: Releases and updates
-description: Engine 0.5.2 changes and the draft 0.5.3 notes, desktop 0.2.2 assets and the draft 0.2.3 hardening, signed auto-update matrix, release pipeline, version pinning and rollback.
+description: Engine 0.5.3 and desktop 0.2.3 releases, the 0.5.2 and 0.2.2 history, signed auto-update matrix, release pipeline, version pinning and rollback.
 ---
 
 # Releases and updates
 
 The current releases are:
 
-| Product | Version | Notes |
-|---|---|---|
-| Engine | `lv24-seo 0.5.2` | Bugfix release; no schema migration, no new CLI command or MCP tool |
-| Desktop | `0.2.2` | Hardening patch: updater sidecar cleanup, durable writes, secrets and stale-state fixes; bundles engine 0.5.2 |
+| Product | Version | Released | Notes |
+|---|---|---|---|
+| Engine | `lv24-seo 0.5.3` | 2026-11-16 | Provider honesty, hardened crawl, `--strict`, typed store errors, two-phase MCP write contract |
+| Desktop | `0.2.3` | 2026-11-16 | Rust updater with real cancel, dialog-approved config path, redaction and path hardening; bundles engine 0.5.3 |
 
-The desktop version and the engine version are independent, but the desktop pins an exact engine and refuses one below its minimum.
+The desktop version and the engine version are independent, but the desktop pins an exact engine and refuses one below its minimum. `0.2.3` bundles `0.5.3` and still accepts an engine as old as `0.5.2`.
 
-The next wave is not released yet: engine `0.5.3` and desktop `0.2.3` are drafted below. The versions in the table above are what a user can install today.
+## Engine 0.5.3
 
-## Engine 0.5.3 (draft)
-
-This is the next engine patch. It makes agent writes two-phase, moves the crawl off the MCP event loop, adds a CI-facing
+Released on 2026-11-16. It makes agent writes two-phase, moves the crawl off the MCP event loop, adds a CI-facing
 `--strict` exit code, and replaces generic storage failures with typed codes. No schema migration and no new CLI command
 or MCP tool: the surface stays at eleven tools, and the changes are inputs, exit codes and error codes.
 
@@ -55,13 +53,33 @@ What changed:
   entries are removed, and a warning asks the operator to review `crontab -l`. A crawl honours one `429` `Retry-After` instead of
   treating a throttle as a page answer.
 
-Verification is recorded when the release is cut; this section is a draft on the `wave/0.2.3-p0` branch.
+Verification recorded for this release:
 
-## Desktop 0.2.3 (draft)
+| Check | Result |
+|---|---|
+| PyPI | `lv24-seo 0.5.3` wheel and sdist published |
+| npm | `@lv24/seo 0.5.3` published with the `latest` tag |
+| MCP Registry | `io.github.LevapVeeskela/lv24-seo 0.5.3` published |
+| Release workflow | Green on the tagged commit: verify, build, PyPI, npm and MCP Registry jobs |
+| Tests | 1,205 offline tests passed, including the installed-wheel CLI envelope contract; Ubuntu, Windows and macOS CI passed |
 
-`0.2.3` is the next desktop patch and is not released yet. It moves the update download into Rust, makes the config path a
-dialog-approved capability, rejects network paths before they are opened, and fixes UI state that could misreport a save or a
-workspace. The bundled engine pin is unchanged until the release commit bumps it.
+Known limits in 0.5.3:
+
+- The engine service still exposes no recrawl or sitemap write handler: CLI applies and every MCP write call return
+  `WRITE_DISABLED` and nothing is sent. Only IndexNow reaches a provider.
+- Metrika walks stop at 10,000 rows and 100 pages per call; a larger table is truncated and says so.
+- Bing reports `data_age_days: 0` for an empty or undated feed; that is not evidence of freshness.
+- `STORE_LOCKED`, `STORE_CORRUPT` and `STORE_UNAVAILABLE` have no dedicated CLI exit code; they exit `1` and must be read
+  from `error.code`.
+- `--strict` is not available on write commands; a dry run exits `0` when the plan is valid.
+- `doctor` treats an unusable declared data directory as fatal, so a deliberately absent directory now fails the check
+  instead of warning.
+
+## Desktop 0.2.3
+
+Released on 2026-11-16. It moves the update download into Rust, makes the config path a dialog-approved capability, rejects
+network paths before they are opened, and fixes UI state that could misreport a save or a workspace. It bundles
+`lv24-seo 0.5.3` and keeps `MIN_ENGINE_VERSION` at `0.5.2`, so an installed `0.5.2` engine is still accepted.
 
 What changed:
 
@@ -86,8 +104,32 @@ What changed:
   One tested allowlist drives the checksum file and the upload list, and the Windows portable ZIP ships with a `.sha256` sidecar that
   the release gate recomputes and compares.
 
-Asset names follow the `0.2.2` pattern with `0.2.3` substituted. Verification is recorded when the release is cut; this section is a
-draft on the `wave/0.2.3-p0` branch.
+### Desktop 0.2.3 assets
+
+`0.2.3` publishes 18 assets: the installers, the signed updater packages, the Windows portable ZIP and its `.sha256`
+sidecar, `latest.json` and `SHA256SUMS.txt`.
+
+| Asset | Platform | Purpose |
+|---|---|---|
+| `LV24.SEO.Optimizer_0.2.3_x64-setup.exe` + `.exe.sig` | Windows x64 | NSIS per-user installer; signed updater package |
+| `LV24-SEO-Optimizer_0.2.3_x64-portable.zip` + `.zip.sha256` | Windows x64 | Portable build; manual-only, checksum verified by the release gate |
+| `LV24.SEO.Optimizer_0.2.3_aarch64.dmg` | macOS Apple silicon | First install |
+| `LV24.SEO.Optimizer_0.2.3_x64.dmg` | macOS Intel | First install |
+| `LV24.SEO.Optimizer_0.2.3_aarch64.app.tar.gz` + `.sig` | macOS Apple silicon | Signed updater package |
+| `LV24.SEO.Optimizer_0.2.3_x64.app.tar.gz` + `.sig` | macOS Intel | Signed updater package |
+| `LV24.SEO.Optimizer_0.2.3_amd64.AppImage` + `.AppImage.sig` | Linux x64 | AppImage; signed updater package |
+| `LV24.SEO.Optimizer_0.2.3_amd64.deb`, `LV24.SEO.Optimizer-0.2.3-1.x86_64.rpm` | Linux x64 | Package-manager installs; manual-only |
+| `latest.json` | All | Signed updater manifest |
+| `SHA256SUMS.txt` | All | SHA-256 for every published asset |
+
+### Desktop 0.2.3 verification
+
+| Check | Result |
+|---|---|
+| Published assets | 18 on `v0.2.3`, including the Windows portable `.zip.sha256` recomputed against the archive; `SHA256SUMS.txt` covers every published asset |
+| CI | Green for Linux x64, Windows x64 and macOS arm64 + x64 on the release commit |
+| In-app update | `0.2.2 → 0.2.3` verified end-to-end on Windows NSIS: download, signature verification, passive install and relaunch; the UI reports **Desktop 0.2.3**, **Engine 0.5.3** and engine ready |
+| Sidecars | Linux and macOS sidecars rebuilt by the release workflow with passing rebuild-aware checksum reports; Windows x64 pinned from PyPI `0.5.3` (`sha256 24b51f43…`, 14,175,608 bytes) |
 
 ## Engine 0.5.2
 
@@ -227,14 +269,15 @@ Manual-only is deliberate. A deb or rpm install is owned by the package database
 replace it; a portable ZIP has no installer to replace and may live on removable media. The desktop reports the installed bundle type and disables the in-app
 installer for those cases. It does not pretend that a manual package was updated.
 
-The Windows NSIS path has now been verified end-to-end twice: `0.2.0 → 0.2.1`, and `0.2.1 → 0.2.2`.
-For the second run, an installed `0.2.1` build detected `0.2.2`, downloaded and verified the signed
-package, installed it in passive mode, relaunched, and reported `0.2.2` with engine `0.5.2` ready.
-`0.2.2` can update directly from `0.2.0`; `0.1.0` has no updater and needs one manual install.
+The Windows NSIS path has now been verified end-to-end three times: `0.2.0 → 0.2.1`, `0.2.1 → 0.2.2`, and
+`0.2.2 → 0.2.3`. For the third run, an installed `0.2.2` build detected `0.2.3`, downloaded and verified the
+signed package, installed it in passive mode, relaunched, and reported **Desktop 0.2.3** with **Engine 0.5.3**
+and the engine ready. Any `0.2.x` install with the in-app updater can jump straight to `0.2.3`; `0.1.0` has no
+updater and needs one manual install.
 
 The `0.2.1 → 0.2.2` update runs the old `0.2.1` updater, which does not include the new tracked-PID
 cleanup. If a sidecar is active during that first update, retry after it exits or install `0.2.2`
-manually. `0.2.2 → later` uses the tracked-PID cleanup and blocks with `UPDATE_ENGINE_BUSY` if a
+manually. `0.2.2 → 0.2.3` uses the tracked-PID cleanup and blocks with `UPDATE_ENGINE_BUSY` if a
 tracked sidecar cannot be stopped.
 
 ## Release pipeline
@@ -244,12 +287,12 @@ approves the `desktop-release` environment; a non-owner run is skipped.
 
 | Input | Default | Meaning |
 |---|---|---|
-| `engine_version` | `0.5.2` | Exact engine bundled in the sidecar |
+| `engine_version` | `0.5.3` | Exact engine bundled in the sidecar |
 | `signed` | `false` | Request OS signing/notarization; not configured in this zero-spend repository |
 | `publish` | `false` | Create a GitHub release after every matrix build passes |
 | `tag` | Empty | `vX.Y.Z` release tag; required when `publish=true` |
 
-The default matches the `0.2.2` pin. The release gate rejects a manifest mismatch if a different version is passed.
+The default matches the `0.2.3` pin. The release gate rejects a manifest mismatch if a different version is passed.
 
 | Runner | Target | Bundles |
 |---|---|---|
@@ -264,7 +307,7 @@ days; the GitHub release is the durable distribution channel.
 ## Sidecar pin and checksums
 
 The release sidecar is a PyInstaller **onedir** tree, built on the matching host; PyInstaller does not cross-compile. The engine, Python, Pydantic, Typer and
-PyInstaller versions are pinned in `scripts/cli-checksums.json`. `0.2.2` pins engine `0.5.2`, Python `3.12`, Pydantic `2.14.3`, Typer `0.29.0` and PyInstaller
+PyInstaller versions are pinned in `scripts/cli-checksums.json`. `0.2.3` pins engine `0.5.3`, Python `3.12`, Pydantic `2.14.3`, Typer `0.29.0` and PyInstaller
 `6.22.3`.
 
 PyInstaller onedir output is not byte-reproducible. The checksum policy is therefore split:
@@ -278,9 +321,10 @@ PyInstaller onedir output is not byte-reproducible. The checksum policy is there
   shipped target: matching target name, `hashPolicy: "rebuild"`, `ok: true`, a 64-hex
   hash, a positive size and the exact engine version.
 
-For `0.5.2`, Windows x64 has a reviewed local pin; the Linux and macOS targets remain `null` until
-the `0.5.2` sidecar is rebuilt and reviewed on a matching host. The `0.5.1` Windows pin did not
-carry over because the executable changes with the engine.
+For `0.5.3`, Windows x64 has a reviewed local pin; Linux and macOS were rebuilt by the release workflow
+with passing rebuild-aware checksum reports, and their reviewed pins remain `null` until a local build is
+reviewed on those hosts. The `0.5.2` Windows pin did not carry over because the executable changes with
+the engine.
 The checksum reports are CI evidence, not release assets. `SHA256SUMS.txt` covers the installers,
 updater packages, signatures and `latest.json`; the sidecar executable is inside those packages and
 is not listed separately. Users who install manually verify the downloaded asset against
@@ -290,7 +334,7 @@ is not listed separately. Users who install manually verify the downloaded asset
 node scripts/verify-sidecar.mjs \
   --root src-tauri/engine \
   --target x86_64-pc-windows-msvc \
-  --engine-version 0.5.2
+  --engine-version 0.5.3
 ```
 
 ## `latest.json`, signing and publishing
@@ -322,17 +366,22 @@ uploaded manifest. A rerun reuses an existing draft, clears its assets and refus
 The desktop version must agree in `package.json`, `src-tauri/tauri.conf.json`, `src-tauri/Cargo.toml`, the Git tag and the release title. The engine pin lives
 in `scripts/cli-checksums.json`; the workflow passes `engine_version` explicitly and the release gate requires it to match the manifest.
 
-`MIN_ENGINE_VERSION` in `src-tauri/src/commands.rs` is `0.5.2` in the current source. The shell accepts an engine at least that new and marks an older one
+`MIN_ENGINE_VERSION` in `src-tauri/src/commands.rs` is `0.5.2` in the current source. The `0.2.3` bundle ships engine `0.5.3`,
+so the minimum is deliberately one engine release behind. The shell accepts an engine at least that new and marks an older one
 offline with a notice. A newer engine passes the gate but is not the release-tested pin. A development build may use `LV24_SEO_BIN` with another version; the UI
 labels it external and still checks the minimum. A `PATH` engine is used only when `LV24_SEO_ALLOW_PATH_ENGINE=1`.
 
 ## One-time 0.1.0 upgrade
 
-`0.1.0` has no updater, endpoint or public key. It cannot discover or install `0.2.2`. Download and install `0.2.2` manually once (NSIS installer or portable
-ZIP on Windows). After that, the `0.2.2` installation can auto-update to later releases when it uses an auto-update-capable bundle.
+`0.1.0` has no updater, endpoint or public key. It cannot discover or install `0.2.3`. Download and install `0.2.3` manually once (NSIS installer or portable
+ZIP on Windows). After that, the `0.2.3` installation can auto-update to later releases when it uses an auto-update-capable bundle.
 
 ## Earlier releases
 
+- **Desktop 0.2.2** fixed the locked-sidecar updater failure, made configuration writes durable and private, cleared stale
+  UI state and bundled engine `0.5.2`.
+- **Engine 0.5.2** anchored a relative `storage.data_dir` to the config file, attached the write ledger to CLI applies,
+  redacted sitemap fetch errors and reported an exact-cap GSC page as truncated.
 - **Desktop 0.2.1** fixed the Yandex Metrika token surface and made the shared CLI/desktop keychain
   explicit. It was the first release delivered through the in-app updater from `0.2.0`.
 - **Desktop 0.2.0** was the first multi-platform release: Windows NSIS and portable ZIP, Linux

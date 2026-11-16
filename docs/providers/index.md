@@ -13,8 +13,8 @@ Related: [Reports and diffs](/reports/), [Crawl and audit](/crawl/), [Automation
 
 | Source | Read | Write (gated) | Authentication | Free quota | Data lag |
 |---|---|---|---|---|---|
-| Google Search Console | Search analytics, sites, sitemaps, URL Inspection | Sitemap submit; refuses with `WRITE_DISABLED` in 0.5.2 | Bearer access token (`webmasters.readonly` for reads, `webmasters` for sitemaps) | 1,200 QPM per site and per user; 50,000 rows/day/site/type; URL Inspection 2,000/day, 600/min | 2–3 days; `data_age_days` floors at 3 |
-| Yandex Webmaster | Summary, SQI history, indexing, search URLs and events, queries, diagnostics, broken links, sitemaps | Recrawl queue; refuses with `WRITE_DISABLED` in 0.5.2 | OAuth token, scope `webmaster:hostinfo` | Free; no published global RPD/RPS; query analytics is fragile above roughly 10k requests/hour | About 4 days |
+| Google Search Console | Search analytics, sites, sitemaps, URL Inspection | Sitemap submit; refuses with `WRITE_DISABLED` in 0.5.3 | Bearer access token (`webmasters.readonly` for reads, `webmasters` for sitemaps) | 1,200 QPM per site and per user; 50,000 rows/day/site/type; URL Inspection 2,000/day, 600/min | 2–3 days; `data_age_days` floors at 3 |
+| Yandex Webmaster | Summary, SQI history, indexing, search URLs and events, queries, diagnostics, broken links, sitemaps | Recrawl queue; refuses with `WRITE_DISABLED` in 0.5.3 | OAuth token, scope `webmaster:hostinfo` | Free; no published global RPD/RPS; query analytics is fragile above roughly 10k requests/hour | About 4 days |
 | Yandex Metrika | Sessions, traffic sources, search phrases, landing pages, goals | None | OAuth token, scope `metrika:read` | 5,000 requests/day/user; 30 rps/IP; 3 parallel; `/stat/v1/data` 200 requests per 5 minutes; up to 100k rows, 20 metrics and 10 dimensions per request | Reporting API; sampling is reported |
 | Bing Webmaster | Query stats, rank and traffic stats, crawl issues | IndexNow submit (works); sitemap submit path is not wired | One API key per user | Free; about 10k URL submits/day/domain, 500 per batch | No windowed stats in the API; age comes from the newest row date |
 | Chrome UX Report (CrUX) | Field p75 LCP, INP and CLS | None | API key | 150 QPM per project, cannot be raised | 28-day rolling window |
@@ -23,7 +23,7 @@ Related: [Reports and diffs](/reports/), [Crawl and audit](/crawl/), [Automation
 | Own crawl | Pages, issues, link graph, sitemap coverage | None | None | Local | Current run |
 | Logs | User-agent bot triage for nginx JSON access logs; not proof of a verified crawler | None | Local file | Local | Log window |
 
-GA4 is an optional integration point, not part of the default path. The shipped providers are GSC, Yandex Webmaster, Yandex Metrika, Bing, CrUX and PSI. Paid SERP or backlink adapters (DataForSEO, SerpApi and others) are planned or documented only; none ships in 0.5.2.
+GA4 is an optional integration point, not part of the default path. The shipped providers are GSC, Yandex Webmaster, Yandex Metrika, Bing, CrUX and PSI. Paid SERP or backlink adapters (DataForSEO, SerpApi and others) are planned or documented only; none ships in 0.5.3.
 
 ## Authentication
 
