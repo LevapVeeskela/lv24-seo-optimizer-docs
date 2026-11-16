@@ -80,13 +80,13 @@ lv24-seo auth status --json
 
 ## Матрица установки приложения
 
-Настольное приложение `0.2.3` — текущий hardening-патч с движком `lv24-seo 0.5.3`; оно по-прежнему принимает движок вплоть до `0.5.2`. Скачивайте файлы со страницы релизов проекта; `SHA256SUMS.txt` покрывает все опубликованные файлы.
+Настольное приложение `0.3.0` — текущий релиз с движком `lv24-seo 0.5.3`; оно по-прежнему принимает движок вплоть до `0.5.2`. Скачивайте файлы со страницы релизов проекта; `SHA256SUMS.txt` покрывает все опубликованные файлы.
 
 | Платформа | Файлы | Автообновление |
 |---|---|---|
-| Windows 10/11 x64 | NSIS `LV24.SEO.Optimizer_0.2.3_x64-setup.exe` (+ `.sig`), portable `LV24-SEO-Optimizer_0.2.3_x64-portable.zip` | Только NSIS; portable вручную |
-| Linux x64 | `LV24.SEO.Optimizer_0.2.3_amd64.AppImage` (+ `.AppImage.sig`), `LV24.SEO.Optimizer_0.2.3_amd64.deb`, `LV24.SEO.Optimizer-0.2.3-1.x86_64.rpm` | Только AppImage; deb/rpm вручную |
-| macOS 13+ arm64/x64 | `LV24.SEO.Optimizer_0.2.3_aarch64.dmg` / `LV24.SEO.Optimizer_0.2.3_x64.dmg` для первой установки, `LV24.SEO.Optimizer_0.2.3_aarch64.app.tar.gz` / `LV24.SEO.Optimizer_0.2.3_x64.app.tar.gz` (+ `.sig`) для обновлений | Только `.app`; DMG — первая установка |
+| Windows 10/11 x64 | NSIS `LV24.SEO.Optimizer_0.3.0_x64-setup.exe` (+ `.sig`), portable `LV24-SEO-Optimizer_0.3.0_x64-portable.zip` | Только NSIS; portable вручную |
+| Linux x64 | `LV24.SEO.Optimizer_0.3.0_amd64.AppImage` (+ `.AppImage.sig`), `LV24.SEO.Optimizer_0.3.0_amd64.deb`, `LV24.SEO.Optimizer-0.3.0-1.x86_64.rpm` | Только AppImage; deb/rpm вручную |
+| macOS 13+ arm64/x64 | `LV24.SEO.Optimizer_0.3.0_aarch64.dmg` / `LV24.SEO.Optimizer_0.3.0_x64.dmg` для первой установки, `LV24.SEO.Optimizer_0.3.0_aarch64.app.tar.gz` / `LV24.SEO.Optimizer_0.3.0_x64.app.tar.gz` (+ `.sig`) для обновлений | Только `.app`; DMG — первая установка |
 
 ### Windows
 
@@ -111,7 +111,7 @@ sudo dnf install ./*_amd64.rpm
 
 ### Обновление с версии 0.1.0
 
-`0.1.0` была превью только для Windows без обновлятора, endpoint и публичного ключа. Установите `0.2.3` вручную один раз (установщик NSIS или portable ZIP). Автообновление работает с `0.2.0` и далее только для Windows NSIS, macOS `.app` и Linux AppImage.
+`0.1.0` была превью только для Windows без обновлятора, endpoint и публичного ключа. Установите `0.3.0` вручную один раз (установщик NSIS или portable ZIP). Автообновление работает с `0.2.0` и далее только для Windows NSIS, macOS `.app` и Linux AppImage.
 
 ## Неподписанные сборки
 
@@ -142,4 +142,4 @@ pip uninstall lv24-seo
 - [Справочник конфигурации](/ru/reference/config/) — все ключи `seo.toml`.
 - [Безопасность и приватность](/ru/security/) — хранение токенов и защита записи.
 
-Source: `_source/engine-README.md`, `_source/engine-cli.md`, `_source/engine-config.md`, `_source/desktop-README.md`, `_source/desktop-releases-0.2.3.md`, `_source/desktop-releases-0.2.2.md`, `_source/desktop-releases-0.2.0.md`.
+Source: `_source/engine-README.md`, `_source/engine-cli.md`, `_source/engine-config.md`, `_source/desktop-README.md`, `_source/desktop-releases-0.3.0.md`, `_source/desktop-releases-0.2.3.md`, `_source/desktop-releases-0.2.2.md`, `_source/desktop-releases-0.2.0.md`.

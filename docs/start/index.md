@@ -71,16 +71,16 @@ The CLI envelope is `{ok, data, meta, warnings}`. `meta.complete` is `false` whe
 
 ## Optional desktop
 
-The desktop is at `0.2.3` and bundles `lv24-seo 0.5.3`; it still accepts an engine as old as `0.5.2`. It is useful when you do not want to remember flags: choose `seo.toml` in Settings, read the dashboard, edit configuration through a validated form, open the weekly HTML report, and copy a bounded recommendation as a Markdown prompt for an agent. Windows NSIS, macOS `.app` and Linux AppImage can auto-update; portable ZIP, deb and rpm are manual-only. The updater stops only the sidecar PIDs it started and blocks with `UPDATE_ENGINE_BUSY` if one cannot be stopped.
+The desktop is at `0.3.0` and bundles `lv24-seo 0.5.3`; it still accepts an engine as old as `0.5.2`. It is useful when you do not want to remember flags: create or choose a `seo.toml` in the app, read the dashboard, edit configuration through a validated form, run a bounded crawl, compare and export weekly reports, and copy a bounded recommendation as a Markdown prompt for an agent. Windows NSIS, macOS `.app` and Linux AppImage can auto-update; portable ZIP, deb and rpm are manual-only. The updater stops only the sidecar PIDs it started and blocks with `UPDATE_ENGINE_BUSY` if one cannot be stopped.
 
 ## Status and limits
 
-The engine is `0.5.3`; the desktop is `0.2.3`. Known gaps before 1.0:
+The engine is `0.5.3`; the desktop is `0.3.0`. Known gaps before 1.0:
 
 - GSC supports a manually supplied OAuth access token today; a service-account flow is planned.
 - GSC sitemap submit and Yandex recrawl return `WRITE_DISABLED`; IndexNow really submits.
 - `storage.raw_retention_days` is reserved; no raw archives are written yet.
-- The desktop has no separate Crawl screen and no job progress or cancel for long engine calls in `0.2.3`; only the updater download can be cancelled.
+- The desktop has a crawl screen and shows live elapsed time, but no cancel and no background runs for long engine calls in `0.3.0`; only the updater download can be cancelled.
 - `report indexing`, `report opportunities` and `report history` are planned, not shipped.
 - Logging is opt-in: set `LV24_SEO_LOG_LEVEL` to install the redacting handler in the CLI and `mcp serve`. The `--json` envelope remains the stable diagnostic interface.
 

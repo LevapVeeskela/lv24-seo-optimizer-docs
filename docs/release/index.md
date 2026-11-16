@@ -1,6 +1,6 @@
 ---
 title: Releases and updates
-description: Engine 0.5.3 and desktop 0.2.3 releases, the 0.5.2 and 0.2.2 history, signed auto-update matrix, release pipeline, version pinning and rollback.
+description: Engine 0.5.3 and desktop 0.3.0 releases, the 0.5.2, 0.2.3 and 0.2.2 history, signed auto-update matrix, release pipeline, version pinning and rollback.
 ---
 
 # Releases and updates
@@ -10,9 +10,9 @@ The current releases are:
 | Product | Version | Released | Notes |
 |---|---|---|---|
 | Engine | `lv24-seo 0.5.3` | 2026-11-16 | Provider honesty, hardened crawl, `--strict`, typed store errors, two-phase MCP write contract |
-| Desktop | `0.2.3` | 2026-11-16 | Rust updater with real cancel, dialog-approved config path, redaction and path hardening; bundles engine 0.5.3 |
+| Desktop | `0.3.0` | 2026-11-16 | Project wizard, crawl screen, report comparison and export, settings save workflow, integrations, reporting window and run status; bundles engine 0.5.3 |
 
-The desktop version and the engine version are independent, but the desktop pins an exact engine and refuses one below its minimum. `0.2.3` bundles `0.5.3` and still accepts an engine as old as `0.5.2`.
+The desktop version and the engine version are independent, but the desktop pins an exact engine and refuses one below its minimum. `0.3.0` bundles `0.5.3` and still accepts an engine as old as `0.5.2`.
 
 ## Engine 0.5.3
 
@@ -74,6 +74,65 @@ Known limits in 0.5.3:
 - `--strict` is not available on write commands; a dry run exits `0` when the plan is valid.
 - `doctor` treats an unusable declared data directory as fatal, so a deliberately absent directory now fails the check
   instead of warning.
+
+## Desktop 0.3.0
+
+Released on 2026-11-16. It turns the shell into a working surface for the whole workflow: onboarding without a
+terminal, a crawl screen, report comparison and export, a safer settings save flow, integration snippets and an
+honest run status. It bundles `lv24-seo 0.5.3` (unchanged from `0.2.3`) and keeps `MIN_ENGINE_VERSION` at `0.5.2`.
+
+What changed:
+
+- **Onboarding without the terminal.** A three-step project wizard (folder, site, review) runs `lv24-seo init`
+  through the shell, shows the exact config and data paths before creating anything, and offers **Open existing
+  seo.toml** instead of overwriting a folder that already has one. `knownConfigs` in `settings.json` remembers up to
+  20 canonical config paths so a previous workspace can be re-activated after a restart; the shell still validates
+  them, so the list is a convenience, not a permission bypass. A header site chip opens up to 8 recent workspaces
+  and marks a moved or deleted config as missing.
+- **Properties panel.** The dashboard renders `lv24-seo properties`: configured providers, their target and token
+  presence (`present`, `missing`, `not required`, `unknown`) with a link to the matching settings section.
+- **Crawl screen.** A bounded `lv24-seo crawl --json` run with summary counters, a truncated badge, engine warnings
+  and limitations; issue filters for severity, rule and free-text search with facets from the result; a table capped
+  at 500 rendered rows while the JSON and CSV export contains every returned row. Switching workspace resets the
+  screen.
+- **Report comparison and export.** Compares the two newest stored weekly snapshots without calling a provider:
+  headline deltas, issues added/resolved/unchanged, opportunities and limitations added or lifted, with a
+  **not comparable** label instead of a silent diff. JSON uses the documented `lv24-seo.report/v1` payload; CSV is
+  flat (`section,metric,value,delta`). The HTML report is unchanged.
+- **Settings save workflow.** A sticky save bar with dirty state, changed-field count, validation errors and
+  warnings, and the last backup; **Ctrl+S / Cmd+S** saves from anywhere; **Only changed** filters the form to fields
+  that differ from `seo.toml`. An app-wide draft guard asks before discarding unsaved edits when leaving Settings,
+  switching workspace, reloading or closing the window, and says so if it cannot install the close guard.
+- **Recommendations.** Search across title, action, query and page; sort by report order or severity; bulk **Queue
+  all visible** and **Export all visible**, with partial-export counts stated instead of silently ignored.
+- **Integrations.** MCP snippets for Claude Desktop, OpenCode, VS Code and Cursor in JSON, plus a TOML form for
+  TOML-based hosts such as Codex CLI; snippets contain no tokens. Scheduled runs are **print-only**: the screen
+  renders the `lv24-seo schedule print` artifact and never installs a cron entry, unit or task.
+- **Reporting window and run status.** A per-workspace window of 7, 28 or 90 days and a provider lag of 2 or 3 days,
+  saved per `seo.toml` path, shared by stats and the weekly report. Runs show live elapsed time, the last duration and
+  timestamp, truncation and limitation badges, and an explicit note that `0.3.0` has no cancel button.
+- **Shell and security.** New allow-listed commands `init`, `schedule_print` (active config only) and
+  `pick_directory` (a native dialog whose result is approved for `init`), persisted and validated `knownConfigs`,
+  and a `core:window:allow-destroy` capability used only by the confirmed-discard close path.
+
+Verification recorded for this release:
+
+| Check | Result |
+|---|---|
+| Published assets | 18 on `v0.3.0`, including the Windows portable `.zip.sha256` |
+| CI | Green for Linux x64, Windows x64 and macOS arm64 + x64 on the release commit |
+| In-app update | `0.2.3 → 0.3.0` verified through the new Rust updater on Windows NSIS: **Desktop 0.3.0**, **Engine 0.5.3** and engine ready |
+| Engine | `lv24-seo 0.5.3` unchanged; the contracts and the reviewed Windows sidecar pin are the same as `0.2.3` |
+
+Known limits in 0.3.0:
+
+- No cancel and no background runs: a crawl, report build or stats refresh runs to completion, and leaving the screen
+  does not move it to a queue.
+- Scheduled runs are print-only; no scheduler job is installed and no MCP client config is edited.
+- The desktop performs no provider write.
+- Config-path approval is per process plus the persisted `knownConfigs` list; a path outside both still needs the
+  native dialog.
+- Windows ACL hardening is best effort, and OS packages remain unsigned or ad-hoc signed.
 
 ## Desktop 0.2.3
 
@@ -269,16 +328,16 @@ Manual-only is deliberate. A deb or rpm install is owned by the package database
 replace it; a portable ZIP has no installer to replace and may live on removable media. The desktop reports the installed bundle type and disables the in-app
 installer for those cases. It does not pretend that a manual package was updated.
 
-The Windows NSIS path has now been verified end-to-end three times: `0.2.0 → 0.2.1`, `0.2.1 → 0.2.2`, and
-`0.2.2 → 0.2.3`. For the third run, an installed `0.2.2` build detected `0.2.3`, downloaded and verified the
-signed package, installed it in passive mode, relaunched, and reported **Desktop 0.2.3** with **Engine 0.5.3**
-and the engine ready. Any `0.2.x` install with the in-app updater can jump straight to `0.2.3`; `0.1.0` has no
-updater and needs one manual install.
+The Windows NSIS path has now been verified end-to-end four times: `0.2.0 → 0.2.1`, `0.2.1 → 0.2.2`,
+`0.2.2 → 0.2.3`, and `0.2.3 → 0.3.0`. For the fourth run, an installed `0.2.3` build updated through the
+new Rust updater, downloaded and verified the signed package, installed it in passive mode, relaunched,
+and reported **Desktop 0.3.0** with **Engine 0.5.3** and the engine ready. Any `0.2.x` install with the
+in-app updater can jump straight to `0.3.0`; `0.1.0` has no updater and needs one manual install.
 
 The `0.2.1 → 0.2.2` update runs the old `0.2.1` updater, which does not include the new tracked-PID
 cleanup. If a sidecar is active during that first update, retry after it exits or install `0.2.2`
-manually. `0.2.2 → 0.2.3` uses the tracked-PID cleanup and blocks with `UPDATE_ENGINE_BUSY` if a
-tracked sidecar cannot be stopped.
+manually. `0.2.2 → 0.2.3` and later updates use the tracked-PID cleanup and block with
+`UPDATE_ENGINE_BUSY` if a tracked sidecar cannot be stopped.
 
 ## Release pipeline
 
@@ -292,7 +351,7 @@ approves the `desktop-release` environment; a non-owner run is skipped.
 | `publish` | `false` | Create a GitHub release after every matrix build passes |
 | `tag` | Empty | `vX.Y.Z` release tag; required when `publish=true` |
 
-The default matches the `0.2.3` pin. The release gate rejects a manifest mismatch if a different version is passed.
+The default matches the `0.3.0` pin. The release gate rejects a manifest mismatch if a different version is passed.
 
 | Runner | Target | Bundles |
 |---|---|---|
@@ -307,7 +366,7 @@ days; the GitHub release is the durable distribution channel.
 ## Sidecar pin and checksums
 
 The release sidecar is a PyInstaller **onedir** tree, built on the matching host; PyInstaller does not cross-compile. The engine, Python, Pydantic, Typer and
-PyInstaller versions are pinned in `scripts/cli-checksums.json`. `0.2.3` pins engine `0.5.3`, Python `3.12`, Pydantic `2.14.3`, Typer `0.29.0` and PyInstaller
+PyInstaller versions are pinned in `scripts/cli-checksums.json`. `0.3.0` pins engine `0.5.3` (unchanged from `0.2.3`), Python `3.12`, Pydantic `2.14.3`, Typer `0.29.0` and PyInstaller
 `6.22.3`.
 
 PyInstaller onedir output is not byte-reproducible. The checksum policy is therefore split:
@@ -366,18 +425,20 @@ uploaded manifest. A rerun reuses an existing draft, clears its assets and refus
 The desktop version must agree in `package.json`, `src-tauri/tauri.conf.json`, `src-tauri/Cargo.toml`, the Git tag and the release title. The engine pin lives
 in `scripts/cli-checksums.json`; the workflow passes `engine_version` explicitly and the release gate requires it to match the manifest.
 
-`MIN_ENGINE_VERSION` in `src-tauri/src/commands.rs` is `0.5.2` in the current source. The `0.2.3` bundle ships engine `0.5.3`,
+`MIN_ENGINE_VERSION` in `src-tauri/src/commands.rs` is `0.5.2` in the current source. The `0.3.0` bundle ships engine `0.5.3`,
 so the minimum is deliberately one engine release behind. The shell accepts an engine at least that new and marks an older one
 offline with a notice. A newer engine passes the gate but is not the release-tested pin. A development build may use `LV24_SEO_BIN` with another version; the UI
 labels it external and still checks the minimum. A `PATH` engine is used only when `LV24_SEO_ALLOW_PATH_ENGINE=1`.
 
 ## One-time 0.1.0 upgrade
 
-`0.1.0` has no updater, endpoint or public key. It cannot discover or install `0.2.3`. Download and install `0.2.3` manually once (NSIS installer or portable
-ZIP on Windows). After that, the `0.2.3` installation can auto-update to later releases when it uses an auto-update-capable bundle.
+`0.1.0` has no updater, endpoint or public key. It cannot discover or install `0.3.0`. Download and install `0.3.0` manually once (NSIS installer or portable
+ZIP on Windows). After that, the `0.3.0` installation can auto-update to later releases when it uses an auto-update-capable bundle.
 
 ## Earlier releases
 
+- **Desktop 0.2.3** moved the update install into Rust with real cancellation, made the config path a
+  dialog-approved capability, rejected network and device paths and redacted engine output before the webview.
 - **Desktop 0.2.2** fixed the locked-sidecar updater failure, made configuration writes durable and private, cleared stale
   UI state and bundled engine `0.5.2`.
 - **Engine 0.5.2** anchored a relative `storage.data_dir` to the config file, attached the write ledger to CLI applies,
@@ -422,4 +483,4 @@ those protections system-wide.
 
 See [Security and privacy](/security/) for updater trust and [Architecture](/architecture/) for the sidecar layout.
 
-Source: `_source/engine-releases-0.5.3.md`, `_source/engine-releases-0.5.2.md`, `_source/desktop-releases-0.2.3.md`, `_source/desktop-releases-0.2.2.md`, `_source/desktop-releases-0.2.1.md`, `_source/desktop-releases-0.2.0.md`, `_source/desktop-release.md`, `_source/desktop-security.md`.
+Source: `_source/engine-releases-0.5.3.md`, `_source/engine-releases-0.5.2.md`, `_source/desktop-releases-0.3.0.md`, `_source/desktop-releases-0.2.3.md`, `_source/desktop-releases-0.2.2.md`, `_source/desktop-releases-0.2.1.md`, `_source/desktop-releases-0.2.0.md`, `_source/desktop-release.md`, `_source/desktop-security.md`.

@@ -6,7 +6,7 @@ description: Threat model, secret handling, write gates, SSRF defenses, desktop 
 # Security and privacy
 
 LV24 SEO Optimizer is local-first. The engine (`lv24-seo 0.5.3`) does the provider, crawl, storage and report work. The desktop app
-(`0.2.3`) is a UI and process shell around that engine; it does not reimplement provider clients and does not proxy provider traffic.
+(`0.3.0`) is a UI and process shell around that engine; it does not reimplement provider clients and does not proxy provider traffic.
 
 This page separates the two products and the two kinds of signing:
 
@@ -182,7 +182,7 @@ Workspace, report, doctor and secret state is cleared when the workspace changes
 data is never shown against a new workspace. Actions that cannot succeed are disabled rather than failing on click. The en/ru/zh
 catalogues are at parity; a missing key is a test failure.
 
-The production webview CSP has no remote scripts, styles, fonts, images or connect targets; it allows self-hosted assets, inline styles, app-asset/data images and IPC. `withGlobalTauri` is false, and the UI uses typed API imports. There is no local HTTP API in `0.2.3`; a future one would need its own authentication and loopback binding.
+The production webview CSP has no remote scripts, styles, fonts, images or connect targets; it allows self-hosted assets, inline styles, app-asset/data images and IPC. `withGlobalTauri` is false, and the UI uses typed API imports. There is no local HTTP API in `0.3.0`; a future one would need its own authentication and loopback binding.
 
 ## Updater trust
 
@@ -206,7 +206,7 @@ the signature and only then starts the installer. `update_cancel` drops the down
 happen.
 
 Auto-update works only for Windows NSIS, macOS `.app` and Linux AppImage. deb, rpm, MSI and the portable ZIP are manual-only: the UI
-disables the in-app installer and links to the release page. `0.1.0` has no updater, endpoint or public key, so its users install `0.2.3`
+disables the in-app installer and links to the release page. `0.1.0` has no updater, endpoint or public key, so its users install `0.3.0`
 manually once.
 
 OS package signing is separate. By default, Windows builds have no Authenticode signature, macOS builds are ad-hoc signed only, and Linux packages are

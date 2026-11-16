@@ -9,7 +9,7 @@ description: 引擎包结构、数据源信封、存储、报告快照、桌面 
 
 - `lv24-seo 0.5.3` 负责数据源客户端、抓取、分析、报告、存储、MCP 工具、CLI 命令和
   自动化。
-- 桌面应用 `0.2.3` 是 React webview 加 Rust 进程外壳。它渲染界面、编辑配置并启动
+- 桌面应用 `0.3.0` 是 React webview 加 Rust 进程外壳。它渲染界面、编辑配置并启动
   内置引擎；不重新实现引擎行为。
 
 当两者指向同一工作区时，共享同一份 SQLite 历史。
@@ -162,7 +162,7 @@ entities/   config, engine, report, stats, recommendation, update
 shared/     CLI transport, desktop settings/files, i18n, UI primitives, formatting
 ```
 
-`0.2.3` 没有 `widgets/` 层。页头、导航和更新徽章位于 `app/layout` 和
+`0.3.0` 没有 `widgets/` 层。页头、导航和更新徽章位于 `app/layout` 和
 `features/update`；只有当切片确实跨页面复用时才增加 widget 层。
 
 每个切片暴露一个公共 API，从不导入另一个切片的内部实现。信封解析器和错误映射位于

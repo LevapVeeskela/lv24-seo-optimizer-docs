@@ -80,13 +80,13 @@ lv24-seo auth status --json
 
 ## 桌面安装矩阵
 
-桌面端 `0.2.3` 是当前加固补丁，内置 `lv24-seo 0.5.3`；它仍接受低至 `0.5.2` 的引擎。从项目的 Releases 页面下载资源文件；`SHA256SUMS.txt` 覆盖所有已发布资源。
+桌面端 `0.3.0` 是当前版本，内置 `lv24-seo 0.5.3`；它仍接受低至 `0.5.2` 的引擎。从项目的 Releases 页面下载资源文件；`SHA256SUMS.txt` 覆盖所有已发布资源。
 
 | 平台 | 文件 | 自动更新 |
 |---|---|---|
-| Windows 10/11 x64 | NSIS `LV24.SEO.Optimizer_0.2.3_x64-setup.exe`（+ `.sig`）、便携包 `LV24-SEO-Optimizer_0.2.3_x64-portable.zip` | 仅 NSIS；便携包手动更新 |
-| Linux x64 | `LV24.SEO.Optimizer_0.2.3_amd64.AppImage`（+ `.AppImage.sig`）、`LV24.SEO.Optimizer_0.2.3_amd64.deb`、`LV24.SEO.Optimizer-0.2.3-1.x86_64.rpm` | 仅 AppImage；deb/rpm 手动更新 |
-| macOS 13+ arm64/x64 | 首次安装用 `LV24.SEO.Optimizer_0.2.3_aarch64.dmg` / `LV24.SEO.Optimizer_0.2.3_x64.dmg`，更新用 `LV24.SEO.Optimizer_0.2.3_aarch64.app.tar.gz` / `LV24.SEO.Optimizer_0.2.3_x64.app.tar.gz`（+ `.sig`） | 仅 `.app`；DMG 用于首次安装 |
+| Windows 10/11 x64 | NSIS `LV24.SEO.Optimizer_0.3.0_x64-setup.exe`（+ `.sig`）、便携包 `LV24-SEO-Optimizer_0.3.0_x64-portable.zip` | 仅 NSIS；便携包手动更新 |
+| Linux x64 | `LV24.SEO.Optimizer_0.3.0_amd64.AppImage`（+ `.AppImage.sig`）、`LV24.SEO.Optimizer_0.3.0_amd64.deb`、`LV24.SEO.Optimizer-0.3.0-1.x86_64.rpm` | 仅 AppImage；deb/rpm 手动更新 |
+| macOS 13+ arm64/x64 | 首次安装用 `LV24.SEO.Optimizer_0.3.0_aarch64.dmg` / `LV24.SEO.Optimizer_0.3.0_x64.dmg`，更新用 `LV24.SEO.Optimizer_0.3.0_aarch64.app.tar.gz` / `LV24.SEO.Optimizer_0.3.0_x64.app.tar.gz`（+ `.sig`） | 仅 `.app`；DMG 用于首次安装 |
 
 ### Windows
 
@@ -111,7 +111,7 @@ Apple 芯片使用 `aarch64` DMG，Intel 使用 `x64` DMG。打开 DMG，将 **L
 
 ### 从桌面 0.1.0 升级
 
-`0.1.0` 是仅限 Windows 的预览，没有更新器、端点或公钥。请手动安装一次 `0.2.3`（NSIS 安装程序或便携 ZIP）。从 `0.2.0` 起，只有 Windows NSIS、macOS `.app` 和 Linux AppImage 可以自动更新。
+`0.1.0` 是仅限 Windows 的预览，没有更新器、端点或公钥。请手动安装一次 `0.3.0`（NSIS 安装程序或便携 ZIP）。从 `0.2.0` 起，只有 Windows NSIS、macOS `.app` 和 Linux AppImage 可以自动更新。
 
 ## 未签名构建
 
@@ -142,4 +142,4 @@ pip uninstall lv24-seo
 - [配置参考](/zh/reference/config/) — 所有 `seo.toml` 键。
 - [安全与隐私](/zh/security/) — token 存储和写操作门控。
 
-Source: `_source/engine-README.md`, `_source/engine-cli.md`, `_source/engine-config.md`, `_source/desktop-README.md`, `_source/desktop-releases-0.2.3.md`, `_source/desktop-releases-0.2.2.md`, `_source/desktop-releases-0.2.0.md`.
+Source: `_source/engine-README.md`, `_source/engine-cli.md`, `_source/engine-config.md`, `_source/desktop-README.md`, `_source/desktop-releases-0.3.0.md`, `_source/desktop-releases-0.2.3.md`, `_source/desktop-releases-0.2.2.md`, `_source/desktop-releases-0.2.0.md`.

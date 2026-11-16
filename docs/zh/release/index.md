@@ -1,6 +1,6 @@
 ---
 title: 发行与更新
-description: 引擎 0.5.3 与桌面 0.2.3 发行说明、0.5.2 与 0.2.2 历史、签名自动更新矩阵、发布流水线、版本固定与回滚。
+description: 引擎 0.5.3 与桌面 0.3.0 发行说明、0.5.2、0.2.3 与 0.2.2 历史、签名自动更新矩阵、发布流水线、版本固定与回滚。
 ---
 
 # 发行与更新
@@ -10,9 +10,9 @@ description: 引擎 0.5.3 与桌面 0.2.3 发行说明、0.5.2 与 0.2.2 历史�
 | 产品 | 版本 | 发布日期 | 说明 |
 |---|---|---|---|
 | 引擎 | `lv24-seo 0.5.3` | 2026-11-16 | 诚实的数据源数据、加固抓取、`--strict`、类型化存储错误、两阶段 MCP 写入契约 |
-| 桌面 | `0.2.3` | 2026-11-16 | Rust 更新器与真实取消、对话框批准的配置路径、脱敏与路径加固；捆绑引擎 0.5.3 |
+| 桌面 | `0.3.0` | 2026-11-16 | 项目向导、抓取屏幕、报告比较与导出、设置保存流程、集成、报告窗口与运行状态；捆绑引擎 0.5.3 |
 
-桌面版本与引擎版本相互独立，但桌面固定精确引擎，并拒绝低于最低版本的引擎。`0.2.3` 捆绑 `0.5.3`，并且仍接受低至 `0.5.2` 的引擎。
+桌面版本与引擎版本相互独立，但桌面固定精确引擎，并拒绝低于最低版本的引擎。`0.3.0` 捆绑 `0.5.3`，并且仍接受低至 `0.5.2` 的引擎。
 
 ## 引擎 0.5.3
 
@@ -50,6 +50,41 @@ description: 引擎 0.5.3 与桌面 0.2.3 发行说明、0.5.2 与 0.2.2 历史�
 - `STORE_LOCKED`、`STORE_CORRUPT` 和 `STORE_UNAVAILABLE` 没有专用 CLI 退出码；它们退出 `1`，必须从 `error.code` 读取。
 - `--strict` 不适用于写入命令；计划有效时 dry run 退出 `0`。
 - `doctor` 把不可用的已声明数据目录视为致命项，因此故意缺失的目录现在会导致检查失败而不是警告。
+
+## 桌面 0.3.0
+
+2026-11-16 发布。它把外壳变成覆盖整个工作流的界面：无需终端的入门、抓取屏幕、报告比较与导出、更安全的
+设置保存流程、集成片段和诚实的运行状态。它捆绑 `lv24-seo 0.5.3`（与 `0.2.3` 相同），并让
+`MIN_ENGINE_VERSION` 保持 `0.5.2`。
+
+变更内容：
+
+- **无需终端的入门。** 三步项目向导（文件夹、站点、检查）通过外壳运行 `lv24-seo init`，在创建任何内容之前显示确切的配置和数据路径，并在文件夹已有配置时提供 **Open existing seo.toml** 而不是覆盖。`settings.json` 中的 `knownConfigs` 记住最多 20 个规范化配置路径，因此重启后可重新激活以前的工作区；外壳仍会校验它们，所以该列表只是便利，不是权限绕过。标题栏的站点芯片打开最多 8 个最近工作区，并把被移动或删除的配置报告为缺失。
+- **属性面板。** 仪表板渲染 `lv24-seo properties`：已配置的数据源、目标以及令牌状态（`present`、`missing`、`not required`、`unknown`），并链接到对应设置区。
+- **抓取屏幕。** 有边界的 `lv24-seo crawl --json` 运行，带汇总计数、截断徽章、引擎警告和限制；按严重性、规则和文本过滤问题，并使用结果中的分面；表格最多渲染 500 行，而 JSON 和 CSV 导出包含引擎返回的每一行。切换工作区会重置屏幕。
+- **报告比较与导出。** 不调用数据源即可比较两个最新存储的周报快照：标题变化、新增/解决/未变问题、机会以及新增或解除的限制，并明确标注 **not comparable** 而不是静默比较。JSON 使用文档化的 `lv24-seo.report/v1` 负载；CSV 为扁平结构（`section,metric,value,delta`）。HTML 报告不变。
+- **设置保存流程。** 底部粘性保存栏显示脏状态、变更字段数、校验错误和警告以及上次备份；**Ctrl+S / Cmd+S** 可从页面任意位置保存；**Only changed** 只显示与 `seo.toml` 不同的字段。应用级草稿保护在离开 Settings、切换工作区、重新加载或关闭窗口前询问是否丢弃未保存编辑，并在无法安装关闭保护时明确说明。
+- **建议。** 跨标题、操作、查询和页面搜索；按报告顺序或严重性排序；批量 **Queue all visible** 和 **Export all visible**，并说明写入和失败的任务数。
+- **集成。** 为 Claude Desktop、OpenCode、VS Code 和 Cursor 生成 JSON 格式的 MCP 片段，并为 Codex CLI 等基于 TOML 的宿主提供 TOML 形式；片段不含令牌。计划运行**仅打印**：屏幕渲染 `lv24-seo schedule print` 产物，绝不安装 cron 条目、unit 或任务。
+- **报告窗口与运行状态。** 每个工作区可选择 7、28 或 90 天窗口和 2 或 3 天数据源延迟，按 `seo.toml` 路径保存，统计和周报共用。运行显示实时耗时、上次运行时长和时间戳、截断与限制徽章，并明确说明 `0.3.0` 没有取消按钮。
+- **外壳与安全。** 新增允许列表命令 `init`、`schedule_print`（仅活动配置）和 `pick_directory`（原生目录对话框，其结果被批准用于 `init`），持久化并校验的 `knownConfigs`，以及仅用于确认丢弃关闭路径的 `core:window:allow-destroy` 能力。
+
+本次发行记录的验证：
+
+| 检查 | 结果 |
+|---|---|
+| 已发布产物 | `v0.3.0` 上共 18 个，包括 Windows 便携 `.zip.sha256` |
+| CI | 发布提交上 Linux x64、Windows x64 和 macOS arm64 + x64 全绿 |
+| 应用内更新 | `0.2.3 → 0.3.0` 通过新的 Rust 更新器在 Windows NSIS 上验证：**Desktop 0.3.0**、**Engine 0.5.3** 和 engine ready |
+| 引擎 | `lv24-seo 0.5.3` 不变；契约和已审查的 Windows sidecar 固定值与 `0.2.3` 相同 |
+
+0.3.0 的已知限制：
+
+- 没有取消，也没有后台运行：抓取、报告构建或统计刷新会运行到完成，离开屏幕不会把运行移入队列。
+- 计划运行仅打印；不会安装计划任务，也不会编辑 MCP 客户端配置。
+- 桌面端不执行数据源写入。
+- 配置路径批准按进程生效，外加持久化的 `knownConfigs` 列表；两者之外的路径仍需要原生对话框。
+- Windows ACL 加固是尽力而为，操作系统包仍未签名或仅 ad-hoc 签名。
 
 ## 桌面 0.2.3
 
@@ -215,13 +250,13 @@ PID**。不会按映像名称匹配，因此另一个已安装副本、便携构
 portable ZIP 没有可替换的安装器，且可能位于可移动介质上。桌面端报告已安装的包类型，并对这些
 情况禁用应用内安装器。它不会假装手动包已被更新。
 
-Windows NSIS 路径现已完成三次端到端验证：`0.2.0 → 0.2.1`、`0.2.1 → 0.2.2` 和
-`0.2.2 → 0.2.3`。第三次运行中，已安装的 `0.2.2` 检测到 `0.2.3`，下载并验证已签名包，以 passive
-模式安装，重启后报告 **Desktop 0.2.3**、**Engine 0.5.3** 且引擎就绪。任何带应用内更新器的
-`0.2.x` 安装都可直接升级到 `0.2.3`；`0.1.0` 没有更新器，需要一次手动安装。
+Windows NSIS 路径现已完成四次端到端验证：`0.2.0 → 0.2.1`、`0.2.1 → 0.2.2`、
+`0.2.2 → 0.2.3` 和 `0.2.3 → 0.3.0`。第四次运行中，已安装的 `0.2.3` 通过新的 Rust 更新器升级，
+下载并验证已签名包，以 passive 模式安装，重启后报告 **Desktop 0.3.0**、**Engine 0.5.3** 且引擎就绪。
+任何带应用内更新器的 `0.2.x` 安装都可直接升级到 `0.3.0`；`0.1.0` 没有更新器，需要一次手动安装。
 
 `0.2.1 → 0.2.2` 更新由旧的 `0.2.1` 更新器执行，其中没有新的受跟踪 PID 清理。如果首次更新期间
-有 sidecar 正在运行，请在其退出后重试，或手动安装 `0.2.2`。`0.2.2 → 0.2.3` 使用受跟踪 PID
+有 sidecar 正在运行，请在其退出后重试，或手动安装 `0.2.2`。`0.2.2 → 0.2.3` 及后续更新使用受跟踪 PID
 清理，并在无法停止受跟踪 sidecar 时以 `UPDATE_ENGINE_BUSY` 阻止。
 
 ## 发布流水线
@@ -236,7 +271,7 @@ Windows NSIS 路径现已完成三次端到端验证：`0.2.0 → 0.2.1`、`0.2.
 | `publish` | `false` | 所有矩阵构建通过后创建 GitHub release |
 | `tag` | 空 | `vX.Y.Z` 发布标签；`publish=true` 时必填 |
 
-默认值与 `0.2.3` 固定版本一致。如果传入不同版本，发布门控会拒绝清单不匹配。
+默认值与 `0.3.0` 固定版本一致。如果传入不同版本，发布门控会拒绝清单不匹配。
 
 | Runner | Target | 包 |
 |---|---|---|
@@ -251,8 +286,8 @@ Windows NSIS 路径现已完成三次端到端验证：`0.2.0 → 0.2.1`、`0.2.
 ## Sidecar 固定与校验和
 
 发布 sidecar 是 PyInstaller **onedir** 树，在匹配的主机上构建；PyInstaller 不交叉编译。引擎、
-Python、Pydantic、Typer 和 PyInstaller 版本固定在 `scripts/cli-checksums.json`。`0.2.3` 固定
-引擎 `0.5.3`、Python `3.12`、Pydantic `2.14.3`、Typer `0.29.0` 和 PyInstaller `6.22.3`。
+Python、Pydantic、Typer 和 PyInstaller 版本固定在 `scripts/cli-checksums.json`。`0.3.0` 固定
+引擎 `0.5.3`（与 `0.2.3` 相同）、Python `3.12`、Pydantic `2.14.3`、Typer `0.29.0` 和 PyInstaller `6.22.3`。
 
 PyInstaller onedir 输出不是字节可复现的。因此校验和政策分为三部分：
 
@@ -304,7 +339,7 @@ node scripts/verify-sidecar.mjs \
 和发布标题中一致。引擎固定值位于 `scripts/cli-checksums.json`；workflow 显式传入
 `engine_version`，发布门控要求它与清单一致。
 
-当前源码中 `src-tauri/src/commands.rs` 的 `MIN_ENGINE_VERSION` 为 `0.5.2`。`0.2.3` 捆绑引擎
+当前源码中 `src-tauri/src/commands.rs` 的 `MIN_ENGINE_VERSION` 为 `0.5.2`。`0.3.0` 捆绑引擎
 `0.5.3`，因此最低版本故意落后一个引擎发行版。外壳接受不低于该
 版本的引擎，并把更旧版本标记为离线并显示通知。更新的引擎会通过门控，但不是发布测试过的固定
 版本。开发构建可通过 `LV24_SEO_BIN` 使用其他版本；UI 会将其标记为外部并仍检查最低版本。只有
@@ -312,12 +347,14 @@ node scripts/verify-sidecar.mjs \
 
 ## 从 0.1.0 一次性升级
 
-`0.1.0` 没有更新器、端点和公钥。它无法发现或安装 `0.2.3`。请手动下载并安装一次 `0.2.3`
-（Windows 上的 NSIS 安装器或便携 ZIP）。之后，`0.2.3` 安装在使用支持自动更新的包类型时，
+`0.1.0` 没有更新器、端点和公钥。它无法发现或安装 `0.3.0`。请手动下载并安装一次 `0.3.0`
+（Windows 上的 NSIS 安装器或便携 ZIP）。之后，`0.3.0` 安装在使用支持自动更新的包类型时，
 可以自动更新到后续版本。
 
 ## 更早的版本
 
+- **桌面 0.2.3** 把更新安装移入 Rust 并支持真实取消，让配置路径成为由对话框批准的权限，拒绝网络和设备
+  路径，并在 webview 之前脱敏引擎输出。
 - **桌面 0.2.2** 修复了 sidecar 被锁定导致的更新失败，让配置写入持久且私密，清理了过期 UI 状态，
   并捆绑引擎 `0.5.2`。
 - **引擎 0.5.2** 把相对 `storage.data_dir` 锚定到配置文件，把写入账本接入 CLI 应用，脱敏站点地图
@@ -360,4 +397,4 @@ sha256sum -c SHA256SUMS.txt --ignore-missing
 
 更新信任见[安全与隐私](/zh/security/)，sidecar 布局见[架构](/zh/architecture/)。
 
-Source: `_source/engine-releases-0.5.3.md`, `_source/engine-releases-0.5.2.md`, `_source/desktop-releases-0.2.3.md`, `_source/desktop-releases-0.2.2.md`, `_source/desktop-releases-0.2.1.md`, `_source/desktop-releases-0.2.0.md`, `_source/desktop-release.md`, `_source/desktop-security.md`.
+Source: `_source/engine-releases-0.5.3.md`, `_source/engine-releases-0.5.2.md`, `_source/desktop-releases-0.3.0.md`, `_source/desktop-releases-0.2.3.md`, `_source/desktop-releases-0.2.2.md`, `_source/desktop-releases-0.2.1.md`, `_source/desktop-releases-0.2.0.md`, `_source/desktop-release.md`, `_source/desktop-security.md`.

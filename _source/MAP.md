@@ -24,6 +24,7 @@ to site routes.
 | `desktop-security.md` | `/security/`, `/desktop/` | Shell boundary, secrets, updater trust. |
 | `desktop-architecture.md` | `/architecture/`, `/desktop/` | FSD layout, commands, stores, resources. |
 | `desktop-releases-0.2.2.md` | `/release/` | Desktop 0.2.2 hardening notes: sidecar cleanup, `UPDATE_ENGINE_BUSY`, secrets, durable writes, engine 0.5.2. |
+| `desktop-releases-0.3.0.md` | `/release/` | Desktop 0.3.0 notes: project wizard, crawl screen, report comparison and export, settings save workflow, integrations, reporting window and run status. |
 | `desktop-releases-0.2.3.md` | `/release/` | Desktop 0.2.3 notes: Rust updater and cancel, dialog-approved config path, path rejection, redaction, UI state, release CI. |
 | `desktop-releases-0.2.1.md` | `/release/` | Desktop 0.2.1 patch notes: Metrika token and shared CLI keychain. |
 | `desktop-releases-0.2.0.md` | `/release/` | Desktop 0.2.0 release notes, kept for the first multi-platform release. |

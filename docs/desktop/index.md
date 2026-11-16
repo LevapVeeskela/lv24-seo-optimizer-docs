@@ -1,24 +1,26 @@
 ---
 title: Desktop app
-description: What the LV24 SEO Optimizer desktop shell adds, how signed updates work, and the hardening changes in the 0.2.3 release and the 0.2.2 history.
+description: What the LV24 SEO Optimizer desktop shell adds, how signed updates work, and the 0.3.0 workflow features with the 0.2.3 and 0.2.2 history.
 ---
 
 # Desktop app
 
 LV24 SEO Optimizer Desktop is a local, offline-first Tauri v2 shell around the `lv24-seo` engine. The Python CLI remains the engine of record: it owns provider clients, crawl rules, analysis, report builders and delivery. The desktop adds a React UI and a Rust process bridge, not a second SEO implementation.
 
-The `0.2.3` hardening patch bundles `lv24-seo 0.5.3` as a PyInstaller onedir sidecar. There is no cloud account, no telemetry, no local HTTP API and no SERP scraping. The desktop talks to the engine through a fixed, allow-listed child-process bridge.
+The `0.3.0` release bundles `lv24-seo 0.5.3` as a PyInstaller onedir sidecar and adds the workflow screens: project wizard, crawl, report comparison and export, integrations and run status. There is no cloud account, no telemetry, no local HTTP API and no SERP scraping. The desktop talks to the engine through a fixed, allow-listed child-process bridge.
 
 ## What it adds
 
-- **Workspace picker.** Choose the `seo.toml` the engine should use through a native file dialog in Settings. The selected config path is the workspace identity. A moved or deleted config is reported as missing and can be re-selected instead of blocking startup.
-- **Stats dashboard.** Renders the bounded `stats` envelope: one card per configured provider, current values, previous-window comparison, coverage, data age, truncation and limitations. CTR changes are shown in percentage points. There is no zero-fill and no cross-engine total; unknown stays unknown.
-- **Settings form and configuration outputs.** The Settings screen is the editable form. The Configuration screen is read-only and has Overview, Effective, Source TOML, Diff, Validation, Doctor and Environment tabs. Source TOML is redacted and read-only; there is no raw TOML editor. Saves use field-level patches, keep comments and key order, validate with the engine, create a timestamped backup (last five kept) and replace the file atomically. In `0.2.3` the temp file and backup are mode `0600` on POSIX and carry an owner-only DACL on Windows, both are fsynced, and the parent directory is fsynced after the rename. Reads are bounded at 8 MiB; settings load per field; Windows reserved device names and trailing dots/spaces are rejected in every path component.
-- **Reports.** Runs the weekly report locally, writes `report.json` and `report.html` under the app data directory, and opens the HTML in your default browser. The report HTML is never embedded in the app webview. A failed report or export explains what failed and what to do.
-- **Recommendations and an agent queue.** Turns report and stats findings into bounded Markdown prompts. You can copy a prompt, export it as `.md`, or keep it in a local agent queue with a status. The queue is stored in the webview's local storage; nothing is submitted automatically.
+- **Workspace picker and onboarding.** Choose the `seo.toml` the engine should use through a native file dialog in Settings, or create a project with the three-step wizard that runs `lv24-seo init` and shows the exact config and data paths first. The selected config path is the workspace identity; a header site chip opens up to 8 recent workspaces, and a moved or deleted config is reported as missing and can be re-selected instead of blocking startup.
+- **Stats dashboard.** Renders the bounded `stats` envelope: one card per configured provider, current values, previous-window comparison, coverage, data age, truncation and limitations. CTR changes are shown in percentage points. There is no zero-fill and no cross-engine total; unknown stays unknown. A properties panel renders `lv24-seo properties` with token presence per provider.
+- **Settings form and configuration outputs.** The Settings screen is the editable form. The Configuration screen is read-only and has Overview, Effective, Source TOML, Diff, Validation, Doctor and Environment tabs. Source TOML is redacted and read-only; there is no raw TOML editor. Saves use field-level patches, keep comments and key order, validate with the engine, create a timestamped backup (last five kept) and replace the file atomically. In `0.3.0` the temp file and backup are mode `0600` on POSIX and carry an owner-only DACL on Windows, both are fsynced, and the parent directory is fsynced after the rename. Reads are bounded at 8 MiB; settings load per field; Windows reserved device names and trailing dots/spaces are rejected in every path component.
+- **Reports.** Runs the weekly report locally, writes `report.json` and `report.html` under the app data directory, and opens the HTML in your default browser. The report HTML is never embedded in the app webview. From `0.3.0` it also compares the two newest stored snapshots and exports JSON (`lv24-seo.report/v1`) or CSV, with **not comparable** shown instead of a silent diff.
+- **Recommendations and an agent queue.** Turns report and stats findings into bounded Markdown prompts. Search and sort them, copy one, export it as `.md`, or queue or export all visible tasks. The queue is stored in the webview's local storage; nothing is submitted automatically.
 - **Secrets over stdin.** Token input is a password field sent once over IPC. The Rust layer pipes it to `lv24-seo auth set --provider <p> --stdin`, zeroizes its buffer and never writes the value to a log, MobX store, localStorage, clipboard or diagnostics bundle. After saving, the UI shows only presence and source.
-- **Yandex Metrika token.** `0.2.3` keeps the separate `metrika` provider (`yandex_metrika_token`) in the TypeScript and Rust allow-lists, the Settings badge, the secret modal and the en/ru/zh labels. The Metrika counter never borrows the Webmaster token.
+- **Yandex Metrika token.** `0.3.0` keeps the separate `metrika` provider (`yandex_metrika_token`) in the TypeScript and Rust allow-lists, the Settings badge, the secret modal and the en/ru/zh labels. The Metrika counter never borrows the Webmaster token.
 - **One secret store with the CLI.** The desktop runs the same engine under the same OS user, so a token stored by `lv24-seo auth set` in a terminal is visible in the desktop and a token stored in the desktop is visible to the CLI. The OS keychain entry uses service `lv24-seo` and the same secret name. `LV24_SEO_*` environment variables are inherited but shown as read-only in the UI: the desktop cannot remove an environment variable, and it says so instead of offering a delete button that does nothing. The opt-in `<data-dir>/secrets.json` fallback is shared only when both surfaces open the same workspace/data directory.
+- **Crawl screen.** A bounded `lv24-seo crawl --json` run with summary counters, a truncated badge, engine warnings and limitations; issue filters for severity, rule and free-text search; a table capped at 500 rendered rows while the JSON and CSV export contains every returned row. Switching workspace resets the screen.
+- **Integrations and run status.** MCP snippets for Claude Desktop, OpenCode, VS Code and Cursor in JSON, plus a TOML form for hosts such as Codex CLI; snippets contain no tokens. Scheduled runs are print-only: the screen renders the `lv24-seo schedule print` artifact and never installs a cron entry, unit or task. Runs show live elapsed time, the last duration and timestamp, and truncation or limitation badges, but there is no cancel button.
 - **Update panel.** Checks a signed `latest.json` at startup and on demand, shows release notes, and installs only after you confirm. Before the installer starts, it stops only the engine sidecar PIDs this app instance registered; if one cannot be stopped, the install is blocked with `UPDATE_ENGINE_BUSY`. The download and install run in Rust, not in the webview, and a download can be cancelled before the installer starts.
 
 The dashboard and Reports screen are built on the same engine commands a terminal uses:
@@ -34,12 +36,12 @@ Download desktop assets from the project's Releases page. The desktop is separat
 
 | Bundle | How it is installed | In-app update |
 |---|---|---|
-| Windows NSIS | `LV24.SEO.Optimizer_0.2.3_x64-setup.exe` | Yes |
-| Windows portable ZIP | `LV24-SEO-Optimizer_0.2.3_x64-portable.zip`; extract the whole folder and run `lv24-seo-desktop.exe` | No |
-| Linux AppImage | `LV24.SEO.Optimizer_0.2.3_amd64.AppImage`; `chmod +x` and run | Yes |
-| Linux deb | `LV24.SEO.Optimizer_0.2.3_amd64.deb`; `sudo apt install ./*_amd64.deb` | No |
-| Linux rpm | `LV24.SEO.Optimizer-0.2.3-1.x86_64.rpm`; `sudo dnf install ./*_amd64.rpm` | No |
-| macOS `.app` from DMG | `LV24.SEO.Optimizer_0.2.3_aarch64.dmg` or `LV24.SEO.Optimizer_0.2.3_x64.dmg`; drag to Applications | Yes |
+| Windows NSIS | `LV24.SEO.Optimizer_0.3.0_x64-setup.exe` | Yes |
+| Windows portable ZIP | `LV24-SEO-Optimizer_0.3.0_x64-portable.zip`; extract the whole folder and run `lv24-seo-desktop.exe` | No |
+| Linux AppImage | `LV24.SEO.Optimizer_0.3.0_amd64.AppImage`; `chmod +x` and run | Yes |
+| Linux deb | `LV24.SEO.Optimizer_0.3.0_amd64.deb`; `sudo apt install ./*_amd64.deb` | No |
+| Linux rpm | `LV24.SEO.Optimizer-0.3.0-1.x86_64.rpm`; `sudo dnf install ./*_amd64.rpm` | No |
+| macOS `.app` from DMG | `LV24.SEO.Optimizer_0.3.0_aarch64.dmg` or `LV24.SEO.Optimizer_0.3.0_x64.dmg`; drag to Applications | Yes |
 | MSI | Not produced by this project | No |
 
 Windows requires Windows 10/11 x64 and WebView2. Linux is x64 only and built on Ubuntu 22.04 with a glibc 2.35 baseline. macOS requires 13 or newer; use the arm64 DMG on Apple silicon and the x64 DMG on Intel. The OS packages are unsigned or ad-hoc signed, so SmartScreen and Gatekeeper warnings are expected. Verify `SHA256SUMS.txt` before running an installer.
@@ -74,7 +76,9 @@ The `0.2.0 → 0.2.1` update was verified end-to-end. The `0.2.1 → 0.2.2` upda
 an installed `0.2.1` build detected `0.2.2`, downloaded and verified the signed package, installed it in
 passive mode, relaunched, and reported `0.2.2` with engine `0.5.2` ready. The `0.2.2 → 0.2.3` update was
 verified the same way: an installed `0.2.2` build reported **Desktop 0.2.3** with **Engine 0.5.3** and the
-engine ready after the in-app update. Any `0.2.x` install can jump straight to `0.2.3`.
+engine ready after the in-app update. The `0.2.3 → 0.3.0` update was verified through the new Rust
+updater: an installed `0.2.3` build reported **Desktop 0.3.0** with **Engine 0.5.3** and the engine ready.
+Any `0.2.x` install can jump straight to `0.3.0`.
 
 For `0.2.2`, installs were also checked on macOS and Linux: the arm64 DMG on macOS 27.2 passed
 `codesign --verify --deep --strict`, launched with engine `0.5.2` ready and fetched the `0.2.2`
@@ -86,6 +90,25 @@ The `0.2.1 → 0.2.2` update runs the old `0.2.1` updater, which does not includ
 cleanup. If a sidecar is active during that first update, retry after it exits or install `0.2.2`
 manually. `0.2.2 → 0.2.3` uses the tracked-PID cleanup and blocks with `UPDATE_ENGINE_BUSY` if a
 tracked sidecar cannot be stopped.
+
+## 0.3.0 workflow
+
+Released on 2026-11-16. It bundles `lv24-seo 0.5.3` and keeps `MIN_ENGINE_VERSION` at `0.5.2`.
+
+- **Onboarding.** The three-step wizard runs `lv24-seo init`, shows the config and data paths before creating
+  anything, and offers **Open existing seo.toml** instead of overwriting. `knownConfigs` remembers up to 20
+  config paths across restarts, still validated by the shell; the header chip opens 8 recent workspaces.
+- **Crawl screen.** Bounded run, summary counters, severity/rule/text filters and JSON/CSV export; the table
+  renders 500 rows while the export contains every returned row.
+- **Reports.** Compare the two newest snapshots and export JSON (`lv24-seo.report/v1`) or CSV; **not comparable**
+  is explicit instead of a silent diff.
+- **Settings.** Sticky save bar, Ctrl/Cmd+S, **Only changed** filter and an app-wide draft guard that asks before
+  discarding edits or closing the window.
+- **Recommendations.** Search, severity sort and bulk queue/export.
+- **Integrations.** MCP snippets in JSON and TOML plus print-only scheduler artifacts; nothing is installed or
+  edited.
+- **Reporting window.** 7/28/90 days and lag 2/3 per workspace, shared by stats and the weekly report; runs show
+  elapsed time, last duration and truncation badges.
 
 ## 0.2.3 hardening
 
@@ -160,9 +183,9 @@ Actions that cannot work are disabled rather than failing on click: no workspace
 
 On Linux the CLI runner inherits the session-bus and XDG runtime variables that Secret Service needs (`DBUS_SESSION_BUS_ADDRESS`, `XDG_RUNTIME_DIR`, `TMPDIR` and related paths) while filtering unrelated host variables. This makes the OS keychain reachable from the desktop process. The secret value still travels only over stdin. If the keychain is unavailable, use `LV24_SEO_*` environment variables or the engine's explicitly opted-in file fallback.
 
-## Crawl in 0.2.3
+## Crawl in 0.3.0
 
-The desktop exposes crawl settings in the Settings form and surfaces crawl findings in reports and recommendations. The `0.2.3` UI has no separate Crawl screen, and long engine calls have no job progress or cancel button. Run `lv24-seo crawl` in a terminal when you need the full crawl output and sitemap coverage diff.
+The desktop has a dedicated Crawl screen: start URL and URL budget, summary counters, severity/rule/text filters, and JSON/CSV export. The table renders at most 500 rows while the export contains every row the engine returned, and switching workspace resets the screen. Runs show elapsed time but have no cancel button, and leaving the screen does not move the run to a background queue; use `lv24-seo crawl` in a terminal when you need to stop a run or keep it independent of the window.
 
 ## Troubleshooting basics
 
@@ -183,7 +206,7 @@ The desktop exposes crawl settings in the Settings form and surfaces crawl findi
 | `UPDATE_ENGINE_BUSY` | A sidecar process this app cannot stop holds the installed engine file | Close the terminal or app run that holds `lv24-seo`, then press **Download and install** again |
 | `missing_token` on a card | Provider token is absent | Run `lv24-seo auth set --provider <p> --stdin` |
 | `no_data` on a card | Provider reachable, no rows for the window | Widen the window or check the property and data lag |
-| Long call seems stuck | No progress or cancel in 0.2.3 | Wait for the command timeout; the UI shows an indeterminate busy state |
+| Long call seems stuck | No cancel in 0.3.0; only elapsed time is shown | Wait for the command to finish, or run the same command in a terminal |
 
 ## Known limitations
 
@@ -193,12 +216,14 @@ The desktop exposes crawl settings in the Settings form and surfaces crawl findi
 - The updater only installs a newer version; rolling back requires a manual install of an older release.
 - The updater needs access to the GitHub Releases endpoint. A blocked or offline endpoint leaves the app on its current version.
 - The updater can stop only sidecars it started itself. An engine launched from a terminal or another app copy is not killed; if it holds the installed sidecar open, the install is blocked with `UPDATE_ENGINE_BUSY`.
-- The `0.2.1 → 0.2.2` update runs the old `0.2.1` updater, which does not include the tracked-PID cleanup. If a sidecar is active during that first update, retry after it exits or install `0.2.2` manually. `0.2.2 → 0.2.3` uses the cleanup.
-- Config-path approval is per process: a path picked in the dialog stays approved until the app exits, and a later process still needs the dialog. It is consent, not a durable allow-list.
+- The `0.2.1 → 0.2.2` update runs the old `0.2.1` updater, which does not include the tracked-PID cleanup. If a sidecar is active during that first update, retry after it exits or install `0.2.2` manually. `0.2.2 → 0.2.3` and later updates use the cleanup.
+- No cancel and no background runs in `0.3.0`: a crawl, report build or stats refresh runs to completion, and leaving the screen does not move it to a queue.
+- Scheduled runs are print-only: the desktop never installs a cron entry, unit or task and never edits an MCP client config. It also performs no provider write.
+- Config-path approval is per process plus the persisted `knownConfigs` list; a path outside both still needs the native dialog.
 - Windows ACL hardening is best effort. If `icacls` fails, the save proceeds and the draft keeps the directory's inherited DACL.
 - Update cancellation is observed only before the installer starts. Once installation begins there is no rollback.
 - An external engine is version-gated rather than bundled. The UI labels it as external and checks the minimum version.
 - Recommendation copy is localised in en/ru/zh; tasks queued before `0.2.3` keep the stored English text.
 - This is a `0.x` preview: configuration output, updater behavior and UI details may change before 1.0.
 
-Source: `_source/desktop-README.md`, `_source/desktop-releases-0.2.3.md`, `_source/desktop-releases-0.2.2.md`, `_source/desktop-releases-0.2.1.md`, `_source/desktop-releases-0.2.0.md`, `_source/desktop-security.md`, `_source/desktop-architecture.md`.
+Source: `_source/desktop-README.md`, `_source/desktop-releases-0.3.0.md`, `_source/desktop-releases-0.2.3.md`, `_source/desktop-releases-0.2.2.md`, `_source/desktop-releases-0.2.1.md`, `_source/desktop-releases-0.2.0.md`, `_source/desktop-security.md`, `_source/desktop-architecture.md`.
