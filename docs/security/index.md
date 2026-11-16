@@ -80,8 +80,7 @@ Provider reads are safe to run without a write flag. Provider mutations pass thr
 
 1. **Plan** — a dry run renders the target, the action and a full plan hash, then
    returns a short-lived `confirm_token`.
-2. **Confirm** — the caller reviews the plan and reruns with `--allow-write` and that
-   token.
+2. **Confirm** — the caller reviews the plan and reruns with `--allow-write` (CLI) or `allow_write=true` (MCP), that token and, over MCP, the `plan_hash`.
 3. **Claim** — the store claims an idempotency slot as `pending`.
 4. **Apply** — the provider call runs; success promotes the claim to `sent`, a provider
    exception releases it.
@@ -97,10 +96,13 @@ A dry run opens no ledger and creates no database.
 | IndexNow submit | Wired; requires `--allow-write`, a confirm token and `LV24_SEO_WRITE_SECRET` |
 | GSC sitemap submit | `WRITE_DISABLED` — adapter not wired |
 | Yandex recrawl | `WRITE_DISABLED` — adapter not wired |
-| MCP write tools | `WRITE_DISABLED` even with `allow_write=true`; no confirm-token path yet |
+| MCP write tools | Two-phase `plan_hash` + `confirm_token` contract implemented; `WRITE_DISABLED` while no provider adapter is wired |
 
 Only the CLI can perform a provider write in this build, and only IndexNow reaches a provider. The MCP write tools (`seo_recrawl_request`,
-`seo_sitemap_submit`) carry `destructiveHint: true` but still return `WRITE_DISABLED`.
+`seo_sitemap_submit`) carry `destructiveHint: true` and default `allow_write` to `false`. They read `LV24_SEO_WRITE_SECRET` from the server
+environment; an empty secret is `WRITE_DISABLED`, never a weak default. A call without `confirm_token` is a dry run that returns `plan_hash`,
+`confirm_token` and `ttl_seconds`; an apply must echo the `plan_hash` and the token, a mismatched hash is `CONFIRM_REQUIRED`, and the workspace
+store claims the idempotency slot so a replay returns `skipped` instead of calling the provider twice.
 
 Local-state tools are different. `seo_crawl_site` and `seo_weekly_report` persist crawl and weekly snapshots, so they are marked
 `writes_local_state: true` and `readOnlyHint: false`. They never mutate provider state and need no confirm token.
@@ -170,6 +172,12 @@ Reads are bounded at 8 MiB and reject a non-regular or oversized file. Settings 
 the rest. A stale saved config path is tolerated and reported as missing. Windows reserved device names and trailing dots or spaces are
 rejected in every path component. There is no raw editor; edits go through validated Settings forms and field-level patches.
 
+A new config path may only become active through the native dialog: `pick_config` records the chosen file and `settings_set` rejects any
+other `.toml` with `PATH_NOT_APPROVED`, so a compromised webview cannot redirect `config_write` or `config_patch` at an arbitrary file. A
+`storage.data_dir` naming a UNC share or a `\\?\`/`\\.\` device is rejected with `INVALID_PATH` before it is resolved, because joining it
+to the config directory would hide the share prefix and open an SMB connection on the UI thread. On Windows, config drafts and backups get
+an explicit owner-only DACL instead of inheriting a directory ACL that may grant other users read access to a file holding tokens.
+
 Workspace, report, doctor and secret state is cleared when the workspace changes or the engine goes offline, so a previous project's
 data is never shown against a new workspace. Actions that cannot succeed are disabled rather than failing on click. The en/ru/zh
 catalogues are at parity; a missing key is a test failure.
@@ -190,6 +198,12 @@ Immediately before the installer starts, the shell stops the engine sidecar PIDs
 inside the installed resource directory, so a live process keeps it locked and breaks the NSIS update. Only exact tracked PIDs are
 stopped; nothing is matched by image name, so another installed copy, a portable build or a terminal run is untouched. A cleanup
 failure blocks the install with `UPDATE_ENGINE_BUSY` instead of launching an installer that will fail halfway.
+
+The webview cannot download or install an update itself. Its capability list contains `updater:allow-check` only; `update_install` in the
+shell re-checks the endpoint, refuses a version that differs from the one the user saw (`UPDATE_VERSION_MISMATCH`), downloads, verifies
+the signature and only then starts the installer. `update_cancel` drops the download before the installer starts and returns
+`UPDATE_CANCELLED`; once installation has begun it returns `false`, so the panel never claims a cancellation that did not
+happen.
 
 Auto-update works only for Windows NSIS, macOS `.app` and Linux AppImage. deb, rpm, MSI and the portable ZIP are manual-only: the UI
 disables the in-app installer and links to the release page. `0.1.0` has no updater, endpoint or public key, so its users install `0.2.2`
@@ -223,4 +237,4 @@ sending. A secret that was exposed should be rotated, not merely deleted from th
 
 See [Architecture](/architecture/) for the trust boundaries and [Releases and updates](/release/) for the signed updater matrix.
 
-Source: `_source/engine-security.md`, `_source/desktop-security.md`, `_source/engine-architecture.md`, `_source/desktop-architecture.md`, `_source/engine-releases-0.5.2.md`, `_source/desktop-releases-0.2.2.md`.
+Source: `_source/engine-security.md`, `_source/desktop-security.md`, `_source/engine-architecture.md`, `_source/desktop-architecture.md`, `_source/engine-releases-0.5.2.md`, `_source/engine-releases-0.5.3.md`, `_source/desktop-releases-0.2.2.md`, `_source/desktop-releases-0.2.3.md`.

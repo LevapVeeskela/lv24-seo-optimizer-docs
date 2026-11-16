@@ -1,6 +1,6 @@
 ---
 title: 桌面应用
-description: LV24 SEO Optimizer 桌面外壳增加了什么、签名更新如何工作，以及 0.2.2 加固补丁带来的变化。
+description: LV24 SEO Optimizer 桌面外壳增加了什么、签名更新如何工作，以及 0.2.2 版本与 0.2.3 草稿带来的变化。
 ---
 
 # 桌面应用
@@ -19,7 +19,7 @@ LV24 SEO Optimizer Desktop 是围绕 `lv24-seo` 引擎的本地、离线优先 T
 - **通过 stdin 传递密钥。** token 输入是密码字段，只通过 IPC 发送一次。Rust 层将其传给 `lv24-seo auth set --provider <p> --stdin`，清零缓冲区，并且从不把值写入日志、MobX 存储、localStorage、剪贴板或诊断包。保存后，界面只显示是否存在及来源。
 - **Yandex Metrika 令牌。** `0.2.2` 在 TypeScript 和 Rust 允许列表、Settings 徽章、密钥对话框和 en/ru/zh 标签中保留独立的 `metrika` 提供商（`yandex_metrika_token`）。Metrika 计数器绝不借用 Webmaster 令牌。
 - **与 CLI 共享密钥存储。** 桌面应用在同一操作系统用户下运行同一引擎，因此在终端通过 `lv24-seo auth set` 保存的 token 在桌面应用中可见，反之亦然。系统钥匙串条目使用服务名 `lv24-seo` 和相同的密钥名。`LV24_SEO_*` 环境变量会被继承，但在 UI 中显示为只读：桌面端无法删除环境变量，因此会明确说明，而不是提供一个无效的删除按钮。只有两个界面使用同一 workspace/data 目录时，才共享显式启用的 `<data-dir>/secrets.json` 回退文件。
-- **更新面板。** 在启动时和按需检查已签名的 `latest.json`，显示发行说明，并且只有在你确认后才安装。安装器启动前，只停止本应用实例登记的引擎 sidecar PID；如果无法停止，安装会被 `UPDATE_ENGINE_BUSY` 阻止。
+- **更新面板。** 在启动时和按需检查已签名的 `latest.json`，显示发行说明，并且只有在你确认后才安装。安装器启动前，只停止本应用实例登记的引擎 sidecar PID；如果无法停止，安装会被 `UPDATE_ENGINE_BUSY` 阻止。从 `0.2.3` 起，下载和安装都在 Rust 中执行，而不是在 webview 中。
 
 仪表板和报告屏幕基于与终端相同的引擎命令：
 
@@ -49,8 +49,8 @@ Windows 需要 Windows 10/11 x64 和 WebView2。Linux 仅提供 x64，基于 Ubu
 更新器从项目的 GitHub Releases 端点读取已签名 `latest.json`。包使用 minisign/Ed25519 密钥签名，公钥内嵌在应用中。启用了 `requireSignedVersion`，因此公告版本绑定到已签名包。
 
 - 应用在启动时静默检查一次，超时 30 秒，并在你按下 **Check for updates** 时检查。
-- 不会自动下载或安装。面板显示版本和说明；**Download and install** 启动更新。未保存的配置草稿会禁用按钮。
-- 只接受高于当前版本的版本。更新器不能降级应用。
+- 不会自动下载或安装。面板显示版本和说明；**Download and install** 启动更新。未保存的配置草稿会禁用按钮。从 `0.2.3` 起，面板可以在安装器启动前取消下载。
+- 只接受高于当前版本的版本。更新器不能降级应用，并且 shell 会拒绝与面板公告版本不同的发布。
 - 签名失败会阻止该产物，把错误标记为不可重试并指向发布页。它不会重试，也不会降级为离线警告。
 - 安装器启动前，`prepare_update` 只停止本应用实例启动的引擎 sidecar PID。不会按映像名称匹配，因此另一个已安装副本、便携构建或终端运行不会被触碰。如果清理失败，安装会被 `UPDATE_ENGINE_BUSY` 阻止；关闭占用 sidecar 的运行后重试。
 - Windows 以被动模式运行已签名的 NSIS 安装程序；macOS 替换 `.app`；Linux 替换 AppImage。安装后应用会重启；Windows 的重启由 NSIS 安装程序处理。
@@ -83,6 +83,37 @@ Ubuntu 24.04 上的 deb、AppImage extract-and-run fallback 和 Fedora 45 上的
 有 sidecar 正在运行，请在其退出后重试，或手动安装 `0.2.2`。`0.2.2 → later` 使用受跟踪 PID
 清理，并在无法停止受跟踪 sidecar 时以 `UPDATE_ENGINE_BUSY` 阻止。
 
+## 0.2.3 加固（草稿）
+
+`0.2.3` 是下一个补丁，尚未发布。它把更新下载移入 Rust，让配置路径成为由对话框批准的权限，并修复可能误报保存或工作区状态的 UI。在发布提交提升版本之前，捆绑引擎的固定版本保持不变。
+
+### 更新器移入 Rust
+
+webview 不再拥有更新器插件的下载和安装权限；其能力列表只保留 `updater:allow-check`。shell 中的 `update_install` 会重新检查端点，拒绝与面板公告不同的版本（`UPDATE_VERSION_MISMATCH`），下载、验证签名，然后才启动安装器。进度以 `update://progress` 到达；进度监听失败只是外观问题，绝不会阻止安装。
+
+**取消**现在有实际含义。下载期间，面板调用 `update_cancel`；shell 丢弃下载流并返回 `UPDATE_CANCELLED`，使面板无错误地回到 idle。安装器启动后，`update_cancel` 返回 `false`，面板保持原状——绝不会声称发生了并未发生的取消。在 Windows 上，安装器启动时进程会退出，因此安装 promise 可能永远不会 resolve；这是预期行为。
+
+### 由对话框批准的配置路径
+
+`pick_config` 拥有原生对话框并记录所选文件。`settings_set` 只接受已经是活动路径或由对话框返回的配置路径；任何其他 `.toml` 都会以 `PATH_NOT_APPROVED` 被拒绝，因此被攻破的 webview 无法把 `config_write` 或 `config_patch` 指向任意文件。比较使用规范路径，因此已批准文件的等价写法仍然匹配。
+
+`storage.data_dir` 若指向 UNC 共享、`\\?\` 设备路径或 `\\.\` 设备，会在相对于配置目录解析之前以 `INVALID_PATH` 和 `detail.reason: network_or_device_path` 被拒绝。否则拼接会隐藏 `\\server\share` 前缀，并在 UI 线程上打开 SMB 连接。
+
+### 脱敏与路径超时
+
+引擎 stderr 在到达 webview、日志或诊断包之前会被脱敏，而且脱敏发生在 300 字符预览截断之前：被截半的 token 将不再匹配脱敏模式。TOML 解析器错误可能引用出错行，因此也会脱敏。超过预算的辅助任务以 `PATH_TIMEOUT` 失败，而不是让屏幕挂起。
+
+### 工作区与 UI 状态
+
+- `shell_status` 报告 `configExists`。当保存的配置被移动或删除时，仪表板显示带 **Choose config** 的工作区缺失横幅，而不是通用的统计错误，并且不会尝试统计调用。字段缺失表示未知，而不是缺失，因此旧版 shell 不会被误读。
+- 每个提供商区块都有显式的启用开关。它是 `providers.<id>.present` 的唯一写入者；禁用的区块在保存时会从 `seo.toml` 中移除，其字段保持不可访问。
+- 校验是三态的：`valid`、`invalid` 或 `skipped`。双击、切换工作区或在引擎校验期间继续输入都会返回 `skipped`，UI 不会弹出 toast 声称草稿无效。
+- 跳过链接把焦点移到主区域而不改变 hash 路由，因此不再渲染 NotFound。路由级错误边界会隔离渲染失败、提供重新加载，并在路径变化时重置。
+
+### 发布流水线
+
+拉取请求 CI 现在覆盖发布脚本本身，Rust 矩阵包含发布所用的 Intel macOS runner，Rust 固定为 `1.95.0` 而不是 `stable`。`latest.json` 在创建草稿之前会按 `contracts/latest.schema.json` 校验。发布产物允许列表位于一个经过测试的模块中，Windows 便携 ZIP 附带 `.sha256` sidecar，由发布闸门重新计算并比较。
+
 ## 工作区切换与过期状态
 
 活动 `seo.toml` 路径是工作区身份。切换到不同配置或引擎离线时，桌面端会在任何屏幕显示上一个项目的数据之前清除统计、报告、doctor 和密钥状态。首次加载只记录路径；后续变化视为切换。未保存的配置草稿在 Settings 和 Configuration 之间共享，且仅限当前会话，因此关闭应用前请保存。
@@ -108,6 +139,11 @@ Ubuntu 24.04 上的 deb、AppImage extract-and-run fallback 和 Fedora 45 上的
 | 更新检查失败 | GitHub 端点被阻止或离线 | 保持当前版本；启动时的静默检查不会显示错误 |
 | 更新按钮不可用 | 未保存的配置草稿或仅手动构建 | 保存或放弃草稿，或从发行页面下载软件包 |
 | 更新签名失败 | 软件包与内嵌密钥不匹配 | 产物被阻止；从发行页面重新下载并校验校验和 |
+| 工作区缺失横幅 | 保存的 `seo.toml` 被移动或删除 | 点击 **Choose config** 重新选择文件 |
+| `PATH_NOT_APPROVED` | 配置路径未经原生对话框设置 | 通过 **Choose config** 选择文件；只有对话框选中的路径才能成为活动路径 |
+| `INVALID_PATH` 且 `network_or_device_path` | `storage.data_dir` 指向 UNC 共享或设备路径 | 使用本地目录；网络共享会在打开前被拒绝 |
+| `UPDATE_CANCELLED` | 你在安装器启动前取消了下载 | 预期行为；再次开始安装 |
+| `UPDATE_VERSION_MISMATCH` | 公告的发布在检查与安装之间发生变化 | 再次点击 **Check for updates** 并安装新公告的版本 |
 | `UPDATE_ENGINE_BUSY` | 应用无法停止的 sidecar 进程占用了已安装的引擎文件 | 关闭占用 `lv24-seo` 的终端或应用运行，然后再次点击 **Download and install** |
 | 卡片显示 `missing_token` | 缺少提供商 token | 运行 `lv24-seo auth set --provider <p> --stdin` |
 | 卡片显示 `no_data` | 提供商可访问，但该窗口没有数据行 | 扩大窗口，或检查资源和数据延迟 |
@@ -126,4 +162,4 @@ Ubuntu 24.04 上的 deb、AppImage extract-and-run fallback 和 Fedora 45 上的
 - 建议的标题、操作和验证步骤来自引擎，保持英文；只有周围界面会翻译（en/ru/zh）。
 - 这是 `0.x` 预览：配置输出、更新器行为和界面细节可能在 1.0 前变化。
 
-Source: `_source/desktop-README.md`, `_source/desktop-releases-0.2.2.md`, `_source/desktop-releases-0.2.1.md`, `_source/desktop-releases-0.2.0.md`, `_source/desktop-security.md`, `_source/desktop-architecture.md`.
+Source: `_source/desktop-README.md`, `_source/desktop-releases-0.2.3.md`, `_source/desktop-releases-0.2.2.md`, `_source/desktop-releases-0.2.1.md`, `_source/desktop-releases-0.2.0.md`, `_source/desktop-security.md`, `_source/desktop-architecture.md`.

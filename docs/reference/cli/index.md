@@ -52,27 +52,56 @@ A failed command uses the same shape with `ok: false` and an `error` object inst
 | `2` | Usage or configuration problem. | `INVALID_INPUT`, `CONFIG_INVALID`, `CONFIRM_REQUIRED`, `WRITE_DISABLED` |
 | `3` | Authentication problem. | `AUTH_REQUIRED`, `AUTH_INVALID` |
 | `4` | Quota or upstream failure. | `QUOTA_EXCEEDED`, `UPSTREAM_UNAVAILABLE` |
-| `5` | Partial result: truncated output. | `TRUNCATED` |
+| `5` | Partial result: truncated output in strict mode. | `TRUNCATED`, or any `ok: true` envelope with `meta.truncated` and `meta.strict` |
 
-`WRITE_DISABLED` exits `2`, not `4`: a write was refused before any provider call. Exit `5` is
-reserved for a successful envelope that is both truncated and marked `meta.strict`; no 0.5.2 flag
-sets strict mode, so scripts should treat `5` as a partial result rather than a hard failure.
-Branch on the exit code and `error.code`, never on the human-readable text.
+`WRITE_DISABLED` exits `2`, not `4`: a write was refused before any provider call. Exit `5` is a partial result, not a hard failure: the data is real, coverage is not total. Branch on the exit code and `error.code`, never on the human-readable text.
+
+### `--strict` and exit 5
+
+`--strict` turns truncation into a CI gate. It is available on `stats`, `gsc query`, `yandex queries`, `yandex indexing`, `crawl`, `report weekly` and `report diff`:
+
+```bash
+lv24-seo gsc query --start 2026-11-01 --end 2026-11-07 --strict --json
+lv24-seo report weekly --days 7 --strict --json
+```
+
+- `meta.strict` is always set when the flag is passed, so a consumer can tell a strict run from a normal one.
+- A complete response still exits `0`.
+- A truncated response stays `ok: true` — the data is real — but exits `5`, and `meta.limitations` explains what is missing. If a provider set `truncated` without a limitation note, the CLI adds one.
+- Without `--strict`, a truncated response exits `0` and carries no `meta.strict`.
+
+`report diff --markdown` honours the same code: the Markdown still prints to stdout and the process exits `5` when the diff is truncated in strict mode.
+
+### Storage failures
+
+SQLite problems no longer surface as a generic `INTERNAL`. Three stable codes replace them:
+
+| Code | Meaning | Retryable | What to do |
+|---|---|---|---|
+| `STORE_LOCKED` | Another process holds the write lock past the busy timeout | Yes | Wait for the other `lv24-seo` run, then retry; nothing was written |
+| `STORE_CORRUPT` | The file is not a usable SQLite database | No | Inspect `detail.backup_path`, then move or delete the database and rerun |
+| `STORE_UNAVAILABLE` | Permissions, a missing parent directory, a full disk | No | Fix the data directory, then run `lv24-seo doctor` |
+
+A corrupt file is copied next to itself as `seo.sqlite3.corrupt-20260101T101010Z` before anything else happens; the original is never moved or deleted, and a failed copy does not hide the error. The three codes exit `1`, like `INTERNAL`; branch on `error.code`.
 
 ### Configuration and flags
 
 - `--config PATH` selects a specific `seo.toml`. The path must exist; a missing file is
   `CONFIG_INVALID`, not a silent fallback. The resolved path is absolute and normalised, so scheduler
-  artifacts and relative settings do not depend on the process working directory.
+  artifacts and relative settings do not depend on the process working directory. The same path also
+  selects the workspace whose data directory holds the write ledger, so a write apply records its
+  claim where the config says rather than under the shell's working directory.
 - Without `--config`, the engine looks for `./seo.toml`, then the platform user config file
   (`%APPDATA%\lv24-seo\config.toml` on Windows, `~/.config/lv24-seo/config.toml` on Linux).
 - `LV24_SEO_*` environment variables override values from the file. `.env` files are not loaded
   automatically; export the variables in the shell or the service unit that runs the command.
 - `mcp serve` is a long-running server and takes neither `--json` nor `--config`.
 
-`doctor --json` reports `meta.data_dir` and `meta.data_dir_source` (`config` when the effective
-directory is absolute, `working directory` when it is relative) and adds a warning when a relative
-directory is ambiguous next to a config file. A relative directory does not fail the check.
+`doctor --json` reports `meta.data_dir`, `meta.data_dir_source` (`config` when the effective
+directory is absolute, `working directory` when it is relative) and `meta.data_dir_declared`, which is
+true when the config file or `LV24_SEO_DATA_DIR` names a directory. A declared data directory is
+fatal: a missing or unusable one fails the check. A relative directory is not an error by itself, but
+next to a config file it adds a warning that names the config's folder.
 
 The full key list, defaults and secret handling live in the [configuration reference](/reference/config/).
 
@@ -88,9 +117,12 @@ two-step flow:
 
 The token is an HMAC over the action, target, full plan hash and expiry, so changing any input
 invalidates it. With an initialised workspace the CLI attaches the SQLite idempotency ledger, so a
-replayed token returns `status: skipped` with `reason: duplicate` and the provider is called once.
-Without a data directory the apply still runs, but the envelope warns that replay protection is off
-for the token's five-minute lifetime; a dry run opens no ledger and creates no database.
+replayed token returns `status: skipped` with `reason: duplicate` and the provider is called once. The
+ledger is opened from the selected workspace data directory: `--config /srv/site/seo.toml` records the
+claim under `/srv/site/data` even when the shell is elsewhere. Without a data directory the apply still
+runs, but the envelope warns that replay protection is off for the token's five-minute lifetime; a dry
+run opens no ledger and creates no database.
+
 IndexNow actually submits URLs. GSC sitemap submit and Yandex recrawl currently return
 `WRITE_DISABLED` instead of pretending the provider call happened.
 
@@ -233,4 +265,4 @@ packaged `SKILL.md` files and their manifest. Both write local files only.
 - [MCP and agent skills](/mcp/)
 - [Troubleshooting](/troubleshooting/)
 
-Source: `_source/engine-cli.md`, `_source/engine-mcp.md`, `_source/engine-releases-0.5.2.md`; 0.5.2 `--help` output in the engine repository.
+Source: `_source/engine-cli.md`, `_source/engine-mcp.md`, `_source/engine-releases-0.5.2.md`, `_source/engine-releases-0.5.3.md`; 0.5.2 `--help` output in the engine repository.

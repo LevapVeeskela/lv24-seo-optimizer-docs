@@ -13,10 +13,10 @@ Related: [Reports and diffs](/reports/), [Crawl and audit](/crawl/), [Automation
 
 | Source | Read | Write (gated) | Authentication | Free quota | Data lag |
 |---|---|---|---|---|---|
-| Google Search Console | Search analytics, sites, sitemaps, URL Inspection | Sitemap submit; refuses with `WRITE_DISABLED` in 0.5.2 | Bearer access token (`webmasters.readonly` for reads, `webmasters` for sitemaps) | 1,200 QPM per site and per user; 50,000 rows/day/site/type; URL Inspection 2,000/day, 600/min | 2–3 days |
+| Google Search Console | Search analytics, sites, sitemaps, URL Inspection | Sitemap submit; refuses with `WRITE_DISABLED` in 0.5.2 | Bearer access token (`webmasters.readonly` for reads, `webmasters` for sitemaps) | 1,200 QPM per site and per user; 50,000 rows/day/site/type; URL Inspection 2,000/day, 600/min | 2–3 days; `data_age_days` floors at 3 |
 | Yandex Webmaster | Summary, SQI history, indexing, search URLs and events, queries, diagnostics, broken links, sitemaps | Recrawl queue; refuses with `WRITE_DISABLED` in 0.5.2 | OAuth token, scope `webmaster:hostinfo` | Free; no published global RPD/RPS; query analytics is fragile above roughly 10k requests/hour | About 4 days |
 | Yandex Metrika | Sessions, traffic sources, search phrases, landing pages, goals | None | OAuth token, scope `metrika:read` | 5,000 requests/day/user; 30 rps/IP; 3 parallel; `/stat/v1/data` 200 requests per 5 minutes; up to 100k rows, 20 metrics and 10 dimensions per request | Reporting API; sampling is reported |
-| Bing Webmaster | Query stats, rank and traffic stats, crawl issues | IndexNow submit (works); sitemap submit path is not wired | One API key per user | Free; about 10k URL submits/day/domain, 500 per batch | No windowed stats in the API |
+| Bing Webmaster | Query stats, rank and traffic stats, crawl issues | IndexNow submit (works); sitemap submit path is not wired | One API key per user | Free; about 10k URL submits/day/domain, 500 per batch | No windowed stats in the API; age comes from the newest row date |
 | Chrome UX Report (CrUX) | Field p75 LCP, INP and CLS | None | API key | 150 QPM per project, cannot be raised | 28-day rolling window |
 | PageSpeed Insights (PSI) | Lighthouse lab diagnosis, deprecated field block | None | API key optional; keyless works with a lower quota | About 25k requests/day | Live lab run |
 | GA4 (optional) | Organic landing pages, sessions, key events | None | Google Analytics Data API credentials | Provider quota applies | Directional; thresholding can hide rows |
@@ -64,12 +64,17 @@ Credentials are manually supplied access tokens and API keys. The tool does not 
 Provider quotas are enforced with conservative client-side token buckets before a request is sent. A 429 or an exhausted quota becomes a typed error, not a partial success. The main limits to plan around:
 
 - GSC search analytics caps at 50,000 rows per day, site and search type. A final page that exactly fills the cap is reported as `truncated: true` with `rows_cap_50000`; a smaller caller cap produces a warning that names the caller's row limit. A full page is not proof that no row exists behind the cap.
+- A capped GSC result omits `total` entirely. An exact row count next to `truncated: true` reads as a full answer, so only a walk that ended on a short batch reports a total.
+- GSC publishes data 2–3 days behind the current date, so `data_age_days` is floored at 3. A window ending today is never presented as fresh data.
 - GSC grouping is lossy. Never compare the sum of a `page`-grouped response with the sum of a `query`-grouped response, and never request both dimensions and compare with an ungrouped total.
 - Yandex Webmaster exposes the top 3,000 queries per period, up to 500 per page, and has no query-by-page join. Absent rows are unknown, not zero.
+- A bare `count` in a Webmaster payload is the size of that page, not a grand total, so it no longer stops pagination early and hides rows.
+- A loaded Yandex host with an empty indexing or search-URL history is an empty answer with `total: 0` and the `empty_history` limitation, not `degraded_host`. Only a `404` or an explicit `HOST_NOT_LOADED` payload is degraded.
 - Yandex Metrika samples by default (`accuracy=medium`). A sampled response carries the `sampled` limitation and a warning; store the accuracy flag with the value.
+- Metrika `limit` is the page size, not the result size. The client walks `stat/v1/data` with `offset` until `total_rows`, a short page or a cap; one call is bounded at 10,000 rows and 100 pages, which stays inside the 200-requests-per-5-minutes quota even with a tiny caller page size. A full page with no `total_rows` is marked `truncated` instead of looking complete, and an aggregate call without dimensions is a single row that is never paged.
 - CrUX returns a 404 when a URL has too little traffic; that becomes `low_traffic`, not a zero score.
 - PSI is lab data. Never average lab runs or merge them with CrUX field data.
-- Bing stats have no date window in the API, so the report shows no previous-period comparison for Bing.
+- Bing stats have no date window in the API, so the report shows no previous-period comparison for Bing. `data_age_days` comes from the newest row date instead — `Date` for query stats, `DateDetected` for crawl issues, parsed from WCF `/Date(ms)/`, ISO or epoch. An empty feed reports 0.
 
 Every bounded response carries the same honesty fields: `truncated`, `total`, the data-age value in days (`data_age_days`) and `limitations[]`. `rows` is the number of rows returned, not a total. `total` is present only when the provider or store can report one.
 
@@ -83,11 +88,16 @@ Stable limitation codes:
 | `sampled` | Metrika returned sampled data |
 | `low_traffic` | CrUX has too little traffic for a URL or origin |
 | `degraded_host` | Yandex reports the host as not fully loaded |
+| `empty_history` | A loaded Yandex host has no indexing or search-URL history for the window |
 | `one_url_per_call` | URL Inspection handles one URL per call, with no batch |
 | `no_per_url_sitemap_errors` | Yandex does not expose per-URL sitemap error detail |
 | `token_expiring` | The credential is close to expiry |
 | `paid_provider` | The row came from a paid adapter |
 | `partial_response` | The provider returned an incomplete response |
+
+## Sitemap scope
+
+A sitemap `<loc>` is fetched only when its origin is in scope: the seed sitemap origin plus the final origin of every document actually read. A redirect to a CDN mirror therefore stays in scope, while a loc pointing at an unrelated host does not. Rejected locs are dropped and reported once as `off_origin_loc`, so a reader without an external scoped fetcher still never follows a sitemap to another site. The same origin check applies to child sitemaps in an index.
 
 ## No SERP scraping
 
@@ -101,4 +111,4 @@ Optional paid adapters are bring-your-own-key and off by default. They must use 
 
 Scheduler generators apply the same zone where the backend supports it. Cron depends on `CRON_TZ`, systemd writes the zone into `OnCalendar`, and Task Scheduler XML carries a fixed offset with a DST warning. See [Automation and delivery](/automation/).
 
-Source: `_source/engine-data-sources.md`, `_source/engine-cli.md`, `_source/engine-config.md`, `_source/engine-releases-0.5.2.md`.
+Source: `_source/engine-data-sources.md`, `_source/engine-cli.md`, `_source/engine-config.md`, `_source/engine-releases-0.5.2.md`, `_source/engine-releases-0.5.3.md`.
