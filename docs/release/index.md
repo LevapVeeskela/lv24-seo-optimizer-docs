@@ -1,6 +1,6 @@
 ---
 title: Releases and updates
-description: Engine 0.9.0 and desktop 0.7.0 releases, the 0.8.0, 0.6.0, 0.5.3, 0.3.0 and older history, signed auto-update matrix, release pipeline, version pinning and rollback.
+description: Engine 0.10.0 and desktop 0.8.0 releases, the 0.9.0, 0.7.0, 0.8.0, 0.6.0 and older history, signed auto-update matrix, release pipeline, version pinning and rollback.
 ---
 
 # Releases and updates
@@ -9,10 +9,95 @@ The current releases are:
 
 | Product | Version | Released | Notes |
 |---|---|---|---|
-| Engine | `lv24-seo 0.9.0` | 2026-11-17 | Bing sitemap submit, IndexNow from sitemap, optional MCP sitemap provider, 22 CLI commands and 12 MCP tools |
-| Desktop | `0.7.0` | 2026-11-17 | Bing indexing panel, Site Scan opener, per-session write secret, bundled engine 0.9.0 and `MIN_ENGINE_VERSION` 0.9.0 |
+| Engine | `lv24-seo 0.10.0` | 2026-11-17 | Bing URL submission, sitemap feeds, crawl issues and quota views, 23 CLI commands and 12 MCP tools |
+| Desktop | `0.8.0` | 2026-11-17 | Bing URL submission and read-only sitemap, issue and quota cards, bundled engine 0.10.0 and `MIN_ENGINE_VERSION` 0.10.0 |
 
-The desktop version and the engine version are independent, but the desktop pins an exact engine and refuses one below its minimum. `0.7.0` bundles `0.9.0` and requires at least `0.9.0`, so an installed `0.8.x` engine is reported as incompatible.
+The desktop version and the engine version are independent, but the desktop pins an exact engine and refuses one below its minimum. `0.8.0` bundles `0.10.0` and requires at least `0.10.0`, so an installed `0.9.x` engine is reported as incompatible.
+
+## Engine 0.10.0
+
+Released on 2026-11-17. It turns Bing URL submission into a real gated write and adds read-only
+Bing quota, sitemap-feed and crawl-issue views. The CLI now has 23 top-level commands; the MCP
+surface stays at 12 tools and the SQLite schema stays at version 4.
+
+What changed:
+
+- **Bing URL submission.** `bing submit [--url ABS …] [--from-sitemap] [--sitemap-url ABS] [--site URL] [--allow-write] [--confirm TOKEN]` sends URLs through Bing Webmaster `SubmitUrlbatch`. `--url` may be repeated and is merged with `--from-sitemap`; a `<urlset>` is read directly, a `<sitemapindex>` is bounded to the root plus five child sitemaps and 10,000 URLs, explicit URLs are deduplicated first, off-site URLs are skipped, and `meta.truncated`, `meta.total` and `meta.limitations` report every cap or skip. The plan reports the URL count, the 500-URL batch count and the current remaining quota in `meta.quota`; it contacts no write endpoint. Apply re-fetches the sitemap and invalidates the token with `CONFIRM_REQUIRED` if its URL set changed.
+- **500-URL batches and honest status.** `SubmitUrlbatch` is called in explicit 500-URL batches after a client-side quota pre-check against both the daily and monthly windows. A batch success is `200 {"d": null}` with no per-URL status, so the result says `status: accepted` and `accepted`, never "indexed"; `duplicates_removed`, `batches`, `batch_size` and `quota_after` are reported. Bing does not document submit idempotency and a duplicate URL may consume quota (`submit_idempotency_undocumented`), while the SQLite write-gate ledger still makes a replayed confirm token return `status: skipped` with `reason: duplicate`. A missing `providers.bing.site` is `CONFIG_INVALID`, a missing `bing_api_key` is `AUTH_REQUIRED`, and the key never appears in an error.
+- **Bing quota.** `bing quota` reads `GetUrlSubmissionQuota`. `DailyQuota` and `MonthlyQuota` are **remaining** submissions, not totals: rows expose `daily_remaining` and `monthly_remaining` plus the provider object in `raw`, and used/total values are never computed. The limitations `quota_monthly_can_bind_first` and `quota_monthly_reset_undocumented` state that the monthly window can bind before the daily one and that Bing does not publish a monthly reset schedule.
+- **Bing sitemap feeds.** `bing sitemaps [--details FEED_URL]` reads `GetFeeds` and maps URL, type, status, submitted, last crawled, URL count, file size and compression. `LastCrawled` (falling back to `Submitted`) bounds `data_age_days`; `Status` is a free provider string such as `Success`, not a crawl or index status. Bing exposes no per-URL sitemap errors and no paging, so the result carries `no_per_url_sitemap_errors` and `sitemap_status_is_not_crawl_status`. `--details` reads `GetFeedDetails` for the children of a sitemap index; it is an option, not a separate command.
+- **Bing crawl issues.** `bing issues` reads `GetCrawlIssues` and returns URL, HTTP code, in-links and the `Issues` bitmask decoded into labels (`1=301`, `2=302`, `4=4xx`, `8=5xx`, `16=robots`, `32=malware`, `64=important_robots`, `128=dns`, `256=timeout`). Unknown bits are reported with `unknown_crawl_issue_bits` instead of being guessed. The feed has no date, so `data_age_days` is `0`, and it has no severity.
+- **Bing error mapping.** Bing returns auth failures as HTTP 400 with a numeric `ErrorCode`, not 401/403. The adapter maps `3` to `AUTH_INVALID`, `14` to `PROPERTY_NOT_FOUND`, `7` to `INVALID_INPUT` and `4/5` to `QUOTA_EXCEEDED`, keeps 401/403/404/429/5xx as fallbacks, and never echoes the provider message or the API key.
+- **Surface and schema.** 23 top-level CLI commands (16 groups and 7 commands, adding `bing`), 12 MCP tools (10 read-class: 7 pure read-only plus 3 local-state writers; 2 gated writes), 3 resources and 3 prompts unchanged, schema version 4 and no migration. `schemas/tools.json` is unchanged. Bing URL submission, quota, sitemaps and issues are CLI/desktop-only: no thirteenth MCP tool is added, and `seo_sitemap_submit` still submits a sitemap, not a URL batch.
+
+Verification recorded for this release:
+
+| Check | Result |
+|---|---|
+| PyPI | `lv24-seo 0.10.0` published |
+| npm | `@lv24/seo 0.10.0` published |
+| MCP Registry | `io.github.LevapVeeskela/lv24-seo 0.10.0` published with `isLatest: true` |
+| CI | run `44068127891` green |
+| Release workflow | run `44068457680` green |
+| Desktop | `0.8.0` published with engine `0.10.0`; assets named `0.8.0` / `-0.8.0-` |
+| `bing quota`, configured workspace | 100 daily and 1400 monthly remaining |
+| `bing sitemaps`, configured workspace | 1 feed with `Status: Success` |
+| `bing issues`, configured workspace | 0 rows |
+| `bing submit --url`, configured workspace | 1 URL, 1 batch, `accepted`; quota after the write 99 |
+| `bing submit --from-sitemap` plan | capped to 99 of 3366 URLs with `truncated: true` and `bing_quota_cap` |
+
+Known limits in 0.10.0:
+
+- `DailyQuota` and `MonthlyQuota` are remaining submissions, not totals; used/total values are never computed.
+- The monthly window can bind before the daily one, and Bing does not document the monthly reset schedule.
+- `SubmitUrlbatch` returns no per-URL status: results say `accepted`, never "indexed". Idempotency is undocumented and a duplicate URL may consume quota.
+- `GetFeedDetails` is documented-only in this release and was not verified against a live response; treat `bing sitemaps --details` as unconfirmed until the next live check.
+- `GetFeeds` exposes no per-URL sitemap errors and no crawl or index status; `Status` is a free provider string.
+- `GetCrawlIssues` has no date (`data_age_days` is `0`) and no severity; unknown bitmask bits are reported, not guessed.
+- Bing URL submission is a provider network write: it is not cancellable, is not retried automatically and has no rollback. Review a fresh plan before retrying.
+
+## Desktop 0.8.0
+
+Released on 2026-11-17. It adds Bing URL submission and read-only sitemap, crawl-issue and quota
+cards to Integrations, keeps the existing sitemap, IndexNow and Site Scan cards and the
+per-session write secret, bundles `lv24-seo 0.10.0` and raises `MIN_ENGINE_VERSION` to `0.10.0`,
+so an installed `0.9.x` engine is reported as incompatible.
+
+What changed:
+
+- **Bing URL submission card.** The Integrations screen builds `bing submit --config <path> [--url <abs> ...] [--from-sitemap] [--sitemap-url <abs>] --allow-write [--confirm <token>] --json`. Planning runs with the write opt-in but no token, reads the current quota and contacts no write endpoint. The card shows the URL count, the 500-URL batch count, the remaining quota and the engine's limitations, and **Apply** sends the reviewed token. A cancelled or failed apply drops the plan and requires a fresh review.
+- **URL list, sitemap or both.** URLs are entered one per line and/or read from the project sitemap. The shell merges both sources, requires at least one, accepts at most 10,000 URLs, and rejects a relative URL, a duplicate write flag or a token without the opt-in before the engine starts. The plan is bound to the sitemap: apply re-fetches it and invalidates the token with `CONFIRM_REQUIRED` if its URL set changed.
+- **Read-only sitemap, issues and quota cards.** `bing_sitemaps` lists URL, provider status, last crawl and URL count and states that Bing has no per-URL sitemap errors or paging. `bing_issues` shows URL, HTTP code, in-links and decoded issue labels, with unknown bits visible and no invented severity or date. `bing_quota` shows daily and monthly remaining submissions and states that the monthly window can bind first and that the reset is undocumented. A failed read shows the engine error and a manual retry; nothing is polled in the background.
+- **Existing Bing surface.** The sitemap submit card, IndexNow from the sitemap and the official Bing Site Scan opener remain. The target site comes from `providers.bing.site`; the desktop accepts no per-run `--site` override. A missing site is `CONFIG_INVALID`, a missing `bing_api_key` is `AUTH_REQUIRED` with a Settings hint, and the key never appears in an error or result.
+- **Engine 0.10.0 and contracts.** The sidecar adds `bing submit`, `bing quota`, `bing sitemaps` and `bing issues`. Contracts were regenerated from `lv24-seo 0.10.0`; only the fixture version strings change and no command surface is added to the fixtures. `MIN_ENGINE_VERSION` is `0.10.0` because an older engine would answer the new commands with `CLI_INVALID_JSON`. The per-session write secret and the reviewed-plan flow are unchanged.
+
+Verification recorded for this release:
+
+| Check | Result |
+|---|---|
+| Published assets | 18 on `v0.8.0` for Windows x64, Linux x64 and macOS arm64/x64, including the Windows portable `.zip.sha256` |
+| Updater manifest | `latest.json` reports `0.8.0` |
+| CI | run `44070978027` green |
+| Release workflow | run `44074365838` green |
+| In-app update | `0.7.0 → 0.8.0` verified through the Rust updater on Windows NSIS: **Desktop 0.8.0**, **Engine 0.10.0** and engine ready |
+| Workspace smoke test | a configured workspace loaded on the relaunched build without exposing query data |
+| Bing URL submission | a plan with 1 URL produced 1 batch; the apply reported `accepted`, not indexed |
+| Sitemaps card | 1 feed with `Status: Success` |
+| Crawl issues card | 0 issues returned |
+| Quota card | 99 daily and 1399 monthly submissions remaining |
+| Bing Site Scan opener | the official Bing page opened in the default browser; no scan was reported as started |
+| Bundled engine | sidecar `lv24-seo 0.10.0`; `MIN_ENGINE_VERSION` is `0.10.0` |
+
+Known limits in 0.8.0:
+
+- The desktop has no `--site` override; the target comes from `providers.bing.site` in the active `seo.toml`.
+- The read-only quota, sitemap and issue cards do not auto-retry; a failed load needs a manual retry.
+- Bing URL submission is a provider network write: it is not a cancellable background run, is not retried automatically and has no rollback. A replayed token is `skipped`/`duplicate` through the ledger, but Bing does not document submit idempotency and a duplicate URL may consume quota.
+- Accepted is not indexed: Bing returns no per-URL status for `SubmitUrlbatch`, so the result only confirms that Bing accepted the batch.
+- Quota counts are remaining, not used or total; the monthly window can bind first and the reset schedule is undocumented.
+- `GetFeedDetails` is a note in the panel, not a screen; index children are expanded only on the engine side.
+- `MIN_ENGINE_VERSION` is `0.10.0`, so a `0.9.x` engine is rejected.
+- Linux and macOS sidecar pins remain `null`; the release gate relies on rebuild-aware reports.
 
 ## Engine 0.9.0
 

@@ -79,6 +79,8 @@ MCP 周报工具会把 `days` 上限设为 90、`lag_days` 上限设为 14，并
 
 `seo_sitemap_submit` 在 0.9.0 中增加了可选 `provider`（`gsc|bing`，默认 `gsc`）；工具名、12 工具接口和其余输入不变。对 Bing，`property` 默认为 `providers.bing.site`，`sitemap_url` 默认为 `<project.base_url>/sitemap.xml`。计划会检查 `bing_api_key` 秘密，缺少时返回 `AUTH_REQUIRED`，因此不会发放无法应用的令牌。重放返回 `status: skipped` 和 `reason: duplicate`，提供商失败会释放声明。Bing 删除和任何 GSC 站点地图写入仍为 `WRITE_DISABLED`。从站点地图运行 IndexNow 仅限 CLI 和桌面端。
 
+引擎 0.10.0 增加 `bing` CLI 组：`bing submit`（原生 `SubmitUrlbatch`，每批 500 个 URL；accepted，不是 indexed）、`bing quota`（每日和每月值是剩余量，不是总量）、`bing sitemaps`（源状态和 URL 数，没有按 URL 的错误）和 `bing issues`（解码后的抓取问题位掩码，没有严重性或日期）。它们都不增加 MCP 工具：接口仍为 12 个，`seo_sitemap_submit` 仍提交站点地图，而不是 URL 批次。
+
 `cwv collect` 是 CLI 写入器，不是第 13 个工具：MCP 接口仍为 12。`seo_weekly_report` 读取 CLI 已持久化的字段行，并增加按 URL 模板和设备分组的 `cwv` 分区，最多五个模板。PSI 实验室行绝不存储，因此单独的 `--source psi` 无法填充该分区。
 
 GSC 可以使用服务账号而不是粘贴 OAuth 令牌。把 `providers.gsc.service_account_file`（绝对路径）或 `LV24_SEO_GSC_SERVICE_ACCOUNT_FILE` 设为服务账号；文件优先于已存储的 `gsc_token`，环境变量优先于文件。适配器签署 RS256 JWT，在密钥的 `token_uri` 交换并在过期前刷新，因此长期运行的 MCP 进程可以跨过令牌过期。`seo_properties` 报告 `token_source`，`doctor` 增加非致命 `gsc_auth` 检查；两者都不打印 JSON 或私钥。
@@ -193,4 +195,4 @@ lv24-seo export skills --out .opencode/skills
 - **技术审计。** 用 `seo_crawl_site` 抓取最多 500 个 URL，按规则 id 汇总 critical 和 high 问题。不要把未抓取的 URL 说成失效。
 - **写入请求。** 为这些 URL 准备重新抓取计划，先显示配额。在我批准计划前不要写入任何内容。
 
-Source: `_source/engine-mcp.md`, `_source/engine-skills.md`, `_source/engine-cli.md`, `_source/engine-releases-0.5.2.md`, `_source/engine-releases-0.5.3.md`, `_source/engine-releases-0.6.0.md`, `_source/engine-releases-0.7.0.md`, `_source/engine-releases-0.8.0.md`, `_source/engine-releases-0.9.0.md`.
+Source: `_source/engine-mcp.md`, `_source/engine-skills.md`, `_source/engine-cli.md`, `_source/engine-releases-0.5.2.md`, `_source/engine-releases-0.5.3.md`, `_source/engine-releases-0.6.0.md`, `_source/engine-releases-0.7.0.md`, `_source/engine-releases-0.8.0.md`, `_source/engine-releases-0.9.0.md`, `_source/engine-releases-0.10.0.md`.

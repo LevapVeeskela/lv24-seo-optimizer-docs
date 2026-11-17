@@ -7,7 +7,7 @@ description: Commands, global flags, the JSON envelope, exit codes and worked ex
 
 `lv24-seo` is the command-line surface of the engine. It treats provider data as read-only by
 default, prints one machine-readable envelope with `--json`, and changes provider state only through
-three explicitly gated write commands. The same executable runs on Windows, macOS and Linux.
+four explicitly gated write commands. The same executable runs on Windows, macOS and Linux.
 
 ## Command table
 
@@ -26,13 +26,13 @@ version.
 With `--json`, a command prints exactly one JSON document and nothing else:
 
 ```json
-{ "ok": true, "data": {}, "meta": { "version": "0.9.0", "duration_ms": 812 }, "warnings": [] }
+{ "ok": true, "data": {}, "meta": { "version": "0.10.0", "duration_ms": 812 }, "warnings": [] }
 ```
 
 A failed command uses the same shape with `ok: false` and an `error` object instead of `data`:
 
 ```json
-{ "ok": false, "error": { "code": "AUTH_REQUIRED", "message": "Google Search Console token is missing", "retryable": false, "next_action": "lv24-seo auth login --provider gsc" }, "meta": { "version": "0.9.0" }, "warnings": ["gsc: token missing"] }
+{ "ok": false, "error": { "code": "AUTH_REQUIRED", "message": "Google Search Console token is missing", "retryable": false, "next_action": "lv24-seo auth login --provider gsc" }, "meta": { "version": "0.10.0" }, "warnings": ["gsc: token missing"] }
 ```
 
 - `data` is command-specific. `meta` always carries `version` and often adds `duration_ms`,
@@ -107,7 +107,7 @@ The full key list, defaults and secret handling live in the [configuration refer
 
 ### Read-only by default and the write gate
 
-Only `sitemap submit`, `yandex recrawl` and `indexnow submit` can change provider state. They use a
+Only `sitemap submit`, `bing submit`, `yandex recrawl` and `indexnow submit` can change provider state. They use a
 two-step flow:
 
 1. Set a long random `LV24_SEO_WRITE_SECRET`, then run the command with `--allow-write` and no
@@ -123,8 +123,9 @@ claim under `/srv/site/data` even when the shell is elsewhere. Without a data di
 runs, but the envelope warns that replay protection is off for the token's five-minute lifetime; the
 plan opens no ledger and creates no database.
 
-Bing sitemap submit and IndexNow actually write. GSC sitemap submit, Bing sitemap delete and Yandex
-recrawl return `WRITE_DISABLED` instead of pretending the provider call happened.
+Bing sitemap submit, Bing URL submission and IndexNow actually write. Bing URL submission reports
+`accepted`, never indexed, because `SubmitUrlbatch` has no per-URL status. GSC sitemap submit, Bing
+sitemap delete and Yandex recrawl return `WRITE_DISABLED` instead of pretending the provider call happened.
 
 ### Logging
 
@@ -155,6 +156,7 @@ envelope remains the stable diagnostic interface.
 | Sitemap | `sitemap submit` | Gated write; Bing `SubmitFeed` is wired, GSC submit still returns `WRITE_DISABLED`. |
 | Yandex Webmaster | `yandex queries`, `yandex indexing`, `yandex recrawl` | Read-only queries; recrawl is a gated write. `queries` keeps `avg_click_position`, `query_id` and `extra_indicators`; `indexing` merges the history series and reports `site_problems`. |
 | IndexNow | `indexnow submit` | A gated write that submits explicit URLs or URLs read from the project sitemap. |
+| Bing | `bing submit`, `bing sitemaps`, `bing issues`, `bing quota` | `submit` is a gated `SubmitUrlbatch` write; the other three read quota, sitemap feeds and crawl issues. |
 | Crawl and audit | `crawl` | Provider-independent; stores local pages and issues when a store is configured. |
 | CWV | `cwv collect` | Queries CrUX per URL and device and persists field p75 rows; PSI lab rows are returned but never stored. |
 | Reports | `report weekly`, `report diff` | `weekly` stores a local snapshot; `diff` is read-only. |
@@ -165,7 +167,7 @@ envelope remains the stable diagnostic interface.
 | Portfolio | `portfolio list` | Read-only rollup of local projects below one folder; no provider call, no token read, no write. |
 | Agents and MCP | `mcp serve`, `install`, `export tools`, `export skills` | Host config, generated files or a local server. |
 
-The CLI has 22 top-level commands: 15 groups and 7 commands (`version`, `doctor`, `init`, `properties`, `stats`, `crawl`, `install`).
+The CLI has 23 top-level commands: 16 groups and 7 commands (`version`, `doctor`, `init`, `properties`, `stats`, `crawl`, `install`).
 
 ## Examples
 
@@ -208,6 +210,11 @@ date.
 ```bash
 lv24-seo sitemap submit --provider bing --allow-write --json
 lv24-seo sitemap submit --provider bing --allow-write --confirm TOKEN --json
+lv24-seo bing submit --url https://example.com/page --allow-write --json
+lv24-seo bing submit --url https://example.com/page --allow-write --confirm TOKEN --json
+lv24-seo bing quota --json
+lv24-seo bing sitemaps --json
+lv24-seo bing issues --json
 lv24-seo indexnow submit --from-sitemap --allow-write --json
 lv24-seo indexnow submit --from-sitemap --allow-write --confirm TOKEN --json
 ```
@@ -216,8 +223,15 @@ lv24-seo indexnow submit --from-sitemap --allow-write --confirm TOKEN --json
 or `--property`, the sitemap from `--url` or `<project.base_url>/sitemap.xml`, and the key from the
 `bing_api_key` secret. The plan needs `--allow-write` and `LV24_SEO_WRITE_SECRET` and mints the token
 without calling Bing; the apply sends the reviewed token and records the claim in the idempotency
-ledger. `indexnow submit --from-sitemap` reads the sitemap during the plan and resolves host, key and
-key location from `providers.bing.site`, `providers.bing.indexnow_key` and
+ledger. `bing submit` is the native URL write: URLs come from repeated `--url` and/or
+`--from-sitemap`, the plan reports the URL count, the 500-URL batch count and the remaining quota, and
+the apply calls `SubmitUrlbatch` after a daily and monthly quota pre-check. A batch success has no
+per-URL status, so the result says `accepted`, never indexed, and a duplicate URL may consume quota.
+`bing quota` reports `daily_remaining` and `monthly_remaining`, not totals; the monthly window can bind
+first and the reset schedule is undocumented. `bing sitemaps` lists feed URL, provider status, last
+crawl and URL count but no per-URL errors, while `bing issues` decodes the crawl-issue bitmask and has
+no severity or date. `indexnow submit --from-sitemap` reads the sitemap during the plan and resolves
+host, key and key location from `providers.bing.site`, `providers.bing.indexnow_key` and
 `providers.bing.indexnow_key_location`. A `<sitemapindex>` is bounded to the root plus five child
 sitemaps and 10,000 URLs; explicit `--url` values are merged first and off-host URLs are skipped. The
 apply re-fetches the sitemap and invalidates the token with `CONFIRM_REQUIRED` if the URL set changed.
@@ -356,4 +370,4 @@ packaged `SKILL.md` files and their manifest. Both write local files only.
 - [MCP and agent skills](/mcp/)
 - [Troubleshooting](/troubleshooting/)
 
-Source: `_source/engine-cli.md`, `_source/engine-mcp.md`, `_source/engine-releases-0.5.2.md`, `_source/engine-releases-0.5.3.md`, `_source/engine-releases-0.6.0.md`, `_source/engine-releases-0.7.0.md`, `_source/engine-releases-0.8.0.md`, `_source/engine-releases-0.9.0.md`; 0.9.0 `--help` output in the engine repository.
+Source: `_source/engine-cli.md`, `_source/engine-mcp.md`, `_source/engine-releases-0.5.2.md`, `_source/engine-releases-0.5.3.md`, `_source/engine-releases-0.6.0.md`, `_source/engine-releases-0.7.0.md`, `_source/engine-releases-0.8.0.md`, `_source/engine-releases-0.9.0.md`, `_source/engine-releases-0.10.0.md`; 0.10.0 `--help` output in the engine repository.

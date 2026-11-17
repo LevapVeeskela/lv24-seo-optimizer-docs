@@ -1,0 +1,143 @@
+# 0.10.0 - Bing URL submission, quota and sitemap status
+
+Status: **released** (2026-11-17) on PyPI, npm and the MCP Registry. Desktop `0.8.0` is the
+current desktop release; it bundles engine `0.10.0` and requires `MIN_ENGINE_VERSION=0.10.0`.
+
+Minor release: Bing URL submission becomes a real gated write, and the read-only Bing surface
+gains quota, sitemap-feed and crawl-issue views. The CLI now has **23 top-level commands** (16
+groups + 7 commands), the MCP surface stays at **12 tools**, and the SQLite schema stays at
+version 4. Bing URL submission is CLI/desktop-only: no 13th MCP tool is added. Design rationale:
+`docs/decisions/ADR-0004-bing-url-submission.md` in the engine repository.
+
+## Added
+
+### Bing URL submission
+
+`lv24-seo bing submit [--url ABS ...] [--from-sitemap] [--sitemap-url ABS] [--site URL]
+[--allow-write] [--confirm TOKEN] [--config ABS] [--json]`:
+
+* `--url` may be repeated and is merged with `--from-sitemap`. A `<urlset>` is read directly;
+  a `<sitemapindex>` is bounded to the root plus **five child sitemaps** and **10,000 URLs**.
+  Explicit URLs are deduplicated first, off-site URLs are skipped, and
+  `meta.truncated`/`meta.total`/`meta.limitations` report every cap or skip.
+* The plan reports the URL count, the 500-URL batch count and the **current remaining quota**
+  (`meta.quota`). The plan contacts no write endpoint; it only reads the quota.
+* Apply re-fetches the sitemap. If its URL set changed since the plan, the token is invalidated
+  with `CONFIRM_REQUIRED` and nothing is submitted.
+* `SubmitUrlbatch` is called in explicit 500-URL batches, with client-side deduplication and a
+  quota pre-check against both the daily and monthly windows. A batch success is
+  `200 {"d": null}` with **no per-URL status**, so the result says `status: "accepted"` and
+  `accepted`, never "indexed". `duplicates_removed`, `batches`, `batch_size` and `quota_after`
+  are reported.
+* Idempotency is undocumented by Bing and a duplicate URL may consume quota; the limitation
+  `submit_idempotency_undocumented` says so. The SQLite write-gate ledger still makes a replayed
+  confirm token return `status: skipped` / `reason: duplicate`.
+* Missing `providers.bing.site` is `CONFIG_INVALID`; a missing `bing_api_key` is
+  `AUTH_REQUIRED`. The key never appears in an error.
+
+### Bing read-only views
+
+```bash
+lv24-seo bing quota    [--config ABS] [--json]
+lv24-seo bing sitemaps [--details FEED_URL] [--config ABS] [--json]
+lv24-seo bing issues   [--config ABS] [--json]
+```
+
+* `bing quota` reads `GetUrlSubmissionQuota`. Verified against lv24.by: `DailyQuota` and
+  `MonthlyQuota` are **remaining** submissions, not totals. Rows expose `daily_remaining` and
+  `monthly_remaining` plus the provider object in `raw`; used/total values are never computed.
+  The limitations `quota_monthly_can_bind_first` and `quota_monthly_reset_undocumented` state
+  that the monthly window (lv24.by: 1400) can bind before the daily one (lv24.by: 100) and that
+  the monthly reset schedule is undocumented.
+* `bing sitemaps` reads `GetFeeds`. Rows map `Url`, `Type`, `Status`, `Submitted`,
+  `LastCrawled`, `UrlCount`, `FileSize` and `Compressed`; `LastCrawled` (falling back to
+  `Submitted`) bounds `data_age_days`. `Status` is a free provider string (`Success` observed),
+  not a crawl/index status. Bing exposes no per-URL errors and no paging, so the result carries
+  `no_per_url_sitemap_errors` and `sitemap_status_is_not_crawl_status`.
+* `--details FEED_URL` reads `GetFeedDetails` for the children of a sitemap index. It is an
+  option on `bing sitemaps`, not a separate command, because it is only useful for index
+  children.
+* `bing issues` reads `GetCrawlIssues`. Rows are `{Url, HttpCode, Issues, InLinks}`; `Issues`
+  is an integer bitmask, not a type/severity/date. It is decoded into labels:
+  `1=301`, `2=302`, `4=4xx`, `8=5xx`, `16=robots`, `32=malware`, `64=important_robots`,
+  `128=dns`, `256=timeout`. Rows expose `url`, `http_code`, `issues`, `issues_bits`,
+  `in_links` and unknown fields in `raw`; unknown bits are reported with
+  `unknown_crawl_issue_bits` instead of being guessed. The feed has no date, so
+  `data_age_days` is `0`.
+
+### Bing error mapping
+
+Bing returns auth failures as **HTTP 400** with `{"ErrorCode": N, "Message": ...}`, not 401/403.
+The adapter parses `ErrorCode` first: `3 -> AUTH_INVALID`, `14 -> PROPERTY_NOT_FOUND` (site or
+authorization), `7 -> INVALID_INPUT`, `4/5 -> QUOTA_EXCEEDED`. `401/403/404/429/5xx` remain
+fallbacks. The provider `Message` is never echoed; errors keep only `host + path`, the HTTP
+status and the numeric code, so the API key cannot leak.
+
+## Changed
+
+* The CLI now has **23 top-level commands**: 16 groups (`auth`, `config`, `gsc`, `yandex`,
+  `sitemap`, `indexnow`, `bing`, `report`, `cwv`, `schedule`, `export`, `logs`, `tasks`,
+  `backup`, `portfolio`, `mcp`) and 7 commands (`version`, `doctor`, `init`, `properties`,
+  `stats`, `crawl`, `install`).
+* `bing sitemaps --details` uses `GetFeedDetails`; no new top-level command was added.
+* The shared HTTP client can return a non-2xx response when a provider adapter opts into parsing
+  a structured error body (`raise_for_status=False`). Default behavior is unchanged.
+
+## Not changed
+
+* MCP stays at **12 tools**; Bing URL submission, quota, sitemap and issue views are
+  CLI/desktop-only. `seo_sitemap_submit` still submits a sitemap, not a URL batch.
+* SQLite schema version 4.
+* No paid provider or new required dependency.
+
+## Verification notes
+
+Quota, `GetFeeds` and `GetCrawlIssues` were checked against real lv24.by responses. `GetFeedDetails`
+was implemented from the documented JSON shape and is exposed only as `bing sitemaps --details`;
+it was not verified against a live response in this wave, so treat its output as
+documented-but-unconfirmed until the next live check.
+
+## Verification
+
+| Check | Result |
+|---|---|
+| PyPI `lv24-seo` | `0.10.0` published (2026-11-17) |
+| npm `@lv24/seo` | `0.10.0` published (2026-11-17) |
+| MCP Registry `io.github.LevapVeeskela/lv24-seo` | `0.10.0`, `isLatest: true`, published 2026-11-17T10:51:50Z |
+| CI (`ci.yml`, run 44068127891) | green on the `v0.10.0` commit |
+| Release workflow (`release.yml`, run 44068457680) | green (PyPI, npm and MCP Registry jobs) |
+| `bing quota` (lv24.by) | 100 daily / 1400 monthly remaining |
+| `bing sitemaps` (lv24.by) | 1 feed, 3416 URLs, `Status: Success` |
+| `bing issues` (lv24.by) | 0 rows |
+| `bing submit --url https://lv24.by/` | `accepted`, quota after: 99 |
+| `bing submit --from-sitemap` (plan) | capped to 99 of 3366 URLs, `truncated: true`, `bing_quota_cap` |
+| Desktop `0.8.0` | bundles engine `0.10.0`, requires `>= 0.10.0`; 0.7.0 -> 0.8.0 Windows update verified (UI 0.8.0 / engine 0.10.0, new cards loaded) |
+
+Local quality gate on the tagged commit:
+
+```bash
+uv run ruff check .
+uv run ruff format --check .
+uv run mypy src
+uv run python -m lv24_seo.mcp.registry --check
+uv run python -m pytest -q
+```
+
+Offline tests cover the quota remaining semantics and raw row, feed fields and bare-list parsing,
+`GetFeedDetails`, crawl-issue bitmask decoding (including unknown bits), HTTP 400 `ErrorCode`
+mapping without key/message leakage, 500-URL batching and deduplication, quota pre-checks,
+CLI plan/apply, sitemap invalidation and the read-only commands.
+
+## Limitations
+
+* `DailyQuota` and `MonthlyQuota` are **remaining** submissions, not totals; used/total values are
+  never computed.
+* The monthly window can bind before the daily one (lv24.by: 1400 vs 100) and Bing does not document
+  its reset schedule.
+* `SubmitUrlbatch` returns no per-URL status: results say `accepted`, never "indexed". Idempotency is
+  undocumented and a duplicate URL may consume quota.
+* `GetFeedDetails` is documented-only in this release and was not verified against a live response.
+* `GetFeeds` exposes no per-URL sitemap errors and no crawl/index status; `Status` is a free provider
+  string (`Success` observed).
+* `GetCrawlIssues` has no date (`data_age_days` is `0`) and unknown bitmask bits are reported, not
+  guessed.

@@ -1,6 +1,6 @@
 ---
 title: 发行与更新
-description: 引擎 0.9.0 与桌面 0.7.0 发行说明、0.8.0、0.6.0、0.5.3、0.3.0 及更早版本历史、签名自动更新矩阵、发布流水线、版本固定与回滚。
+description: 引擎 0.10.0 与桌面 0.8.0 发行说明、0.9.0、0.7.0、0.8.0、0.6.0、0.5.3、0.3.0 及更早版本历史、签名自动更新矩阵、发布流水线、版本固定与回滚。
 ---
 
 # 发行与更新
@@ -9,10 +9,94 @@ description: 引擎 0.9.0 与桌面 0.7.0 发行说明、0.8.0、0.6.0、0.5.3�
 
 | 产品 | 版本 | 发布日期 | 说明 |
 |---|---|---|---|
-| 引擎 | `lv24-seo 0.9.0` | 2026-11-17 | Bing 站点地图提交、从站点地图运行 IndexNow、MCP 可选 `provider`、22 个 CLI 命令和 12 个 MCP 工具 |
-| 桌面 | `0.7.0` | 2026-11-17 | Bing 索引面板、Site Scan 打开器、每会话写入密钥、捆绑引擎 0.9.0 和 `MIN_ENGINE_VERSION` 0.9.0 |
+| 引擎 | `lv24-seo 0.10.0` | 2026-11-17 | Bing URL 提交、站点地图状态、抓取问题和配额视图、23 个 CLI 命令和 12 个 MCP 工具 |
+| 桌面 | `0.8.0` | 2026-11-17 | Bing URL 提交与只读站点地图、问题和配额卡片、捆绑引擎 0.10.0 和 `MIN_ENGINE_VERSION` 0.10.0 |
 
-桌面版本与引擎版本相互独立，但桌面固定精确引擎，并拒绝低于最低版本的引擎。`0.7.0` 捆绑 `0.9.0` 并要求至少 `0.9.0`，因此已安装的 `0.8.x` 引擎会被报告为不兼容。
+桌面版本与引擎版本相互独立，但桌面固定精确引擎，并拒绝低于最低版本的引擎。`0.8.0` 捆绑 `0.10.0` 并要求至少 `0.10.0`，因此已安装的 `0.9.x` 引擎会被报告为不兼容。
+
+## 引擎 0.10.0
+
+2026-11-17 发布。它把 Bing URL 提交变成真正的受限写入，并增加只读的 Bing 配额、站点地图源和
+抓取问题视图。CLI 现在有 23 个顶层命令；MCP 接口仍为 12 个工具，SQLite 模式仍为版本 4。
+
+变更内容：
+
+- **Bing URL 提交。** `bing submit [--url ABS …] [--from-sitemap] [--sitemap-url ABS] [--site URL] [--allow-write] [--confirm TOKEN]` 通过 Bing Webmaster `SubmitUrlbatch` 发送 URL。`--url` 可重复并与 `--from-sitemap` 合并；`<urlset>` 直接读取，`<sitemapindex>` 限制为根加五个子站点地图和 10,000 个 URL，显式 URL 先去重，站点外 URL 被跳过，`meta.truncated`、`meta.total` 和 `meta.limitations` 报告每个上限或跳过。计划显示 URL 数、500 URL 批次数和 `meta.quota` 中的当前剩余配额；它不联系写入端点。应用会重新获取站点地图，如果 URL 集合变化，则以 `CONFIRM_REQUIRED` 使令牌失效。
+- **每批 500 个 URL 与诚实状态。** `SubmitUrlbatch` 在客户端按每日和每月窗口预检配额后，以显式 500 URL 批次调用。批次成功为 `200 {"d": null}`，没有按 URL 的状态，因此结果说 `status: accepted` 和 `accepted`，绝不是“已索引”；报告 `duplicates_removed`、`batches`、`batch_size` 和 `quota_after`。Bing 未记录提交幂等性，重复 URL 可能消耗配额（`submit_idempotency_undocumented`），但 SQLite 写入账本仍会让重放的确认令牌返回 `status: skipped` 和 `reason: duplicate`。缺少 `providers.bing.site` 为 `CONFIG_INVALID`，缺少 `bing_api_key` 为 `AUTH_REQUIRED`，密钥绝不会出现在错误中。
+- **Bing 配额。** `bing quota` 读取 `GetUrlSubmissionQuota`。`DailyQuota` 和 `MonthlyQuota` 是**剩余**提交量，不是总量：行包含 `daily_remaining` 和 `monthly_remaining` 以及 `raw` 中的提供商对象，绝不计算已用/总量。限制 `quota_monthly_can_bind_first` 和 `quota_monthly_reset_undocumented` 说明月度窗口可能先于每日窗口耗尽，且 Bing 不公布月度重置时间表。
+- **Bing 站点地图源。** `bing sitemaps [--details FEED_URL]` 读取 `GetFeeds`，映射 URL、类型、状态、提交时间、最后抓取、URL 数、文件大小和压缩。`LastCrawled`（回退到 `Submitted`）限定 `data_age_days`；`Status` 是自由格式的提供商字符串，例如 `Success`，不是抓取或索引状态。Bing 不提供按 URL 的站点地图错误，也没有分页，因此结果带有 `no_per_url_sitemap_errors` 和 `sitemap_status_is_not_crawl_status`。`--details` 读取站点地图索引子项的 `GetFeedDetails`；它是选项，不是单独命令。
+- **Bing 抓取问题。** `bing issues` 读取 `GetCrawlIssues`，返回 URL、HTTP 代码、入链和 `Issues` 位掩码解码后的标签（`1=301`、`2=302`、`4=4xx`、`8=5xx`、`16=robots`、`32=malware`、`64=important_robots`、`128=dns`、`256=timeout`）。未知位通过 `unknown_crawl_issue_bits` 报告，而不是猜测。该源没有日期，因此 `data_age_days` 为 `0`，也没有严重性。
+- **Bing 错误映射。** Bing 以 HTTP 400 加数字 `ErrorCode` 返回认证失败，而不是 401/403。适配器把 `3` 映射为 `AUTH_INVALID`、`14` 为 `PROPERTY_NOT_FOUND`、`7` 为 `INVALID_INPUT`、`4/5` 为 `QUOTA_EXCEEDED`，保留 401/403/404/429/5xx 作为回退，并且绝不回显提供商消息或 API 密钥。
+- **接口与模式。** 23 个顶层 CLI 命令（16 个组和 7 个命令，新增 `bing`）、12 个 MCP 工具（10 个读取类：7 个纯只读加 3 个本地状态写入者；2 个受限写入）、3 个资源和 3 个提示不变，模式版本 4 且无迁移。`schemas/tools.json` 未变。Bing URL 提交、配额、站点地图和问题仅限 CLI 和桌面端：不增加第 13 个 MCP 工具，`seo_sitemap_submit` 仍提交站点地图，而不是 URL 批次。
+
+本次发行记录的验证：
+
+| 检查 | 结果 |
+|---|---|
+| PyPI | `lv24-seo 0.10.0` 已发布 |
+| npm | `@lv24/seo 0.10.0` 已发布 |
+| MCP Registry | `io.github.LevapVeeskela/lv24-seo 0.10.0` 已发布，`isLatest: true` |
+| CI | 运行 `44068127891` 全绿 |
+| 发布 workflow | 运行 `44068457680` 全绿 |
+| 桌面 | `0.8.0` 已发布并捆绑引擎 `0.10.0`；资产名为 `0.8.0` / `-0.8.0-` |
+| `bing quota`，已配置工作区 | 每日剩余 100，每月剩余 1400 |
+| `bing sitemaps`，已配置工作区 | 1 个源，`Status: Success` |
+| `bing issues`，已配置工作区 | 0 行 |
+| `bing submit --url`，已配置工作区 | 1 个 URL，1 个批次，`accepted`；写入后配额剩余 99 |
+| `bing submit --from-sitemap` 计划 | 限制为 3366 个 URL 中的 99 个，`truncated: true` 和 `bing_quota_cap` |
+
+0.10.0 的已知限制：
+
+- `DailyQuota` 和 `MonthlyQuota` 是剩余提交量，不是总量；绝不计算已用/总量。
+- 月度窗口可能先于每日窗口耗尽，且 Bing 不公布月度重置时间表。
+- `SubmitUrlbatch` 不返回按 URL 的状态：结果说 `accepted`，绝不是“已索引”。幂等性未记录，重复 URL 可能消耗配额。
+- `GetFeedDetails` 在本发行中仅依据文档实现，未对实时响应验证；在下次实时检查前，请把 `bing sitemaps --details` 视为未确认。
+- `GetFeeds` 不提供按 URL 的站点地图错误，也不提供抓取或索引状态；`Status` 是自由格式的提供商字符串。
+- `GetCrawlIssues` 没有日期（`data_age_days` 为 `0`）和严重性；未知位掩码会报告，而不是猜测。
+- Bing URL 提交是提供商网络写入：不可取消、不会自动重试，也没有回滚。重试前请审核新计划。
+
+## 桌面 0.8.0
+
+2026-11-17 发布。它在 Integrations 中增加 Bing URL 提交以及只读站点地图、抓取问题和配额卡片，
+保留现有的站点地图、IndexNow 和 Site Scan 卡片以及每会话写入密钥，捆绑 `lv24-seo 0.10.0`，
+并把 `MIN_ENGINE_VERSION` 提高到 `0.10.0`，因此已安装的 `0.9.x` 引擎会被报告为不兼容。
+
+变更内容：
+
+- **Bing URL 提交卡片。** Integrations 构造 `bing submit --config <path> [--url <abs> ...] [--from-sitemap] [--sitemap-url <abs>] --allow-write [--confirm <token>] --json`。计划发送写入同意但不发送令牌，读取当前配额，不联系写入端点。卡片显示 URL 数、500 URL 批次数、剩余配额和引擎限制，**Apply** 发送审核后的令牌。取消或失败的应用会丢弃计划并要求重新审核。
+- **URL 列表、站点地图或两者。** URL 每行一个和/或从项目站点地图读取。外壳合并两个来源，要求至少一个，最多接受 10,000 个 URL，并在引擎启动前拒绝相对 URL、重复写入标志或没有同意的令牌。引擎直接读取 `<urlset>`，并把 `<sitemapindex>` 限制为根加五个子站点地图和 10,000 个 URL；站点外 URL 被跳过，每个上限都会报告。应用会重新获取站点地图，如果 URL 集合变化，则以 `CONFIRM_REQUIRED` 使令牌失效。
+- **已接受，不是已索引。** `SubmitUrlbatch` 在每日和每月配额预检后以显式 500 URL 批次运行。批次成功没有按 URL 的状态，因此结果说 **accepted**，绝不是已索引，并报告批次和写入后的配额。重复 URL 可能消耗配额，因为 Bing 未记录提交幂等性；写入账本仍会把重放令牌拒绝为 `skipped`/`duplicate`。
+- **只读站点地图、问题和配额卡片。** `bing_sitemaps` 显示 URL、提供商状态、最后抓取和 URL 数，并说明 Bing 没有按 URL 的站点地图错误或分页。`bing_issues` 显示 URL、HTTP 代码、入链和解码后的标签（`1=301`、`2=302`、`4=4xx`、`8=5xx`、`16=robots`、`32=malware`、`64=important_robots`、`128=dns`、`256=timeout`）；未知位保持可见，不编造严重性或日期。`bing_quota` 显示每日和每月剩余提交量，说明月度窗口可能先耗尽且重置时间表未记录，并且绝不计算已用或总量。读取失败会显示引擎错误和手动重试；不会在后台轮询。
+- **现有 Bing 接口。** 站点地图提交卡片、从站点地图运行 IndexNow 和官方 Bing Site Scan 打开器保留。目标站点来自 `providers.bing.site`；桌面端不接受每次运行的 `--site` 覆盖。缺少站点为 `CONFIG_INVALID`，缺少 `bing_api_key` 为 `AUTH_REQUIRED` 并在 Settings 中提示，密钥绝不会出现在错误或结果中。
+- **引擎 0.10.0 与契约。** Sidecar 增加 `bing submit`、`bing quota`、`bing sitemaps` 和 `bing issues`。契约从 `lv24-seo 0.10.0` 重新生成；只有夹具版本字符串变化，命令接口不会加入夹具。`MIN_ENGINE_VERSION` 为 `0.10.0`，因为旧引擎会用 `CLI_INVALID_JSON` 回应新命令。每会话写入密钥和审核计划流程不变。
+
+本次发行记录的验证：
+
+| 检查 | 结果 |
+|---|---|
+| 已发布资产 | `v0.8.0` 上 18 个，覆盖 Windows x64、Linux x64 和 macOS arm64/x64，包括 Windows portable `.zip.sha256` |
+| 更新清单 | `latest.json` 报告 `0.8.0` |
+| CI | 运行 `44070978027` 全绿 |
+| 发布 workflow | 运行 `44074365838` 全绿 |
+| 应用内更新 | 在 Windows NSIS 上通过 Rust 更新器验证 `0.7.0 → 0.8.0`：**Desktop 0.8.0**、**Engine 0.10.0** 和引擎就绪 |
+| 工作区冒烟测试 | 重启后的构建加载了已配置工作区，未暴露查询数据 |
+| Bing URL 提交 | 1 个 URL 的计划产生 1 个批次；应用报告 `accepted`，不是 indexed |
+| Sitemaps 卡片 | 1 个源，`Status: Success` |
+| 抓取问题卡片 | 返回 0 个问题 |
+| 配额卡片 | 每日剩余 99，每月剩余 1399 |
+| Bing Site Scan 打开器 | 在默认浏览器中打开官方 Bing 页面；未报告扫描已启动 |
+| 捆绑引擎 | sidecar `lv24-seo 0.10.0`；`MIN_ENGINE_VERSION` 为 `0.10.0` |
+
+0.8.0 的已知限制：
+
+- 桌面端没有 `--site` 覆盖；目标来自活动 `seo.toml` 中的 `providers.bing.site`。
+- 只读配额、站点地图和问题卡片不会自动重试；加载失败需要手动重试。
+- Bing URL 提交是提供商网络写入：不是可取消的后台运行，不会自动重试，也没有回滚。重放令牌通过账本返回 `skipped`/`duplicate`，但 Bing 未记录提交幂等性，重复 URL 可能消耗配额。
+- 已接受不是已索引：Bing 对 `SubmitUrlbatch` 不返回按 URL 的状态。
+- 配额是剩余量，不是已用或总量；月度窗口可能先耗尽，重置时间表未记录。
+- `GetFeedDetails` 是面板中的说明，不是屏幕；索引子项只在引擎侧展开。
+- `MIN_ENGINE_VERSION` 为 `0.10.0`，因此 `0.9.x` 引擎会被拒绝。
+- Linux 和 macOS 的 sidecar 固定值仍为 `null`；发布门控依赖 rebuild-aware 报告。
 
 ## 引擎 0.9.0
 

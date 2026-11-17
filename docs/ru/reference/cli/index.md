@@ -25,13 +25,13 @@ description: Команды, глобальные флаги, JSON-конвер�
 С флагом `--json` команда печатает ровно один JSON-документ и ничего больше:
 
 ```json
-{ "ok": true, "data": {}, "meta": { "version": "0.9.0", "duration_ms": 812 }, "warnings": [] }
+{ "ok": true, "data": {}, "meta": { "version": "0.10.0", "duration_ms": 812 }, "warnings": [] }
 ```
 
 Неудачная команда использует ту же форму с `ok: false` и объектом `error` вместо `data`:
 
 ```json
-{ "ok": false, "error": { "code": "AUTH_REQUIRED", "message": "Google Search Console token is missing", "retryable": false, "next_action": "lv24-seo auth login --provider gsc" }, "meta": { "version": "0.9.0" }, "warnings": ["gsc: token missing"] }
+{ "ok": false, "error": { "code": "AUTH_REQUIRED", "message": "Google Search Console token is missing", "retryable": false, "next_action": "lv24-seo auth login --provider gsc" }, "meta": { "version": "0.10.0" }, "warnings": ["gsc: token missing"] }
 ```
 
 - `data` зависит от команды. В `meta` всегда есть `version`, часто добавляются `duration_ms`,
@@ -114,7 +114,7 @@ lv24-seo report weekly --days 7 --strict --json
 
 ### Только чтение по умолчанию и шлюз записи
 
-Менять состояние провайдера могут только `sitemap submit`, `yandex recrawl` и `indexnow submit`.
+Менять состояние провайдера могут только `sitemap submit`, `bing submit`, `yandex recrawl` и `indexnow submit`.
 Они работают в два шага:
 
 1. Задайте длинный случайный `LV24_SEO_WRITE_SECRET`, затем запустите команду с `--allow-write` и без
@@ -131,8 +131,10 @@ lv24-seo report weekly --days 7 --strict --json
 защита от повтора отключена на пять минут жизни токена; dry run не открывает журнал и не создаёт
 базу.
 
-IndexNow и отправка sitemap в Bing действительно пишут. Отправка sitemap в GSC, удаление sitemap в Bing
-и переобход в Яндексе возвращают `WRITE_DISABLED`, а не делают вид, что вызов провайдера состоялся.
+IndexNow, отправка sitemap в Bing и отправка URL в Bing действительно пишут. Отправка URL в Bing сообщает
+`accepted`, а не «проиндексировано», потому что у `SubmitUrlbatch` нет статуса по каждому URL. Отправка
+sitemap в GSC, удаление sitemap в Bing и переобход в Яндексе возвращают `WRITE_DISABLED`, а не делают вид,
+что вызов провайдера состоялся.
 
 ### Логирование
 
@@ -163,6 +165,7 @@ redacting-handler в CLI и `lv24-seo mcp serve`; если переменная 
 | Sitemap | `sitemap submit` | Защищённая запись; Bing `SubmitFeed` подключён, отправка GSC всё ещё возвращает `WRITE_DISABLED`. |
 | Yandex Webmaster | `yandex queries`, `yandex indexing`, `yandex recrawl` | Запросы только на чтение; recrawl — защищённая запись. `queries` сохраняет `avg_click_position`, `query_id` и `extra_indicators`; `indexing` объединяет серию истории и сообщает `site_problems`. |
 | IndexNow | `indexnow submit` | Защищённая запись, которая отправляет явные URL или URL, прочитанные из sitemap проекта. |
+| Bing | `bing submit`, `bing sitemaps`, `bing issues`, `bing quota` | `submit` — защищённая запись `SubmitUrlbatch`; остальные три читают квоту, фиды sitemap и проблемы обхода. |
 | Crawl and audit | `crawl` | Не зависит от провайдеров; сохраняет локальные страницы и проблемы, если настроено хранилище. |
 | CWV | `cwv collect` | Опрашивает CrUX по URL и устройству и сохраняет полевые строки p75; лабораторные строки PSI возвращаются, но не сохраняются. |
 | Reports | `report weekly`, `report diff` | `weekly` сохраняет локальный снимок; `diff` только читает. |
@@ -173,7 +176,7 @@ redacting-handler в CLI и `lv24-seo mcp serve`; если переменная 
 | Portfolio | `portfolio list` | Сводка локальных проектов ниже одного каталога только для чтения; без вызова провайдера, чтения токена и записи. |
 | Agents and MCP | `mcp serve`, `install`, `export tools`, `export skills` | Конфиг хоста, сгенерированные файлы или локальный сервер. |
 
-В CLI 22 команды верхнего уровня: 15 групп и 7 команд (`version`, `doctor`, `init`, `properties`, `stats`, `crawl`, `install`).
+В CLI 23 команды верхнего уровня: 16 групп и 7 команд (`version`, `doctor`, `init`, `properties`, `stats`, `crawl`, `install`).
 
 ## Примеры
 
@@ -217,6 +220,11 @@ lv24-seo yandex indexing --json
 ```bash
 lv24-seo sitemap submit --provider bing --allow-write --json
 lv24-seo sitemap submit --provider bing --allow-write --confirm TOKEN --json
+lv24-seo bing submit --url https://example.com/page --allow-write --json
+lv24-seo bing submit --url https://example.com/page --allow-write --confirm TOKEN --json
+lv24-seo bing quota --json
+lv24-seo bing sitemaps --json
+lv24-seo bing issues --json
 lv24-seo indexnow submit --from-sitemap --allow-write --json
 lv24-seo indexnow submit --from-sitemap --allow-write --confirm TOKEN --json
 ```
@@ -224,13 +232,21 @@ lv24-seo indexnow submit --from-sitemap --allow-write --confirm TOKEN --json
 `--provider` у `sitemap submit` по умолчанию `gsc`; `bing` берёт сайт из `providers.bing.site` или
 `--property`, sitemap — из `--url` или `<project.base_url>/sitemap.xml`, а ключ — из секрета
 `bing_api_key`. Плану нужны `--allow-write` и `LV24_SEO_WRITE_SECRET`; он выпускает токен, не вызывая Bing.
-Применение отправляет проверенный токен и фиксирует заявку в журнале идемпотентности.
-`indexnow submit --from-sitemap` читает sitemap во время плана и берёт хост, ключ и расположение ключа из
-`providers.bing.site`, `providers.bing.indexnow_key` и `providers.bing.indexnow_key_location`.
-`<sitemapindex>` ограничен корнем плюс пятью дочерними sitemap и 10 000 URL; явные `--url` объединяются
-первыми, URL вне хоста пропускаются. Применение заново загружает sitemap и аннулирует токен с
-`CONFIRM_REQUIRED`, если набор URL изменился. Отсутствующий ключ — `AUTH_REQUIRED` на этапе плана, а
-отсутствующий или несовпавший файл ключа — `INVALID_INPUT` при применении.
+Применение отправляет проверенный токен и фиксирует заявку в журнале идемпотентности. `bing submit` —
+нативная отправка URL: URL берутся из повторяемого `--url` и/или `--from-sitemap`, план сообщает число
+URL, число пакетов по 500 URL и остаток квоты, а применение вызывает `SubmitUrlbatch` после дневной и
+месячной проверки квоты. Успех пакета не содержит статуса по URL, поэтому результат говорит `accepted`,
+а не «проиндексировано», и повторный URL может израсходовать квоту. `bing quota` сообщает
+`daily_remaining` и `monthly_remaining`, а не всего; месячное окно может закончиться раньше, а расписание
+сброса не документировано. `bing sitemaps` показывает URL фида, статус провайдера, последний обход и
+число URL, но не ошибки по отдельным URL, а `bing issues` декодирует битовую маску проблем и не имеет
+серьёзности или даты. `indexnow submit --from-sitemap` читает sitemap во время плана и берёт хост, ключ и
+расположение ключа из `providers.bing.site`, `providers.bing.indexnow_key` и
+`providers.bing.indexnow_key_location`. `<sitemapindex>` ограничен корнем плюс пятью дочерними sitemap и
+10 000 URL; явные `--url` объединяются первыми, URL вне хоста пропускаются. Применение заново загружает
+sitemap и аннулирует токен с `CONFIRM_REQUIRED`, если набор URL изменился. Отсутствующий ключ —
+`AUTH_REQUIRED` на этапе плана, а отсутствующий или несовпавший файл ключа — `INVALID_INPUT` при
+применении.
 
 ### Core Web Vitals
 
@@ -367,4 +383,4 @@ lv24-seo export skills --out skills/
 - [MCP и навыки агентов](/ru/mcp/)
 - [Устранение неполадок](/ru/troubleshooting/)
 
-Source: `_source/engine-cli.md`, `_source/engine-mcp.md`, `_source/engine-releases-0.5.2.md`, `_source/engine-releases-0.5.3.md`, `_source/engine-releases-0.6.0.md`, `_source/engine-releases-0.7.0.md`, `_source/engine-releases-0.8.0.md`, `_source/engine-releases-0.9.0.md`; вывод `--help` версии 0.9.0 в репозитории движка.
+Source: `_source/engine-cli.md`, `_source/engine-mcp.md`, `_source/engine-releases-0.5.2.md`, `_source/engine-releases-0.5.3.md`, `_source/engine-releases-0.6.0.md`, `_source/engine-releases-0.7.0.md`, `_source/engine-releases-0.8.0.md`, `_source/engine-releases-0.9.0.md`, `_source/engine-releases-0.10.0.md`; вывод `--help` версии 0.10.0 в репозитории движка.

@@ -24,13 +24,13 @@ description: lv24-seo 命令行的命令、全局参数、JSON 信封、退出�
 使用 `--json` 时，命令只输出一个 JSON 文档，不会输出其他内容：
 
 ```json
-{ "ok": true, "data": {}, "meta": { "version": "0.9.0", "duration_ms": 812 }, "warnings": [] }
+{ "ok": true, "data": {}, "meta": { "version": "0.10.0", "duration_ms": 812 }, "warnings": [] }
 ```
 
 失败的命令使用相同结构，但 `ok: false`，并用 `error` 对象代替 `data`：
 
 ```json
-{ "ok": false, "error": { "code": "AUTH_REQUIRED", "message": "Google Search Console token is missing", "retryable": false, "next_action": "lv24-seo auth login --provider gsc" }, "meta": { "version": "0.9.0" }, "warnings": ["gsc: token missing"] }
+{ "ok": false, "error": { "code": "AUTH_REQUIRED", "message": "Google Search Console token is missing", "retryable": false, "next_action": "lv24-seo auth login --provider gsc" }, "meta": { "version": "0.10.0" }, "warnings": ["gsc: token missing"] }
 ```
 
 - `data` 因命令而异。`meta` 始终包含 `version`，通常还会加入 `duration_ms`、`truncated`、
@@ -105,7 +105,7 @@ SQLite 问题不再表现为通用的 `INTERNAL`，而是三个稳定代码：
 
 ### 默认只读与写入闸门
 
-只有 `sitemap submit`、`yandex recrawl` 和 `indexnow submit` 可以改变提供方状态。它们分两步执行：
+只有 `sitemap submit`、`bing submit`、`yandex recrawl` 和 `indexnow submit` 可以改变提供方状态。它们分两步执行：
 
 1. 设置足够长的随机 `LV24_SEO_WRITE_SECRET`，然后带 `--allow-write` 且不带 `--confirm` 运行命令。
    它会返回计划，包含 `data.plan`、`data.plan_hash`、`data.confirm_token` 和 `meta.dry_run: true`，
@@ -118,8 +118,9 @@ SQLite 问题不再表现为通用的 `INTERNAL`，而是三个稳定代码：
 `/srv/site/data`，即使 shell 在别处。没有数据目录时仍会应用，但信封会警告：在令牌五分钟有效期内
 没有重放保护；试运行不打开账本，也不创建数据库。
 
-Bing 站点地图提交和 IndexNow 会真正写入。GSC sitemap submit、Bing 站点地图删除和 Yandex
-recrawl 返回 `WRITE_DISABLED`，不会假装提供方调用已经发生。
+Bing 站点地图提交、Bing URL 提交和 IndexNow 会真正写入。Bing URL 提交报告 `accepted`，而不是已索引，
+因为 `SubmitUrlbatch` 没有按 URL 的状态。GSC sitemap submit、Bing 站点地图删除和 Yandex recrawl 返回
+`WRITE_DISABLED`，不会假装提供方调用已经发生。
 
 ### 日志
 
@@ -149,6 +150,7 @@ recrawl 返回 `WRITE_DISABLED`，不会假装提供方调用已经发生。
 | Sitemap | `sitemap submit` | 受控写入；Bing `SubmitFeed` 已接通，GSC 提交仍返回 `WRITE_DISABLED`。 |
 | Yandex Webmaster | `yandex queries`, `yandex indexing`, `yandex recrawl` | 查询只读；recrawl 是受控写入。`queries` 保留 `avg_click_position`、`query_id` 和 `extra_indicators`；`indexing` 合并历史系列并报告 `site_problems`。 |
 | IndexNow | `indexnow submit` | 受控写入，提交显式 URL 或从项目站点地图读取的 URL。 |
+| Bing | `bing submit`, `bing sitemaps`, `bing issues`, `bing quota` | `submit` 是受控的 `SubmitUrlbatch` 写入；其余三个读取配额、站点地图源和抓取问题。 |
 | Crawl and audit | `crawl` | 与提供方无关；配置了存储时保存本地页面和问题。 |
 | CWV | `cwv collect` | 按 URL 和设备查询 CrUX 并持久化字段 p75 行；PSI 实验室行会返回但绝不存储。 |
 | Reports | `report weekly`, `report diff` | `weekly` 保存本地快照；`diff` 只读。 |
@@ -159,7 +161,7 @@ recrawl 返回 `WRITE_DISABLED`，不会假装提供方调用已经发生。
 | Portfolio | `portfolio list` | 只读汇总一个目录下的本地项目；不调用提供方、不读取令牌、不写入。 |
 | Agents and MCP | `mcp serve`, `install`, `export tools`, `export skills` | 主机配置、生成文件或本地服务器。 |
 
-CLI 有 22 个顶层命令：15 个组和 7 个命令（`version`、`doctor`、`init`、`properties`、`stats`、`crawl`、`install`）。
+CLI 有 23 个顶层命令：16 个组和 7 个命令（`version`、`doctor`、`init`、`properties`、`stats`、`crawl`、`install`）。
 
 ## 示例
 
@@ -200,6 +202,11 @@ lv24-seo yandex indexing --json
 ```bash
 lv24-seo sitemap submit --provider bing --allow-write --json
 lv24-seo sitemap submit --provider bing --allow-write --confirm TOKEN --json
+lv24-seo bing submit --url https://example.com/page --allow-write --json
+lv24-seo bing submit --url https://example.com/page --allow-write --confirm TOKEN --json
+lv24-seo bing quota --json
+lv24-seo bing sitemaps --json
+lv24-seo bing issues --json
 lv24-seo indexnow submit --from-sitemap --allow-write --json
 lv24-seo indexnow submit --from-sitemap --allow-write --confirm TOKEN --json
 ```
@@ -207,7 +214,12 @@ lv24-seo indexnow submit --from-sitemap --allow-write --confirm TOKEN --json
 `sitemap submit` 的 `--provider` 默认为 `gsc`；`bing` 从 `providers.bing.site` 或 `--property` 取站点，
 从 `--url` 或 `<project.base_url>/sitemap.xml` 取站点地图，从 `bing_api_key` 秘密取密钥。计划需要
 `--allow-write` 和 `LV24_SEO_WRITE_SECRET`，在不调用 Bing 的情况下生成令牌；应用发送审核后的令牌，
-并把声明记入幂等账本。`indexnow submit --from-sitemap` 在计划阶段读取站点地图，并从
+并把声明记入幂等账本。`bing submit` 是原生 URL 写入：URL 来自可重复的 `--url` 和/或 `--from-sitemap`，
+计划报告 URL 数、500 URL 批次数和剩余配额，应用在每日和每月配额预检后调用 `SubmitUrlbatch`。批次成功
+没有按 URL 的状态，因此结果说 `accepted`，而不是已索引，重复 URL 可能消耗配额。`bing quota` 报告
+`daily_remaining` 和 `monthly_remaining`，不是总量；月度窗口可能先耗尽，重置时间表未记录。
+`bing sitemaps` 显示源 URL、提供商状态、最后抓取和 URL 数，但没有按 URL 的错误；`bing issues` 解码
+抓取问题位掩码，没有严重性或日期。`indexnow submit --from-sitemap` 在计划阶段读取站点地图，并从
 `providers.bing.site`、`providers.bing.indexnow_key` 和 `providers.bing.indexnow_key_location` 解析
 主机、密钥和密钥位置。`<sitemapindex>` 限制为根加五个子站点地图和 10,000 个 URL；显式 `--url` 先合并，
 主机外 URL 被跳过。应用会重新获取站点地图，如果 URL 集合变化，则以 `CONFIRM_REQUIRED` 使令牌失效。
@@ -325,4 +337,4 @@ lv24-seo export skills --out skills/
 - [MCP 与智能体技能](/zh/mcp/)
 - [故障排查](/zh/troubleshooting/)
 
-Source: `_source/engine-cli.md`, `_source/engine-mcp.md`, `_source/engine-releases-0.5.2.md`, `_source/engine-releases-0.5.3.md`, `_source/engine-releases-0.6.0.md`, `_source/engine-releases-0.7.0.md`, `_source/engine-releases-0.8.0.md`, `_source/engine-releases-0.9.0.md`; 引擎仓库中 0.9.0 的 `--help` 输出。
+Source: `_source/engine-cli.md`, `_source/engine-mcp.md`, `_source/engine-releases-0.5.2.md`, `_source/engine-releases-0.5.3.md`, `_source/engine-releases-0.6.0.md`, `_source/engine-releases-0.7.0.md`, `_source/engine-releases-0.8.0.md`, `_source/engine-releases-0.9.0.md`, `_source/engine-releases-0.10.0.md`; 引擎仓库中 0.10.0 的 `--help` 输出。
