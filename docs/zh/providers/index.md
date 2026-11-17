@@ -23,7 +23,7 @@ description: LV24 SEO Optimizer 的提供商能力矩阵、认证、配额、数
 | 自有抓取 | 页面、问题、链接图、站点地图覆盖 | 无 | 无 | 本地 | 当前运行 |
 | 日志 | 对 nginx JSON 访问日志按 User-Agent 做机器人分诊；不能证明是已验证的爬虫 | 无 | 本地文件 | 本地 | 日志窗口 |
 
-GA4 是可选的集成点，不在默认路径中。随版本提供的提供商是 GSC、Yandex Webmaster、Yandex Metrika、Bing、CrUX 和 PSI。付费 SERP 或外链适配器（DataForSEO、SerpApi 等）仅处于计划或文档阶段；0.11.0 不随版本提供任何此类适配器。
+GA4 是可选的集成点，不在默认路径中。随版本提供的提供商是 GSC、Yandex Webmaster、Yandex Metrika、Bing、CrUX 和 PSI。付费 SERP 或外链适配器（DataForSEO、SerpApi 等）仅处于计划或文档阶段；0.12.2 不随版本提供任何此类适配器。
 
 ## 认证
 
@@ -105,6 +105,15 @@ pip install "lv24-seo[secrets]"
 | `psi_audits_cap` | Lighthouse 审计列表被限制为 100 行 |
 | `indexnow_accepted_pending` | IndexNow 返回 `202`；引擎仍需验证密钥 |
 | `recrawl_quota_exceeded` | Yandex 重新抓取遇到 `429`；剩余 URL 在 `not_attempted` 中 |
+| `no_per_url_index_count` | 提供商不提供逐 URL 索引计数；`indexed_total` 为 `null` |
+| `bing_no_per_url_index_status` | Bing `GetUrlInfo` 只报告抓取状态，不是索引判定 |
+| `yandex_no_per_url_index_status` | Yandex 不提供逐 URL 索引判定 |
+| `indexnow_no_status_api` | IndexNow 没有状态 API；`200` 表示已接受 |
+| `site_scan_no_api` | Bing Site Scan 没有公开 API；引擎不自动化它 |
+| `gsc_indexed_count_deprecated` | GSC 站点地图 `contents[].indexed` 聚合已弃用 |
+| `bing_quota_reset_undocumented` | Bing 未公开每月提交配额的重置时间 |
+| `quota_exhausted` | 运行没有剩余的数据源或本地配额；没有提交任何内容 |
+| `write_secret_missing` | 缺少 `LV24_SEO_WRITE_SECRET`，应用会被拒绝 |
 | `token_expiring` | 凭据即将过期 |
 | `paid_provider` | 该行来自付费适配器 |
 | `partial_response` | 提供商返回了不完整的响应 |
@@ -123,6 +132,25 @@ pip install "lv24-seo[secrets]"
 
 **IndexNow。** 密钥 `[A-Za-z0-9-]{8,128}` 在规划前验证；同主机 `keyLocation` 限制目录。`200` 为 accepted，`202` 为 accepted-pending，`400` 为格式，`403` 为缺失/不匹配的密钥文件并带精确 URL，`422` 为主机/密钥不匹配，`429` 为配额/垃圾提交。密钥绝不回显。
 
+## 索引自动化
+
+`indexing status|run|history` 为每个数据源和 URL 维护一个本地队列（`indexing_state`，模式 v5），并在最新配额内规划提交和检查。`indexing run` 默认读取项目 sitemap（根加五个子文档，10,000 个 URL），并合并显式 `--url`；站外 URL 跳过，每个上限都会报告。
+
+| 数据源 | 提交路径 | 配额来源 | 逐 URL 索引检查 | 诚实限制 |
+|---|---|---|---|---|
+| Bing | `SubmitUrlbatch`，每次 500 个 URL | `GetUrlSubmissionQuota`：`daily_remaining` / `monthly_remaining`（剩余量，不是总量） | `GetUrlInfo` 只给 `http_status` 和 `last_crawled_date` | `bing_no_per_url_index_status`、`no_per_url_index_count`、`site_scan_no_api`、`bing_quota_reset_undocumented` |
+| Yandex | `recrawl/queue`，每个请求一个 URL | `recrawl/quota`：`daily_quota` / `quota_remainder` | 无 | `yandex_no_per_url_index_status`、`no_per_url_index_count`、`one_url_per_call` |
+| IndexNow | 一次 POST，最多 10,000 个 URL | 本地 UTC 日计数器，受 `[indexing].indexnow_daily_limit` 限制（默认 1,000） | 无 | `indexnow_no_status_api`、`no_per_url_index_count`；`200` 是已接受，不是已索引 |
+| GSC | 不用于提交 | 本地 UTC 日计数器，受 `[indexing].gsc_inspect_daily_limit` 限制（默认 2,000） | URL Inspection：`PASS` / `Submitted and indexed` → `indexed`；`NEUTRAL` / `FAIL` → `not_indexed`；其他为 `unknown` | 单独的站点地图聚合带 `gsc_indexed_count_deprecated` |
+
+优先级：先从未提交的 URL，再是 sitemap `lastmod` 晚于 `last_submitted_at` 的 URL，然后是 `last_checked_at` 早于 `check_interval_days` 的 URL。`last_submitted_at` 晚于 `lastmod` 的 URL 会被跳过，除非使用 `--force`。不带 `--allow-write` 时只检查和规划；带上后引擎重新读取配额、校验计划哈希、消费内部确认令牌，并为每个数据源写入一行 `indexing_runs`。重放同一个确认令牌会返回 `skipped`/`duplicate`，不会新增队列条目或 `indexing_runs` 行。
+
+索引计数保持诚实：只有 GSC URL Inspection 提供逐 URL 判定。GSC 站点地图 `contents[].indexed` 聚合单独作为 `indexed_total` 报告，并始终标记 `gsc_indexed_count_deprecated`。Bing、Yandex 和 IndexNow 返回 `indexed_total: null` 并带 `no_per_url_index_count`；零永远不会被渲染成“全部已索引”。Bing Site Scan 没有公开 API（`site_scan_no_api`）。
+
+计划提交需要 `[indexing] enabled = true` **以及** 调度器启动任务时的环境中的 `LV24_SEO_WRITE_SECRET`。生成的 `lv24-seo-indexing` 命令包含 `--allow-write`，但永远不包含密钥；`indexing status` 会在下一次应用以 `WRITE_DISABLED` 失败前报告 `write_secret_present` 和 `write_secret_missing`。参见[自动化与投递](/zh/automation/)。
+
+2026-11-17 对 `lv24.by` 运行 `indexing status --live`：Bing 每日剩余 99 / 每月 1399，Yandex 150，GSC 0/2000，IndexNow 0/1000，`write_secret_present: true`。首次运行提交了 5 个 Bing 和 5 个 IndexNow URL，检查了 15 个 GSC URL（3 个已索引）；Yandex POST 在数据源侧返回 HTTP 504，由每日任务重试。
+
 ## 站点地图范围
 
 站点地图的 `<loc>` 只有在其 origin 处于范围内时才会被抓取：起始站点地图的 origin，加上每个实际读取文档的最终 origin。因此重定向到 CDN 镜像仍在范围内，而指向无关主机的 loc 则不在。被拒绝的 loc 会被丢弃并一次性报告为 `off_origin_loc`，所以没有外部受限抓取器的读取器也绝不会沿着站点地图走到另一个站点。索引中的子站点地图也应用同样的 origin 检查。
@@ -139,4 +167,4 @@ pip install "lv24-seo[secrets]"
 
 调度器生成器在后端支持时应用同一时区。Cron 依赖 `CRON_TZ`，systemd 把时区写入 `OnCalendar`，Task Scheduler XML 携带固定偏移并给出 DST 警告。参见[自动化与投递](/zh/automation/)。
 
-Source: `_source/engine-data-sources.md`, `_source/engine-cli.md`, `_source/engine-config.md`, `_source/engine-releases-0.11.0.md`, `_source/engine-releases-0.10.0.md`, `_source/engine-releases-0.5.3.md`.
+Source: `_source/engine-data-sources.md`, `_source/engine-cli.md`, `_source/engine-config.md`, `_source/engine-releases-0.12.2.md`, `_source/engine-releases-0.12.0.md`, `_source/engine-releases-0.11.0.md`, `_source/engine-releases-0.10.0.md`, `_source/engine-releases-0.5.3.md`.

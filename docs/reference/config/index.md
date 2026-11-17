@@ -151,6 +151,29 @@ the single source of truth for every rendered surface.
 | `data_dir` | path | `"data"` | Local directory for `seo.sqlite3` and engine state. A relative value written in the file resolves against the config file's parent; the built-in default resolves against the working directory. `LV24_SEO_DATA_DIR` overrides the file and stays process-scoped. |
 | `raw_retention_days` | integer ≥ 0 | `90` | Reserved. No raw archives are written, so pruning is a logged no-op. |
 
+### `[indexing]`
+
+Quota-aware submission and index-check automation is disabled by default. `enabled = true` is
+required before `lv24-seo indexing run --allow-write` applies anything; without it the run is a
+read-only plan. `providers` selects the engines that participate; a provider that is not configured
+is reported as `not_configured`, never guessed.
+
+| Key | Default | Meaning |
+|---|---|---|
+| `enabled` | `false` | Explicit opt-in for provider submissions. |
+| `providers` | `["bing", "yandex", "gsc", "indexnow"]` | Engines included in `--provider all`. |
+| `max_submit_per_run` | `500` | Global submission cap for one run. |
+| `max_inspect_per_run` | `20` | GSC URL Inspection / Bing `GetUrlInfo` checks per run. |
+| `stale_days` | `7` | `indexing status` marks state older than this as `stale`. |
+| `check_interval_days` | `7` | Re-check cadence; also sets `next_check_at`. |
+| `gsc_inspect_daily_limit` | `2000` | Local UTC-day cap (GSC exposes no remaining count). |
+| `indexnow_daily_limit` | `1000` | Local UTC-day cap for IndexNow submissions. |
+
+The engine still enforces provider caps at run time: Bing's remaining daily/monthly quota, Yandex's
+`quota_remainder`, 500 URLs per Bing batch and one URL per Yandex request. A scheduled
+`lv24-seo indexing run --allow-write` also needs `LV24_SEO_WRITE_SECRET` in the host scheduler's
+environment; see [Automation and delivery](/automation/).
+
 ## Data directory
 
 `storage.data_dir` has three scopes:
@@ -200,8 +223,10 @@ then the OS keychain, then an explicitly enabled file fallback.
 | Telegram | `telegram` | `LV24_SEO_TELEGRAM_BOT_TOKEN` |
 
 Gated writes also need `LV24_SEO_WRITE_SECRET`, a long random value kept in the same shell as the
-apply command. `auth status` reports presence and source, never a value, and does not verify
-permissions or make a network call. `auth login` prints manual instructions only.
+apply command. A scheduled `indexing run --allow-write` needs it in the scheduler environment, not on
+the command line; the generated crontab/unit/XML never contains the value. `auth status` reports
+presence and source, never a value, and does not verify permissions or make a network call. `auth
+login` prints manual instructions only.
 
 ## Timezone and locale
 
@@ -307,6 +332,16 @@ user_agent = "lv24-seo/0.1"
 [storage]
 data_dir = "./data"      # relative to this file; absolute values and LV24_SEO_DATA_DIR are used as-is
 raw_retention_days = 90
+
+[indexing]
+enabled = false          # explicit opt-in for provider submissions
+providers = ["bing", "yandex", "gsc", "indexnow"]
+max_submit_per_run = 500
+max_inspect_per_run = 20
+stale_days = 7
+check_interval_days = 7
+gsc_inspect_daily_limit = 2000
+indexnow_daily_limit = 1000
 ```
 
 Delivery stays off until `enabled = true` is set on a channel. Keep the SMTP password and the
@@ -319,4 +354,4 @@ Telegram bot token in the secret store, not in this file.
 - [Automation and delivery](/automation/)
 - [Troubleshooting](/troubleshooting/)
 
-Source: `_source/engine-config.md`, `_source/engine-data-sources.md`, `_source/engine-releases-0.5.2.md`; 0.5.2 config model in the engine repository.
+Source: `_source/engine-config.md`, `_source/engine-data-sources.md`, `_source/engine-releases-0.12.0.md`, `_source/engine-releases-0.5.2.md`; 0.12.2 config model in the engine repository.

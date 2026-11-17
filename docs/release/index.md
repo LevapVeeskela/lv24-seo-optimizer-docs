@@ -1,6 +1,6 @@
 ---
 title: Releases and updates
-description: Engine 0.11.0 and desktop 0.9.0 releases, the 0.10.0, 0.9.0, 0.8.0 and older history, signed auto-update matrix, release pipeline, version pinning and rollback.
+description: Engine 0.12.2 and desktop 0.9.0 releases, the 0.12.0 indexing automation, 0.11.0, 0.10.0 and older history, signed auto-update matrix, release pipeline, version pinning and rollback.
 ---
 
 # Releases and updates
@@ -9,10 +9,55 @@ The current releases are:
 
 | Product | Version | Released | Notes |
 |---|---|---|---|
-| Engine | `lv24-seo 0.11.0` | 2026-11-17 | Full-platform read depth: GSC inspection and sitemaps, Yandex events/sitemaps/recrawl, Bing page/traffic/crawl/URL/joins, organic Metrika, CWV audits/history; 24 CLI commands and 12 MCP tools |
+| Engine | `lv24-seo 0.12.2` | 2026-11-17 | Quota-aware indexing automation across Bing, Yandex, IndexNow and GSC, the 0.12.1 client-lifecycle fix and the 0.12.2 Yandex 5xx mapping; 25 CLI commands, 12 MCP tools and schema v5 |
 | Desktop | `0.9.0` | 2026-11-17 | Read-only Diagnostics screen with five tabs and 18 allow-listed commands, bundled engine 0.11.0 and `MIN_ENGINE_VERSION` 0.11.0 |
 
-The desktop version and the engine version are independent, but the desktop pins an exact engine and refuses one below its minimum. `0.9.0` bundles `0.11.0` and requires at least `0.11.0`, so an installed `0.10.x` engine is reported as incompatible.
+The desktop version and the engine version are independent, but the desktop pins an exact engine and refuses one below its minimum. `0.9.0` bundles `0.11.0` and requires at least `0.11.0`, so an installed `0.10.x` engine is reported as incompatible. Engine `0.12.2` passes that gate; indexing automation stays CLI/scheduler-only until desktop `0.9.1` adds the status card.
+
+## Engine 0.12.2
+
+Released on 2026-11-17. Three releases on the same day add quota-aware indexing automation and fix
+two indexing defects. The CLI now has 25 top-level commands (18 groups + 7 commands), the MCP surface
+stays at 12 tools, and the SQLite schema moves to version 5.
+
+### 0.12.0 - quota-aware indexing automation
+
+What changed:
+
+- **`indexing` group.** `indexing status [--provider all|bing|yandex|gsc|indexnow] [--limit 50] [--live] [--json]`, `indexing run [--provider ...] [--from-sitemap|--sitemap-url ABS|--url ABS ...] [--max-submit N] [--max-inspect N] [--force] [--allow-write] [--json]` and `indexing history [--limit 20] [--json]`. The queue is read from the project sitemap by default (root plus five child documents, 10,000 URLs) and merged with explicit `--url` values; off-host URLs are skipped and every cap is reported (`queue_cap`, `sitemap_truncated`, `sitemap_off_host`).
+- **Priority and idempotency.** Never-submitted URLs first, then URLs whose sitemap `lastmod` is newer than `last_submitted_at`, then URLs whose `last_checked_at` is older than `check_interval_days`. A URL whose `last_submitted_at` is newer than its `lastmod` is skipped unless `--force` is set. Without `--allow-write` the run only checks and plans; with it the engine re-reads quotas, rebuilds the plan, verifies the plan hash, mints and consumes an internal confirm token through `WriteGate`, and records one `indexing_runs` row per provider.
+- **Quota-aware planning.** Bing reads `GetUrlSubmissionQuota` (remaining daily/monthly; 500 URLs per batch; the monthly reset is undocumented). Yandex reads `recrawl/quota` `quota_remainder` and sends one request per URL. GSC URL Inspection is capped by a local `quota_usage` counter (default 2,000/day/site) because Google exposes no remaining count. IndexNow has a local daily cap (default 1,000) and a 10,000-URL POST bound.
+- **Honest index counts.** GSC URL Inspection is the only per-URL verdict (`PASS`/`Submitted and indexed` → `indexed`; `NEUTRAL`/`FAIL` → `not_indexed`; anything else `unknown`). The GSC sitemap `contents[].indexed` aggregate is reported separately as `indexed_total` and always tagged `gsc_indexed_count_deprecated`. Bing `GetUrlInfo` yields `http_status` and `last_crawled_at`, so a crawled URL is `crawled`, not `indexed` (`bing_no_per_url_index_status`). Yandex and IndexNow have no per-URL status; their `indexed_total` is `null` with `no_per_url_index_count`. Bing Site Scan has no public API, so every Bing entry carries `site_scan_no_api`.
+- **Status.** `indexing status` reports per provider `urls`, `submitted`, `crawled`, `queued`, `indexed` (sample), `indexed_total` (GSC aggregate), `pending`, `quota` and `limitations`. `write_secret_present` reports only whether `LV24_SEO_WRITE_SECRET` is set; the value is never read into the envelope. `--live` reads Bing and Yandex quotas now.
+- **Scheduler and store.** `schedule install --kind indexing` renders a daily `lv24-seo-indexing` job at `04:00` running `indexing run --allow-write --config <abs> --json` for cron, systemd and Windows Task Scheduler. Schema v5 adds `indexing_state`, `indexing_runs` and `quota_usage`; existing databases migrate in place, idempotently and append-only. `[indexing]` config: `enabled=false`, `providers=["bing","yandex","indexnow","gsc"]`, `max_submit_per_run=500`, `max_inspect_per_run=20`, `stale_days=7`, `check_interval_days=7`, `gsc_inspect_daily_limit=2000`, `indexnow_daily_limit=1000`.
+
+### 0.12.1 - indexing client lifecycle
+
+`indexing run` reported `internal_error` for Bing and Yandex because the indexing engine closed a provider client between the quota read and the checks/submit phase, while `SeoService` kept that closed client in its cache. `SeoService` no longer hands the engine a `close_client` callback; it owns and caches provider clients for the whole run, so the engine drops its local reference instead of closing a shared client. A regression test uses a closable fake Yandex client. `indexing status --live` was unaffected, and there is no API, CLI, schema or config change.
+
+### 0.12.2 - Yandex recrawl 5xx mapping
+
+`yandex recrawl` and `indexing run --provider yandex` reported `UPSTREAM_UNAVAILABLE: invalid JSON response from recrawl/queue` when Yandex returned a 5xx gateway timeout with an empty body. `YandexWebmasterClient.recrawl_enqueue` now checks `status >= 500` first and raises `UPSTREAM_UNAVAILABLE` with the HTTP status and `retryable: true`; `202`, `409 URL_ALREADY_ADDED` and `429 QUOTA_EXCEEDED` behaviour is unchanged. An offline 504-with-empty-body test asserts the message never says "invalid JSON".
+
+Verification recorded for this release:
+
+| Check | Result |
+|---|---|
+| PyPI / npm / MCP Registry | `lv24-seo 0.12.0`, `0.12.1` and `0.12.2` published |
+| Release workflow | run `44155371533` (0.12.0), `44157740063` (0.12.1) and `44160332890` (0.12.2) green |
+| `indexing status --live` (lv24.by) | Bing 99 daily / 1399 monthly remaining, Yandex 150, GSC 0/2000 used, IndexNow 0/1000, `write_secret_present: true` |
+| First `indexing run` (lv24.by) | 5 Bing + 5 IndexNow submissions; 15 GSC URLs checked, 3 indexed; the Yandex POST returned HTTP 504 provider-side and is retried by the daily job |
+| `schedule install --kind indexing` | installed `lv24-seo-indexing` at 04:00 |
+| Local gate | `ruff check`, `ruff format --check`, `mypy src`, registry `--check` and offline `pytest` green on each tagged commit |
+
+Known limits in 0.12.2:
+
+- Only GSC exposes a per-URL index verdict. Bing, Yandex and IndexNow report `indexed_total: null` with `no_per_url_index_count`; GSC's sitemap aggregate is deprecated and kept separate.
+- Bing Site Scan has no public API; the desktop only opens the official page.
+- IndexNow has no status API and no published quota; the local daily cap is a conservative guard.
+- A scheduled apply needs `[indexing] enabled=true` **and** `LV24_SEO_WRITE_SECRET` in the host scheduler environment; the generated command never contains the secret.
+- `indexing run` checks at most `max_inspect_per_run` URLs per run (default 20); a large site is sampled over several runs and `meta.truncated` says so.
+- Yandex recrawl can return a provider-side 5xx. `0.12.2` reports it honestly as `UPSTREAM_UNAVAILABLE`; there is no client-side retry, so the daily job retries on its next run.
 
 ## Engine 0.11.0
 
@@ -958,6 +1003,9 @@ ZIP on Windows). After that, the `0.9.0` installation can auto-update to later r
 
 ## Earlier releases
 
+- **Engine 0.11.0** added full-platform read depth: GSC URL Inspection, sitemaps and filtered search
+  analytics; Yandex events/sitemaps/history/queue and gated recrawl; Bing page/traffic/crawl/URL/joins;
+  organic Metrika; CrUX history and PSI audits; 24 CLI commands and 12 tools.
 - **Engine 0.10.0** turned Bing URL submission into a gated `SubmitUrlbatch` write and added read-only
   quota, sitemap-feed and crawl-issue views, 23 CLI commands and 12 tools.
 - **Desktop 0.8.0** added Bing URL submission and read-only sitemap, crawl-issue and quota cards,
@@ -1024,4 +1072,4 @@ those protections system-wide.
 
 See [Security and privacy](/security/) for updater trust and [Architecture](/architecture/) for the sidecar layout.
 
-Source: `_source/engine-releases-0.11.0.md`, `_source/engine-releases-0.10.0.md`, `_source/engine-releases-0.9.0.md`, `_source/engine-releases-0.8.0.md`, `_source/engine-releases-0.7.0.md`, `_source/engine-releases-0.6.0.md`, `_source/engine-releases-0.5.3.md`, `_source/engine-releases-0.5.2.md`, `_source/desktop-releases-0.9.0.md`, `_source/desktop-releases-0.8.0.md`, `_source/desktop-releases-0.7.0.md`, `_source/desktop-releases-0.6.0.md`, `_source/desktop-releases-0.5.0.md`, `_source/desktop-releases-0.4.0.md`, `_source/desktop-releases-0.3.0.md`, `_source/desktop-releases-0.2.3.md`, `_source/desktop-releases-0.2.2.md`, `_source/desktop-releases-0.2.1.md`, `_source/desktop-releases-0.2.0.md`, `_source/desktop-release.md`, `_source/desktop-security.md`.
+Source: `_source/engine-releases-0.12.2.md`, `_source/engine-releases-0.12.1.md`, `_source/engine-releases-0.12.0.md`, `_source/engine-releases-0.11.0.md`, `_source/engine-releases-0.10.0.md`, `_source/engine-releases-0.9.0.md`, `_source/engine-releases-0.8.0.md`, `_source/engine-releases-0.7.0.md`, `_source/engine-releases-0.6.0.md`, `_source/engine-releases-0.5.3.md`, `_source/engine-releases-0.5.2.md`, `_source/desktop-releases-0.9.0.md`, `_source/desktop-releases-0.8.0.md`, `_source/desktop-releases-0.7.0.md`, `_source/desktop-releases-0.6.0.md`, `_source/desktop-releases-0.5.0.md`, `_source/desktop-releases-0.4.0.md`, `_source/desktop-releases-0.3.0.md`, `_source/desktop-releases-0.2.3.md`, `_source/desktop-releases-0.2.2.md`, `_source/desktop-releases-0.2.1.md`, `_source/desktop-releases-0.2.0.md`, `_source/desktop-release.md`, `_source/desktop-security.md`.

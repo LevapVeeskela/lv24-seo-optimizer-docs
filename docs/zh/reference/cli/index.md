@@ -24,13 +24,13 @@ description: lv24-seo 命令行的命令、全局参数、JSON 信封、退出�
 使用 `--json` 时，命令只输出一个 JSON 文档，不会输出其他内容：
 
 ```json
-{ "ok": true, "data": {}, "meta": { "version": "0.11.0", "duration_ms": 812 }, "warnings": [] }
+{ "ok": true, "data": {}, "meta": { "version": "0.12.2", "duration_ms": 812 }, "warnings": [] }
 ```
 
 失败的命令使用相同结构，但 `ok: false`，并用 `error` 对象代替 `data`：
 
 ```json
-{ "ok": false, "error": { "code": "AUTH_REQUIRED", "message": "Google Search Console token is missing", "retryable": false, "next_action": "lv24-seo auth login --provider gsc" }, "meta": { "version": "0.11.0" }, "warnings": ["gsc: token missing"] }
+{ "ok": false, "error": { "code": "AUTH_REQUIRED", "message": "Google Search Console token is missing", "retryable": false, "next_action": "lv24-seo auth login --provider gsc" }, "meta": { "version": "0.12.2" }, "warnings": ["gsc: token missing"] }
 ```
 
 - `data` 因命令而异。`meta` 始终包含 `version`，通常还会加入 `duration_ms`、`truncated`、
@@ -108,7 +108,7 @@ SQLite 问题不再表现为通用的 `INTERNAL`，而是三个稳定代码：
 
 ### 默认只读与写入闸门
 
-只有 `sitemap submit`、`bing submit`、`yandex recrawl` 和 `indexnow submit` 可以改变提供方状态。它们分两步执行：
+只有 `sitemap submit`、`bing submit`、`yandex recrawl`、`indexnow submit` 和 `indexing run --allow-write` 可以改变提供方状态。它们分两步执行：
 
 1. 设置足够长的随机 `LV24_SEO_WRITE_SECRET`，然后带 `--allow-write` 且不带 `--confirm` 运行命令。
    它会返回计划，包含 `data.plan`、`data.plan_hash`、`data.confirm_token` 和 `meta.dry_run: true`，
@@ -156,6 +156,7 @@ Bing 站点地图提交、Bing URL 提交和 IndexNow 会真正写入。Bing URL
 | IndexNow | `indexnow submit` | 受控写入，提交显式 URL 或从项目站点地图读取的 URL。 |
 | Bing | `bing submit`, `bing pages`, `bing traffic`, `bing crawl`, `bing urlinfo`, `bing children`, `bing users`, `bing sites`, `bing joins`, `bing sitemaps`, `bing issues`, `bing quota` | `submit` 是受控的 `SubmitUrlbatch` 写入；其余读取页面、流量、抓取、URL、关联、站点地图、问题和配额。 |
 | Crawl and audit | `crawl` | 与提供方无关；配置了存储时保存本地页面和问题。 |
+| Indexing | `indexing status`, `indexing run`, `indexing history` | `status` 和 `history` 只读；`run` 默认只规划，只有带 `--allow-write` 才在最新配额内提交。 |
 | CWV | `cwv collect`, `cwv audits`, `cwv history` | `collect` 持久化 CrUX 字段 p75 行；`audits` 和 `history` 是只读 PSI/CrUX 读取。 |
 | Reports | `report weekly`, `report diff` | `weekly` 保存本地快照；`diff` 只读。 |
 | Scheduling | `schedule print`, `schedule install`, `schedule status`, `schedule uninstall` | `print` 只渲染；`install` 和 `uninstall` 默认只生成计划，只有 `--allow-write` 才写入；`status` 只读。 |
@@ -165,7 +166,7 @@ Bing 站点地图提交、Bing URL 提交和 IndexNow 会真正写入。Bing URL
 | Portfolio | `portfolio list` | 只读汇总一个目录下的本地项目；不调用提供方、不读取令牌、不写入。 |
 | Agents and MCP | `mcp serve`, `install`, `export tools`, `export skills` | 主机配置、生成文件或本地服务器。 |
 
-CLI 有 24 个顶层命令：17 个组和 7 个命令（`version`、`doctor`、`init`、`properties`、`stats`、`crawl`、`install`）。
+CLI 有 25 个顶层命令：18 个组和 7 个命令（`version`、`doctor`、`init`、`properties`、`stats`、`crawl`、`install`）。
 
 ## 示例
 
@@ -278,6 +279,40 @@ lv24-seo indexnow submit --from-sitemap --allow-write --confirm TOKEN --json
 `AUTH_REQUIRED`。提供商状态映射 `200` accepted、`202` accepted-pending、`400` 格式、`403` 缺失/不匹配
 的密钥文件、`422` 主机/密钥不匹配和 `429` 配额/垃圾提交；密钥绝不回显。
 
+### 索引自动化
+
+```bash
+lv24-seo indexing status --live --json
+lv24-seo indexing status --provider bing --limit 50 --json
+lv24-seo indexing run --from-sitemap --max-submit 20 --max-inspect 5 --json
+lv24-seo indexing run --from-sitemap --allow-write --json
+lv24-seo indexing history --limit 20 --json
+```
+
+`indexing status` 只读。`--live` 读取 Bing `GetUrlSubmissionQuota` 和 Yandex `recrawl/quota`；不带时
+显示上次记录的配额并带 `quota_not_live`。GSC 和 IndexNow 使用本地 UTC 日计数器，因为两者都不提供
+剩余量接口。每个数据源条目包含 `urls`、`submitted`、`inspected`、`indexed`、`not_indexed`、
+`crawled`、`queued`、`pending`、`stale`、`quota` 和 `limitations`，以及 `write_secret_present`。
+
+`indexing run` 从 `<project.base_url>/sitemap.xml`（10,000 个 URL 和六个 sitemap 文档）和/或可重复的
+`--url` 构建同主机队列，然后按优先级规划：从未提交、`lastmod` 晚于 `last_submitted_at`、检查早于
+`check_interval_days`，最后是其余。检查在两种模式下都只读：GSC URL Inspection
+（`PASS`/`Submitted and indexed` → `indexed`；`NEUTRAL`/`FAIL` → `not_indexed`）和 Bing
+`GetUrlInfo`（有抓取日期时为 `crawled`，否则 `unknown`）。不带 `--allow-write` 时不提交任何内容。
+带上后引擎重新读取配额、校验计划哈希、生成并消费内部确认令牌，并为每个数据源写入一行
+`indexing_runs`。
+
+上限在调用数据源前执行：`max_submit_per_run`（默认 500）、Bing 每日/每月剩余配额、Yandex
+`quota_remainder`、`max_inspect_per_run`（默认 20）、GSC 本地 `gsc_inspect_daily_limit`（2,000）和
+IndexNow 本地 `indexnow_daily_limit`（1,000）。配额耗尽为 `quota_exhausted`，带 `submitted: 0` 和
+`not_attempted`；零绝不表示“全部已索引”。`--allow-write` 需要 `[indexing] enabled = true` 和
+`LV24_SEO_WRITE_SECRET`，否则命令以 `WRITE_DISABLED` 失败。
+
+GSC 站点地图 `contents[].indexed` 聚合单独作为 `indexed_total` 报告，并带
+`gsc_indexed_count_deprecated`。Bing、Yandex 和 IndexNow 不提供逐 URL 索引计数，其 `indexed_total`
+保持 `null` 并带 `no_per_url_index_count`；Bing 还带 `site_scan_no_api`，Yandex 带
+`yandex_no_per_url_index_status`，IndexNow 带 `indexnow_no_status_api`。
+
 ### Core Web Vitals
 
 ```bash
@@ -364,10 +399,12 @@ lv24-seo report diff --markdown
 ### 计划任务
 
 ```bash
-lv24-seo schedule print --cron "0 6 * * 1" --target systemd --json
+lv24-seo schedule print --kind weekly --cron "0 6 * * 1" --target systemd --json
 lv24-seo schedule install --kind weekly --json
 lv24-seo schedule install --kind weekly --allow-write --json
-lv24-seo schedule status --json
+lv24-seo schedule install --kind indexing --json
+lv24-seo schedule install --kind indexing --allow-write --json
+lv24-seo schedule status --kind indexing --json
 lv24-seo schedule uninstall --kind weekly --allow-write --json
 ```
 
@@ -375,9 +412,12 @@ lv24-seo schedule uninstall --kind weekly --allow-write --json
 程序 XML 以及它将运行的命令，带 `dry_run: true` 和 `installed: false`，只有 `--allow-write` 才写入
 （`--print` 仍是计划的别名，并优先于 `--allow-write`）。`status` 只读，报告 `installed`、`outdated`、
 `partial`、`missing` 或 `unknown` 以及每个产物的 `exists`/`matches`。`uninstall` 默认只生成计划，带
-`--allow-write` 时只删除生成的产物；无关 cron 行和任务绝不被触碰。生成的任务会运行
-`report weekly --send --json`。只有简单的 cron 表达式（`M H * * *` 和 `M H * * DOW`）能转换为
-systemd 或 Windows 计划。
+`--allow-write` 时只删除生成的产物；无关 cron 行和任务绝不被触碰。`--kind` 接受 `weekly`、`daily`
+和 `indexing`。报告任务运行 `report weekly --send --json`；`indexing` 任务名为
+`lv24-seo-indexing`，每天 `04:00` 运行，并调用
+`indexing run --allow-write --config <absolute path> --json`。它仍需要 `[indexing] enabled = true`
+和调度器环境中的 `LV24_SEO_WRITE_SECRET`；生成的命令永远不包含密钥。只有简单的 cron 表达式
+（`M H * * *` 和 `M H * * DOW`）能转换为 systemd 或 Windows 计划。
 
 ### MCP 与智能体客户端
 
@@ -423,4 +463,4 @@ lv24-seo export skills --out skills/
 - [MCP 与智能体技能](/zh/mcp/)
 - [故障排查](/zh/troubleshooting/)
 
-Source: `_source/engine-cli.md`, `_source/engine-mcp.md`, `_source/engine-releases-0.11.0.md`, `_source/engine-releases-0.10.0.md`, `_source/engine-releases-0.9.0.md`, `_source/engine-releases-0.8.0.md`, `_source/engine-releases-0.7.0.md`, `_source/engine-releases-0.6.0.md`, `_source/engine-releases-0.5.3.md`; 引擎仓库中 0.11.0 的 `--help` 输出。
+Source: `_source/engine-cli.md`, `_source/engine-mcp.md`, `_source/engine-releases-0.12.2.md`, `_source/engine-releases-0.12.0.md`, `_source/engine-releases-0.11.0.md`, `_source/engine-releases-0.10.0.md`, `_source/engine-releases-0.9.0.md`, `_source/engine-releases-0.8.0.md`, `_source/engine-releases-0.7.0.md`, `_source/engine-releases-0.6.0.md`, `_source/engine-releases-0.5.3.md`; 引擎仓库中 0.12.2 的 `--help` 输出。

@@ -81,7 +81,9 @@ MCP 周报工具会把 `days` 上限设为 90、`lag_days` 上限设为 14，并
 
 引擎 0.10.0 增加 `bing` CLI 组：`bing submit`（原生 `SubmitUrlbatch`，每批 500 个 URL；accepted，不是 indexed）、`bing quota`（每日和每月值是剩余量，不是总量）、`bing sitemaps`（源状态和 URL 数，没有按 URL 的错误）和 `bing issues`（解码后的抓取问题位掩码，没有严重性或日期）。它们都不增加 MCP 工具：接口仍为 12 个，`seo_sitemap_submit` 仍提交站点地图，而不是 URL 批次。
 
-引擎 0.11.0 保持 12 工具接口，并在不增加第 13 个工具的情况下增加读取深度。`seo_indexing_triage` 接受可选 `url`，并在 `data.inspection` 中包含一次 GSC URL Inspection；不带它时工具保留现有输入和诚实限制：该调用不暴露 Google 的 URL 级覆盖。更丰富的 GSC Search Analytics 选择器和 `gsc sitemaps`/`gsc sitemap` 读取仅限 CLI。`seo_recrawl_request` 已接通 Yandex 重新抓取队列。`schemas/tools.json` 因新的 `url` 输入重新生成。
+引擎 0.11.0 保持了 12 工具接口，并在不增加第 13 个工具的情况下增加了读取深度。`seo_indexing_triage` 接受可选 `url`，并在 `data.inspection` 中包含一次 GSC URL Inspection；不带它时工具保留现有输入和诚实限制：该调用不暴露 Google 的 URL 级覆盖。更丰富的 GSC Search Analytics 选择器和 `gsc sitemaps`/`gsc sitemap` 读取仅限 CLI。`seo_recrawl_request` 已接通 Yandex 重新抓取队列。`schemas/tools.json` 因新的 `url` 输入重新生成。
+
+引擎 0.12.x 保持 12 工具接口。配额感知的索引自动化（`indexing status|run|history`）仅限 CLI 和调度器：它不增加索引写入工具，`seo_indexing_triage` 仍是只读分诊入口。模式 v5 在这些命令背后增加本地 `indexing_state`、`indexing_runs` 和 `quota_usage` 表。
 
 `cwv collect` 是 CLI 写入器，不是第 13 个工具：MCP 接口仍为 12。`seo_weekly_report` 读取 CLI 已持久化的字段行，并增加按 URL 模板和设备分组的 `cwv` 分区，最多五个模板。PSI 实验室行绝不存储，因此单独的 `--source psi` 无法填充该分区。
 
@@ -197,4 +199,4 @@ lv24-seo export skills --out .opencode/skills
 - **技术审计。** 用 `seo_crawl_site` 抓取最多 500 个 URL，按规则 id 汇总 critical 和 high 问题。不要把未抓取的 URL 说成失效。
 - **写入请求。** 为这些 URL 准备重新抓取计划，先显示配额。在我批准计划前不要写入任何内容。
 
-Source: `_source/engine-mcp.md`, `_source/engine-skills.md`, `_source/engine-cli.md`, `_source/engine-releases-0.11.0.md`, `_source/engine-releases-0.10.0.md`, `_source/engine-releases-0.9.0.md`, `_source/engine-releases-0.8.0.md`, `_source/engine-releases-0.7.0.md`, `_source/engine-releases-0.6.0.md`, `_source/engine-releases-0.5.3.md`.
+Source: `_source/engine-mcp.md`, `_source/engine-skills.md`, `_source/engine-cli.md`, `_source/engine-releases-0.12.2.md`, `_source/engine-releases-0.12.0.md`, `_source/engine-releases-0.11.0.md`, `_source/engine-releases-0.10.0.md`, `_source/engine-releases-0.9.0.md`, `_source/engine-releases-0.8.0.md`, `_source/engine-releases-0.7.0.md`, `_source/engine-releases-0.6.0.md`, `_source/engine-releases-0.5.3.md`.

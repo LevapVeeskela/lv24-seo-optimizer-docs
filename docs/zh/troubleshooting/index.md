@@ -9,7 +9,7 @@ description: 使用稳定错误码诊断认证、存储、抓取、报告、MCP�
 `PROPERTY_NOT_FOUND` 没有专用退出码。每个 CLI 命令都接受 `--json`：
 
 ```json
-{"ok": false, "error": {"code": "AUTH_REQUIRED", "message": "Google Search Console token is missing", "retryable": false, "next_action": "lv24-seo auth login --provider gsc"}, "meta": {"version": "0.11.0"}, "warnings": ["gsc: token missing"]}
+{"ok": false, "error": {"code": "AUTH_REQUIRED", "message": "Google Search Console token is missing", "retryable": false, "next_action": "lv24-seo auth login --provider gsc"}, "meta": {"version": "0.12.2"}, "warnings": ["gsc: token missing"]}
 ```
 
 MCP 工具以 `structuredContent` 返回同一信封，并在失败时设置 `isError: true`。桌面把
@@ -83,6 +83,21 @@ printf '%s' "$TOKEN" | lv24-seo auth set --provider gsc --stdin
 重放同一令牌返回 `status: skipped` 和 `reason: duplicate`，提供商只被调用一次。试运行不打开
 账本，也不创建数据库。没有数据目录时仍会应用，但信封会警告：在令牌五分钟有效期内没有重放
 保护。崩溃留下的 pending 声明没有 TTL，会被视为进行中，直到操作员释放。
+
+## 索引自动化
+
+`indexing run --allow-write` 是数据源写入。最常见的拒绝都是本地的，发生在任何提交之前：
+
+| 症状 | 原因 | 处理 |
+|---|---|---|
+| `WRITE_DISABLED` | `[indexing] enabled` 为 false，或缺少 `LV24_SEO_WRITE_SECRET` | 在 `seo.toml` 中设置 `enabled = true`，并在同一环境导出密钥 |
+| `quota_exhausted`、`submitted: 0` | Bing 每日/每月、Yandex 剩余、GSC 检查或 IndexNow 本地上限已用完 | 等待重置（`quota.reset`）或运行更小的计划；零绝不表示全部已索引 |
+| 读取配额后出现 `internal_error` | 引擎 `0.12.0` 在阶段之间关闭了缓存的数据源客户端 | 升级到 `0.12.1` 或更新 |
+| `UPSTREAM_UNAVAILABLE` 且带 `recrawl/queue upstream HTTP 5xx` | Yandex 返回网关错误；`0.12.2` 会诚实报告 | 每日任务会重试；没有客户端重试 |
+| `indexed_total: null` 且带 `no_per_url_index_count` | Bing、Yandex 和 IndexNow 没有逐 URL 索引状态 | 用 GSC URL Inspection 获取逐 URL 判定；不要把 null 读成零 |
+| `write_secret_present: false` | 调度器或 shell 看不到密钥 | 放入调度器环境（systemd drop-in、用户环境或 cron 导出），不要放在命令行 |
+
+`indexing status` 只读，在计划前运行是安全的。计划应用还需要 `[indexing] enabled = true`；只安装任务只会规划。生成的 `lv24-seo-indexing` 命令包含 `--allow-write`，但永远不包含密钥。
 
 ## 存储错误 `STORE_*`
 
@@ -161,7 +176,7 @@ lv24-seo install --client vscode --print
 | 症状 | 原因 | 修复 |
 |---|---|---|
 | 文件看起来有效，却提示 “not valid JSON” | UTF-8 BOM，常见于 PowerShell 5.1 | 重写为无 BOM，或删除文件后重试 |
-| `No such command 'mcp'` | 旧构建没有 `mcp serve` | 升级到 0.11.0 |
+| `No such command 'mcp'` | 旧构建没有 `mcp serve` | 升级到 0.12.2 |
 | GUI 客户端无法启动服务器 | 应用不继承 shell 的 `PATH` | 在 `command` 中写绝对 `uvx` 路径 |
 | VS Code 什么都不显示 | `install` 写入 `mcpServers`；VS Code 使用 `servers` | 重命名键或使用 VS Code 专用块 |
 
@@ -176,7 +191,7 @@ npm 包是薄启动器。它把参数转发给已安装的 `lv24-seo` 二进制�
 `uvx --from lv24-seo==<version> lv24-seo`。在 Windows 上，Node 无法用
 `shell: false` 启动 `.cmd` shim；会以 `EINVAL` 失败。
 
-0.11.0 忽略 `lv24-seo.cmd` 和 `.bat` shim，优先使用 `lv24-seo.exe` 或无扩展名二进制，
+从 0.11.0 起，启动器忽略 `lv24-seo.cmd` 和 `.bat` shim，优先使用 `lv24-seo.exe` 或无扩展名二进制，
 然后才回退到 `uvx`。如果启动器仍选错二进制，请设置绝对覆盖：
 
 ```bash
@@ -310,4 +325,4 @@ actual (redacted --json envelope):
 
 写入门禁见[安全与隐私](/zh/security/)，更新器行为见[发布与更新](/zh/release/)。
 
-Source: `_source/engine-troubleshooting.md`, `_source/engine-releases-0.11.0.md`, `_source/engine-releases-0.5.3.md`, `_source/desktop-releases-0.9.0.md`, `_source/desktop-releases-0.2.2.md`, `_source/desktop-releases-0.2.3.md`, `_source/desktop-releases-0.2.1.md`, `_source/desktop-releases-0.2.0.md`, `_source/desktop-security.md`, `_source/desktop-architecture.md`.
+Source: `_source/engine-troubleshooting.md`, `_source/engine-releases-0.12.2.md`, `_source/engine-releases-0.12.0.md`, `_source/engine-releases-0.11.0.md`, `_source/engine-releases-0.5.3.md`, `_source/desktop-releases-0.9.0.md`, `_source/desktop-releases-0.2.2.md`, `_source/desktop-releases-0.2.3.md`, `_source/desktop-releases-0.2.1.md`, `_source/desktop-releases-0.2.0.md`, `_source/desktop-security.md`, `_source/desktop-architecture.md`.

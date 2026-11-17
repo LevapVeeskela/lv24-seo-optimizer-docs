@@ -1,6 +1,6 @@
 ---
 title: 发行与更新
-description: 引擎 0.11.0 与桌面 0.9.0 发行说明、0.10.0、0.9.0、0.8.0、0.7.0、0.6.0 及更早版本历史、签名自动更新矩阵、发布流水线、版本固定与回滚。
+description: 引擎 0.12.2 与桌面 0.9.0 发行说明、0.12.0 索引自动化、0.11.0、0.10.0 及更早版本历史、签名自动更新矩阵、发布流水线、版本固定与回滚。
 ---
 
 # 发行与更新
@@ -9,10 +9,53 @@ description: 引擎 0.11.0 与桌面 0.9.0 发行说明、0.10.0、0.9.0、0.8.0
 
 | 产品 | 版本 | 发布日期 | 说明 |
 |---|---|---|---|
-| 引擎 | `lv24-seo 0.11.0` | 2026-11-17 | 全平台读取深度：GSC 检查与站点地图、Yandex 事件/站点地图/重新抓取、Bing 页面/流量/抓取/URL/关联、自然搜索 Metrika、CWV 审计与历史；24 个 CLI 命令和 12 个 MCP 工具 |
+| 引擎 | `lv24-seo 0.12.2` | 2026-11-17 | 面向 Bing、Yandex、IndexNow 和 GSC 的配额感知索引自动化，0.12.1 的客户端生命周期修复和 0.12.2 的 Yandex 5xx 映射；25 个 CLI 命令、12 个 MCP 工具和模式 v5 |
 | 桌面 | `0.9.0` | 2026-11-17 | 只读 Diagnostics 屏幕，五个标签页和 18 个白名单命令，捆绑引擎 0.11.0 和 `MIN_ENGINE_VERSION` 0.11.0 |
 
-桌面版本与引擎版本相互独立，但桌面固定精确引擎，并拒绝低于最低版本的引擎。`0.9.0` 捆绑 `0.11.0` 并要求至少 `0.11.0`，因此已安装的 `0.10.x` 引擎会被报告为不兼容。
+桌面版本与引擎版本相互独立，但桌面固定精确引擎，并拒绝低于最低版本的引擎。`0.9.0` 捆绑 `0.11.0` 并要求至少 `0.11.0`，因此已安装的 `0.10.x` 引擎会被报告为不兼容。引擎 `0.12.2` 通过该门槛；索引自动化在桌面 `0.9.1` 加入状态卡片之前仅限 CLI 和调度器。
+
+## 引擎 0.12.2
+
+2026-11-17 发布。同一天三个版本加入配额感知的索引自动化，并修复两个索引缺陷。CLI 现在有 25 个顶层命令（18 个命令组 + 7 个命令），MCP 接口仍为 12 个工具，SQLite 模式升到版本 5。
+
+### 0.12.0 - 配额感知的索引自动化
+
+变更：
+
+- **`indexing` 命令组。** `indexing status [--provider all|bing|yandex|gsc|indexnow] [--limit 50] [--live] [--json]`、`indexing run [--provider ...] [--from-sitemap|--sitemap-url ABS|--url ABS ...] [--max-submit N] [--max-inspect N] [--force] [--allow-write] [--json]` 和 `indexing history [--limit 20] [--json]`。默认从项目 sitemap 读取队列（根加五个子文档，10,000 个 URL），并与显式 `--url` 合并；站外 URL 跳过，每个上限都会报告（`queue_cap`、`sitemap_truncated`、`sitemap_off_host`）。
+- **优先级与幂等性。** 先处理从未提交的 URL，再处理 sitemap `lastmod` 晚于 `last_submitted_at` 的 URL，然后处理 `last_checked_at` 早于 `check_interval_days` 的 URL。`last_submitted_at` 晚于 `lastmod` 的 URL 会被跳过，除非使用 `--force`。不带 `--allow-write` 时只检查和规划；带上后引擎重新读取配额、重建计划、校验计划哈希、通过 `WriteGate` 生成并消费内部确认令牌，并为每个数据源写入一行 `indexing_runs`。
+- **配额感知规划。** Bing 读取 `GetUrlSubmissionQuota`（每日/每月剩余；每批 500 个 URL；每月重置未公开）。Yandex 读取 `recrawl/quota` 的 `quota_remainder`，每个 URL 一个请求。GSC URL Inspection 受本地 `quota_usage` 计数器限制（默认每站每天 2,000），因为 Google 不暴露剩余量。IndexNow 有本地每日上限（默认 1,000）和每次 POST 10,000 个 URL 的边界。
+- **诚实的索引计数。** 只有 GSC URL Inspection 提供逐 URL 判定（`PASS`/`Submitted and indexed` → `indexed`；`NEUTRAL`/`FAIL` → `not_indexed`；其他为 `unknown`）。GSC sitemap 的 `contents[].indexed` 聚合单独作为 `indexed_total` 报告，并始终标记 `gsc_indexed_count_deprecated`。Bing `GetUrlInfo` 只给 `http_status` 和 `last_crawled_at`，因此已抓取的 URL 是 `crawled`，不是 `indexed`（`bing_no_per_url_index_status`）。Yandex 和 IndexNow 没有逐 URL 状态；其 `indexed_total` 为 `null`，并带 `no_per_url_index_count`。Bing Site Scan 没有公开 API，因此每个 Bing 条目都带 `site_scan_no_api`。
+- **状态。** `indexing status` 按数据源显示 `urls`、`submitted`、`crawled`、`queued`、`indexed`（样本）、`indexed_total`（GSC 聚合）、`pending`、`quota` 和 `limitations`。`write_secret_present` 只报告是否设置了 `LV24_SEO_WRITE_SECRET`；值永远不会进入信封。`--live` 现在读取 Bing 和 Yandex 配额。
+- **调度器与存储。** `schedule install --kind indexing` 为 cron、systemd 和 Windows 任务计划程序渲染每日 `lv24-seo-indexing` 任务，时间 `04:00`，命令为 `indexing run --allow-write --config <abs> --json`。模式 v5 新增 `indexing_state`、`indexing_runs` 和 `quota_usage`；现有数据库就地迁移，幂等且只追加。`[indexing]` 配置：`enabled=false`、`providers=["bing","yandex","indexnow","gsc"]`、`max_submit_per_run=500`、`max_inspect_per_run=20`、`stale_days=7`、`check_interval_days=7`、`gsc_inspect_daily_limit=2000`、`indexnow_daily_limit=1000`。
+
+### 0.12.1 - 索引客户端生命周期
+
+`indexing run` 对 Bing 和 Yandex 返回 `internal_error`，因为索引引擎在读取配额与检查/提交阶段之间关闭了数据源客户端，而 `SeoService` 仍把已关闭的客户端留在缓存中。`SeoService` 不再向索引引擎传入 `close_client` 回调；它自己持有并缓存整个运行期间的数据源客户端，引擎丢弃本地引用而不是关闭共享客户端。回归测试使用可关闭的假 Yandex 客户端。`indexing status --live` 不受影响；没有 API、CLI、模式或配置变更。
+
+### 0.12.2 - 诚实映射 Yandex 重新抓取 5xx
+
+当 Yandex 返回空响应体的 5xx 网关超时时，`yandex recrawl` 和 `indexing run --provider yandex` 报告 `UPSTREAM_UNAVAILABLE: invalid JSON response from recrawl/queue`。`YandexWebmasterClient.recrawl_enqueue` 现在先检查 `status >= 500`，并抛出带 HTTP 状态和 `retryable: true` 的 `UPSTREAM_UNAVAILABLE`；`202`、`409 URL_ALREADY_ADDED` 和 `429 QUOTA_EXCEEDED` 行为不变。一个 504 空响应体的离线测试断言消息不再包含 “invalid JSON”。
+
+本版本记录的验证：
+
+| 检查 | 结果 |
+|---|---|
+| PyPI / npm / MCP Registry | `lv24-seo 0.12.0`、`0.12.1` 和 `0.12.2` 已发布 |
+| 发布工作流 | 运行 `44155371533`（0.12.0）、`44157740063`（0.12.1）和 `44160332890`（0.12.2）通过 |
+| `indexing status --live`（lv24.by） | Bing 每日剩余 99 / 每月 1399，Yandex 150，GSC 0/2000，IndexNow 0/1000，`write_secret_present: true` |
+| 首次 `indexing run`（lv24.by） | 提交 5 个 Bing + 5 个 IndexNow URL；检查 15 个 GSC URL，其中 3 个已索引；Yandex POST 在数据源侧返回 HTTP 504，由每日任务重试 |
+| `schedule install --kind indexing` | 已安装 `lv24-seo-indexing`，时间 04:00 |
+| 本地门禁 | 每个打标签的提交上 `ruff check`、`ruff format --check`、`mypy src`、registry `--check` 和离线 `pytest` 均通过 |
+
+0.12.2 的已知限制：
+
+- 只有 GSC 提供逐 URL 索引判定。Bing、Yandex 和 IndexNow 返回 `indexed_total: null` 并带 `no_per_url_index_count`；GSC 的站点地图聚合已弃用并单独保留。
+- Bing Site Scan 没有公开 API；桌面只打开官方页面。
+- IndexNow 没有状态 API，也没有公开配额；本地每日上限是保守保护。
+- 计划提交需要 `[indexing] enabled=true` **以及** 调度器环境中的 `LV24_SEO_WRITE_SECRET`；生成的命令永远不包含密钥。
+- `indexing run` 每次最多检查 `max_inspect_per_run` 个 URL（默认 20）；大站点需要多次运行采样，`meta.truncated` 会说明。
+- Yandex 重新抓取可能返回数据源侧 5xx。`0.12.2` 诚实报告 `UPSTREAM_UNAVAILABLE`；没有客户端重试，每日任务会在下次运行重试。
 
 ## 引擎 0.11.0
 
@@ -789,6 +832,7 @@ node scripts/verify-sidecar.mjs \
 
 ## 更早的版本
 
+- **引擎 0.11.0** 增加全平台读取深度：GSC URL Inspection、站点地图和可筛选的搜索分析；Yandex 事件/站点地图/历史/队列和受限重新抓取；Bing 页面/流量/抓取/URL/关联；自然搜索 Metrika；CrUX 历史和 PSI 审计；24 个 CLI 命令和 12 个工具。
 - **引擎 0.10.0** 把 Bing URL 提交变成受限的 `SubmitUrlbatch` 写入，并增加只读配额、站点地图源和抓取问题视图、23 个 CLI 命令和 12 个工具。
 - **桌面 0.8.0** 增加了 Bing URL 提交和只读站点地图、抓取问题和配额卡片，捆绑引擎 `0.10.0`，并把 `MIN_ENGINE_VERSION` 提高到 `0.10.0`。
 - **桌面 0.7.0** 增加了 Bing 索引面板（站点地图计划/应用、从站点地图运行 IndexNow、Site Scan 打开器）和每会话写入密钥，捆绑引擎 `0.9.0`，并把 `MIN_ENGINE_VERSION` 提高到 `0.9.0`。
@@ -844,4 +888,4 @@ sha256sum -c SHA256SUMS.txt --ignore-missing
 
 更新信任见[安全与隐私](/zh/security/)，sidecar 布局见[架构](/zh/architecture/)。
 
-Source: `_source/engine-releases-0.11.0.md`, `_source/engine-releases-0.10.0.md`, `_source/engine-releases-0.9.0.md`, `_source/engine-releases-0.8.0.md`, `_source/engine-releases-0.7.0.md`, `_source/engine-releases-0.6.0.md`, `_source/engine-releases-0.5.3.md`, `_source/engine-releases-0.5.2.md`, `_source/desktop-releases-0.9.0.md`, `_source/desktop-releases-0.8.0.md`, `_source/desktop-releases-0.7.0.md`, `_source/desktop-releases-0.6.0.md`, `_source/desktop-releases-0.5.0.md`, `_source/desktop-releases-0.4.0.md`, `_source/desktop-releases-0.3.0.md`, `_source/desktop-releases-0.2.3.md`, `_source/desktop-releases-0.2.2.md`, `_source/desktop-releases-0.2.1.md`, `_source/desktop-releases-0.2.0.md`, `_source/desktop-release.md`, `_source/desktop-security.md`.
+Source: `_source/engine-releases-0.12.2.md`, `_source/engine-releases-0.12.1.md`, `_source/engine-releases-0.12.0.md`, `_source/engine-releases-0.11.0.md`, `_source/engine-releases-0.10.0.md`, `_source/engine-releases-0.9.0.md`, `_source/engine-releases-0.8.0.md`, `_source/engine-releases-0.7.0.md`, `_source/engine-releases-0.6.0.md`, `_source/engine-releases-0.5.3.md`, `_source/engine-releases-0.5.2.md`, `_source/desktop-releases-0.9.0.md`, `_source/desktop-releases-0.8.0.md`, `_source/desktop-releases-0.7.0.md`, `_source/desktop-releases-0.6.0.md`, `_source/desktop-releases-0.5.0.md`, `_source/desktop-releases-0.4.0.md`, `_source/desktop-releases-0.3.0.md`, `_source/desktop-releases-0.2.3.md`, `_source/desktop-releases-0.2.2.md`, `_source/desktop-releases-0.2.1.md`, `_source/desktop-releases-0.2.0.md`, `_source/desktop-release.md`, `_source/desktop-security.md`.

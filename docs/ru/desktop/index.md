@@ -7,7 +7,7 @@ description: Что добавляет настольная оболочка LV2
 
 LV24 SEO Optimizer Desktop — локальная офлайн-оболочка Tauri v2 вокруг движка `lv24-seo`. Python CLI остаётся основным движком: он отвечает за клиенты провайдеров, правила обхода, анализ, сборку отчётов и доставку. Приложение добавляет React-интерфейс и мост к процессам на Rust, а не вторую реализацию SEO.
 
-Релиз `0.9.0` включает `lv24-seo 0.11.0` как сайдкар PyInstaller onedir и добавляет экран Diagnostics только для чтения с пятью вкладками по Google, Yandex, Bing, Metrika и Core Web Vitals. Он сохраняет карточки индексации Bing, действия sitemap, IndexNow и Site Scan и посессионный секрет записи. Он требует движок `0.11.0` или новее (`MIN_ENGINE_VERSION`). Здесь нет облачного аккаунта, телеметрии, локального HTTP API и парсинга выдачи. Приложение общается с движком через фиксированный мост к дочернему процессу с белым списком команд.
+Релиз `0.9.0` включает `lv24-seo 0.11.0` как сайдкар PyInstaller onedir и добавляет экран Diagnostics только для чтения с пятью вкладками по Google, Yandex, Bing, Metrika и Core Web Vitals. Он сохраняет карточки индексации Bing, действия sitemap, IndexNow и Site Scan и посессионный секрет записи. Он требует движок `0.11.0` или новее (`MIN_ENGINE_VERSION`); движок `0.12.2` проходит этот порог, но автоматизация индексации (`indexing status|run|history`) в `0.9.0` доступна только в CLI и планировщике, а карточка статуса появится в приложении `0.9.1`. Здесь нет облачного аккаунта, телеметрии, локального HTTP API и парсинга выдачи. Приложение общается с движком через фиксированный мост к дочернему процессу с белым списком команд.
 
 ## Что оно добавляет
 
@@ -479,6 +479,8 @@ CI на pull request теперь покрывает сами релизные �
 - Один файл лога за раз, не более 100 MiB; ротации, glob, удалённой загрузки или сохранённой истории логов нет.
 - `MIN_ENGINE_VERSION` равен `0.11.0`, поэтому движок `0.10.x` отклоняется; приложение не понижает команды до старого движка молча.
 - Экран Diagnostics только для чтения покрывает 18 команд из белого списка; на нём нет действий переобхода, отправки карты или URL, а панели не опрашивают и не повторяют запрос автоматически.
+- Приложение `0.9.0` не показывает `indexing status|run|history`: автоматизация индексации с учётом квот доступна только в CLI и планировщике, карточки статуса нет до `0.9.1`.
+- Только GSC даёт вердикт индексации по URL. Приложение показывает ограничения движка `no_per_url_index_count` и `gsc_indexed_count_deprecated`, а не выдумывает общий счётчик.
 - Цели Метрики показываются только как итоги, а история CWV «all devices» опускает фильтр устройства, а не изобретает объединённую строку.
 - Отправка sitemap в Bing требует API-ключа Bing Webmaster, а IndexNow — `providers.bing.indexnow_key` и размещённого файла ключа. Отсутствующий ключ показывается как `AUTH_REQUIRED`, а не как общий сбой.
 - Отправка URL в Bing использует `providers.bing.site`; в приложении нет `--site` для отдельного запуска. «Принято» означает, что Bing получил пакет, а не что URL проиндексирован, и повторный URL может израсходовать квоту.
@@ -496,4 +498,4 @@ CI на pull request теперь покрывает сами релизные �
 - Тексты рекомендаций локализованы в en/ru/zh; задачи, поставленные в очередь до `0.2.3`, сохраняют записанный английский текст.
 - Это превью `0.x`: вывод конфигурации, поведение обновлятора и детали интерфейса могут измениться до 1.0.
 
-Source: `_source/desktop-README.md`, `_source/desktop-releases-0.9.0.md`, `_source/desktop-releases-0.8.0.md`, `_source/desktop-releases-0.7.0.md`, `_source/desktop-releases-0.6.0.md`, `_source/desktop-releases-0.5.0.md`, `_source/desktop-releases-0.4.0.md`, `_source/desktop-releases-0.3.0.md`, `_source/desktop-releases-0.2.3.md`, `_source/desktop-releases-0.2.2.md`, `_source/desktop-releases-0.2.1.md`, `_source/desktop-releases-0.2.0.md`, `_source/desktop-security.md`, `_source/desktop-architecture.md`.
+Source: `_source/desktop-README.md`, `_source/desktop-releases-0.9.0.md`, `_source/desktop-releases-0.8.0.md`, `_source/desktop-releases-0.7.0.md`, `_source/desktop-releases-0.6.0.md`, `_source/desktop-releases-0.5.0.md`, `_source/desktop-releases-0.4.0.md`, `_source/desktop-releases-0.3.0.md`, `_source/desktop-releases-0.2.3.md`, `_source/desktop-releases-0.2.2.md`, `_source/desktop-releases-0.2.1.md`, `_source/desktop-releases-0.2.0.md`, `_source/desktop-security.md`, `_source/desktop-architecture.md`, `_source/engine-releases-0.12.2.md`, `_source/engine-releases-0.11.0.md`.

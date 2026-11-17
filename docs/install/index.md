@@ -82,7 +82,7 @@ GSC also accepts a service account instead of a pasted OAuth token. Set `provide
 
 ## Desktop install matrix
 
-Desktop `0.9.0` is the current release and bundles `lv24-seo 0.11.0`; it requires engine `0.11.0` or newer. Download the assets from the project's Releases page; `SHA256SUMS.txt` covers every published asset.
+Desktop `0.9.0` is the current release and bundles `lv24-seo 0.11.0`; it requires engine `0.11.0` or newer, so engine `0.12.2` is compatible. Download the assets from the project's Releases page; `SHA256SUMS.txt` covers every published asset.
 
 | Platform | Assets | Auto-update |
 |---|---|---|
@@ -90,7 +90,7 @@ Desktop `0.9.0` is the current release and bundles `lv24-seo 0.11.0`; it require
 | Linux x64 | `LV24.SEO.Optimizer_0.9.0_amd64.AppImage` (+ `.AppImage.sig`), `LV24.SEO.Optimizer_0.9.0_amd64.deb`, `LV24.SEO.Optimizer-0.9.0-1.x86_64.rpm` | AppImage only; deb/rpm are manual |
 | macOS 13+ arm64/x64 | `LV24.SEO.Optimizer_0.9.0_aarch64.dmg` / `LV24.SEO.Optimizer_0.9.0_x64.dmg` for first install, `LV24.SEO.Optimizer_0.9.0_aarch64.app.tar.gz` / `LV24.SEO.Optimizer_0.9.0_x64.app.tar.gz` (+ `.sig`) for updates | `.app` only; DMG is the first install |
 
-Engine `0.11.0` adds full-platform read depth: GSC URL Inspection and sitemaps, Yandex events/sitemaps/history/queue and gated recrawl, Bing page/traffic/crawl/URL/joins reads, the organic `metrika` group, CrUX history and PSI audits, and stricter IndexNow key rules. The desktop `0.9.0` surfaces those reads in a read-only Diagnostics screen; the [release notes](/release/) list the limits.
+Engine `0.12.2` adds quota-aware indexing automation: the `indexing status|run|history` group, Bing/Yandex/IndexNow/GSC quotas, honest per-URL index counts, the daily `lv24-seo-indexing` job and schema v5. It keeps the 0.11.0 read depth (GSC URL Inspection and sitemaps, Yandex events/sitemaps/history/queue, Bing page/traffic/crawl/URL/joins, organic `metrika`, CrUX history and PSI audits). The desktop `0.9.0` surfaces the 0.11.0 reads in a read-only Diagnostics screen; indexing automation is CLI and scheduler only until desktop `0.9.1`. The [release notes](/release/) list the limits.
 
 ### Windows
 

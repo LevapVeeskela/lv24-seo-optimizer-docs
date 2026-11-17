@@ -7,9 +7,9 @@ description: Структура пакетов движка, конверты п
 
 В продукте один движок-источник истины и одна оболочка:
 
-- `lv24-seo 0.11.0` владеет провайдерскими клиентами, обходом, анализом, отчётами,
-  хранилищем, MCP-инструментами, CLI-командами и автоматизацией.
-- Приложение `0.3.0` — это React-webview плюс Rust-оболочка процессов. Оно рисует
+- `lv24-seo 0.12.2` владеет провайдерскими клиентами, обходом, анализом, отчётами,
+  хранилищем, MCP-инструментами, CLI-командами, автоматизацией индексации и автоматизацией.
+- Приложение `0.9.0` — это React-webview плюс Rust-оболочка процессов. Оно рисует
   экраны, редактирует конфигурацию и запускает встроенный движок; поведение движка оно
   не переписывает.
 
@@ -133,6 +133,9 @@ SQLite работает в режиме WAL. `data/seo.sqlite3` игнориру
 | `snapshots` | База для diff отчётов: канонический JSON в gzip |
 | `sends` | Ledger доставки и заявки идемпотентности |
 | `runs` | Каждый запуск обхода, отчёта или операции провайдера |
+| `indexing_state` | Локальная позиция очереди на провайдера/URL: `last_submitted_at`, `last_checked_at`, `submit_status`, `index_status`, `next_check_at` (схема v5) |
+| `indexing_runs` | Одна строка на провайдера за запуск индексации: план, отправлено, проверено, пропущено, квоты до/после и статус (схема v5) |
+| `quota_usage` | Локальные счётчики UTC-дня для инспекции GSC и IndexNow (схема v5) |
 | `schema_migrations` | Append-only ledger миграций |
 
 Посуточные строки и агрегаты окон лежат в разных таблицах по построению, поэтому
@@ -263,4 +266,4 @@ offline и показывает уведомление. Новее гейта п
 
 См. [Безопасность и приватность](/ru/security/) для контроля и [Релизы и обновление](/ru/release/) для упаковки.
 
-Source: `_source/engine-architecture.md`, `_source/desktop-architecture.md`, `_source/engine-releases-0.11.0.md`, `_source/engine-releases-0.5.3.md`, `_source/desktop-releases-0.9.0.md`, `_source/desktop-releases-0.2.2.md`, `_source/desktop-release.md`.
+Source: `_source/engine-architecture.md`, `_source/desktop-architecture.md`, `_source/engine-releases-0.12.2.md`, `_source/engine-releases-0.12.0.md`, `_source/engine-releases-0.11.0.md`, `_source/engine-releases-0.5.3.md`, `_source/desktop-releases-0.9.0.md`, `_source/desktop-releases-0.2.2.md`, `_source/desktop-release.md`.

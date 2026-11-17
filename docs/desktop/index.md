@@ -7,7 +7,7 @@ description: What the LV24 SEO Optimizer desktop shell adds, how signed updates 
 
 LV24 SEO Optimizer Desktop is a local, offline-first Tauri v2 shell around the `lv24-seo` engine. The Python CLI remains the engine of record: it owns provider clients, crawl rules, analysis, report builders and delivery. The desktop adds a React UI and a Rust process bridge, not a second SEO implementation.
 
-The `0.9.0` release bundles `lv24-seo 0.11.0` as a PyInstaller onedir sidecar and adds a read-only Diagnostics screen with five tabs over Google, Yandex, Bing, Metrika and Core Web Vitals. It keeps the Bing indexing cards, the sitemap, IndexNow and Site Scan actions and the per-session write secret. It requires engine `0.11.0` or newer (`MIN_ENGINE_VERSION`). There is no cloud account, no telemetry, no local HTTP API and no SERP scraping. The desktop talks to the engine through a fixed, allow-listed child-process bridge.
+The `0.9.0` release bundles `lv24-seo 0.11.0` as a PyInstaller onedir sidecar and adds a read-only Diagnostics screen with five tabs over Google, Yandex, Bing, Metrika and Core Web Vitals. It keeps the Bing indexing cards, the sitemap, IndexNow and Site Scan actions and the per-session write secret. It requires engine `0.11.0` or newer (`MIN_ENGINE_VERSION`); engine `0.12.2` passes that gate, but indexing automation (`indexing status|run|history`) is CLI and scheduler only in `0.9.0`, and desktop `0.9.1` adds the status card. There is no cloud account, no telemetry, no local HTTP API and no SERP scraping. The desktop talks to the engine through a fixed, allow-listed child-process bridge.
 
 ## What it adds
 
@@ -473,6 +473,8 @@ The desktop has a dedicated Crawl screen: start URL and URL budget, summary coun
 - One log file at a time, at most 100 MiB; there is no rotation, glob, remote fetch or persisted log history.
 - `MIN_ENGINE_VERSION` is `0.11.0`, so a `0.10.x` engine is rejected; the desktop does not silently downgrade commands to an older engine.
 - The Diagnostics screen is read-only and covers 18 allow-listed commands; it has no recrawl, sitemap or URL submission action, and the panels do not poll or auto-retry.
+- The desktop does not expose `indexing status|run|history` in `0.9.0`: quota-aware indexing automation is CLI and scheduler only, and there is no indexing status card until `0.9.1`.
+- Only GSC exposes a per-URL index verdict. The desktop renders the engine's `no_per_url_index_count` and `gsc_indexed_count_deprecated` limitations instead of inventing an indexed total.
 - Metrika goals are shown as totals only, and CWV history “all devices” omits the device filter instead of inventing a combined row.
 - Bing sitemap submit needs a Bing Webmaster API key, and IndexNow needs `providers.bing.indexnow_key` plus a hosted key file. A missing key is reported as `AUTH_REQUIRED`, not as a generic failure.
 - Bing URL submission uses `providers.bing.site`; the desktop has no per-run `--site` override. Accepted means Bing received the batch, not that a URL was indexed, and a duplicate URL may consume quota.
@@ -491,4 +493,4 @@ The desktop has a dedicated Crawl screen: start URL and URL budget, summary coun
 - Recommendation copy is localised in en/ru/zh; tasks queued before `0.2.3` keep the stored English text.
 - This is a `0.x` preview: configuration output, updater behavior and UI details may change before 1.0.
 
-Source: `_source/desktop-README.md`, `_source/desktop-releases-0.9.0.md`, `_source/desktop-releases-0.8.0.md`, `_source/desktop-releases-0.7.0.md`, `_source/desktop-releases-0.6.0.md`, `_source/desktop-releases-0.5.0.md`, `_source/desktop-releases-0.4.0.md`, `_source/desktop-releases-0.3.0.md`, `_source/desktop-releases-0.2.3.md`, `_source/desktop-releases-0.2.2.md`, `_source/desktop-releases-0.2.1.md`, `_source/desktop-releases-0.2.0.md`, `_source/desktop-security.md`, `_source/desktop-architecture.md`.
+Source: `_source/desktop-README.md`, `_source/desktop-releases-0.9.0.md`, `_source/desktop-releases-0.8.0.md`, `_source/desktop-releases-0.7.0.md`, `_source/desktop-releases-0.6.0.md`, `_source/desktop-releases-0.5.0.md`, `_source/desktop-releases-0.4.0.md`, `_source/desktop-releases-0.3.0.md`, `_source/desktop-releases-0.2.3.md`, `_source/desktop-releases-0.2.2.md`, `_source/desktop-releases-0.2.1.md`, `_source/desktop-releases-0.2.0.md`, `_source/desktop-security.md`, `_source/desktop-architecture.md`, `_source/engine-releases-0.12.2.md`, `_source/engine-releases-0.11.0.md`.

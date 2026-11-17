@@ -1,6 +1,6 @@
 ---
 title: Релизы и обновления
-description: Релизы движка 0.11.0 и приложения 0.9.0, история 0.10.0, 0.9.0, 0.8.0, 0.7.0, 0.6.0 и более ранних версий, матрица подписанных автообновлений, релизный конвейер, закрепление версий и откат.
+description: Релизы движка 0.12.2 и приложения 0.9.0, автоматизация индексации 0.12.0, история 0.11.0, 0.10.0 и более ранних версий, матрица подписанных автообновлений, релизный конвейер, закрепление версий и откат.
 ---
 
 # Релизы и обновления
@@ -9,10 +9,55 @@ description: Релизы движка 0.11.0 и приложения 0.9.0, и�
 
 | Продукт | Версия | Дата | Примечания |
 |---|---|---|---|
-| Движок | `lv24-seo 0.11.0` | 2026-11-17 | Глубина чтения по всем платформам: инспекция и карты сайта GSC, события/карты/переобход Яндекса, страницы/трафик/обход/URL/связки Bing, органическая Метрика, аудиты и история CWV; 24 команды CLI и 12 инструментов MCP |
+| Движок | `lv24-seo 0.12.2` | 2026-11-17 | Автоматизация индексации с учётом квот для Bing, Яндекса, IndexNow и GSC, исправление жизненного цикла клиента в 0.12.1 и честная обработка 5xx Яндекса в 0.12.2; 25 команд CLI, 12 инструментов MCP и схема v5 |
 | Приложение | `0.9.0` | 2026-11-17 | Экран Diagnostics только для чтения с пятью вкладками и 18 командами из белого списка, движок 0.11.0 и `MIN_ENGINE_VERSION` 0.11.0 |
 
-Версия приложения и версия движка независимы, но приложение закрепляет точный движок и отказывается работать с версией ниже минимальной. `0.9.0` включает `0.11.0` и требует минимум `0.11.0`, поэтому установленный движок `0.10.x` считается несовместимым.
+Версия приложения и версия движка независимы, но приложение закрепляет точный движок и отказывается работать с версией ниже минимальной. `0.9.0` включает `0.11.0` и требует минимум `0.11.0`, поэтому установленный движок `0.10.x` считается несовместимым. Движок `0.12.2` проходит этот порог; автоматизация индексации остаётся только в CLI и планировщике до появления карточки статуса в приложении `0.9.1`.
+
+## Движок 0.12.2
+
+Выпущен 2026-11-17. Три релиза в один день добавляют автоматизацию индексации с учётом квот и
+исправляют два дефекта индексации. В CLI теперь 25 команд верхнего уровня (18 групп + 7 команд),
+поверхность MCP остаётся 12 инструментов, схема SQLite — версия 5.
+
+### 0.12.0 - автоматизация индексации с учётом квот
+
+Что изменилось:
+
+- **Группа `indexing`.** `indexing status [--provider all|bing|yandex|gsc|indexnow] [--limit 50] [--live] [--json]`, `indexing run [--provider ...] [--from-sitemap|--sitemap-url ABS|--url ABS ...] [--max-submit N] [--max-inspect N] [--force] [--allow-write] [--json]` и `indexing history [--limit 20] [--json]`. По умолчанию очередь читается из sitemap проекта (корень плюс пять дочерних документов, 10 000 URL) и объединяется с явными `--url`; чужие хосты пропускаются, каждый лимит отражается (`queue_cap`, `sitemap_truncated`, `sitemap_off_host`).
+- **Приоритет и идемпотентность.** Сначала URL, которые ещё не отправляли; затем URL, у которых sitemap `lastmod` новее `last_submitted_at`; затем URL, у которых `last_checked_at` старше `check_interval_days`. URL, отправленный позже своего `lastmod`, пропускается без `--force`. Без `--allow-write` запуск только проверяет и планирует; с ним движок заново читает квоты, пересобирает план, проверяет хеш плана, выпускает и расходует внутренний confirm-токен через `WriteGate` и пишет одну строку `indexing_runs` на провайдера.
+- **Планирование с учётом квот.** Bing читает `GetUrlSubmissionQuota` (остаток за день/месяц; 500 URL на пакет; сброс месячной квоты не документирован). Яндекс читает `recrawl/quota` `quota_remainder` и отправляет один запрос на URL. GSC URL Inspection ограничен локальным счётчиком `quota_usage` (по умолчанию 2 000/день/сайт), потому что Google не показывает остаток. У IndexNow локальный дневной лимит (по умолчанию 1 000) и граница 10 000 URL на POST.
+- **Честные счётчики индексации.** Только GSC URL Inspection даёт вердикт по URL (`PASS`/`Submitted and indexed` → `indexed`; `NEUTRAL`/`FAIL` → `not_indexed`; остальное — `unknown`). Агрегат GSC `contents[].indexed` из sitemap отдаётся отдельно как `indexed_total` и всегда помечается `gsc_indexed_count_deprecated`. Bing `GetUrlInfo` даёт `http_status` и `last_crawled_at`, поэтому обойдённый URL — `crawled`, а не `indexed` (`bing_no_per_url_index_status`). У Яндекса и IndexNow нет статуса по URL; их `indexed_total` равен `null` с `no_per_url_index_count`. У Bing Site Scan нет публичного API, поэтому каждая запись Bing несёт `site_scan_no_api`.
+- **Статус.** `indexing status` показывает по провайдеру `urls`, `submitted`, `crawled`, `queued`, `indexed` (выборка), `indexed_total` (агрегат GSC), `pending`, `quota` и `limitations`. `write_secret_present` сообщает только факт наличия `LV24_SEO_WRITE_SECRET`; значение никогда не попадает в конверт. `--live` читает квоты Bing и Яндекса сейчас.
+- **Планировщик и хранилище.** `schedule install --kind indexing` создаёт ежедневное задание `lv24-seo-indexing` в `04:00` с командой `indexing run --allow-write --config <abs> --json` для cron, systemd и Планировщика задач Windows. Схема v5 добавляет `indexing_state`, `indexing_runs` и `quota_usage`; существующие базы мигрируют на месте, идемпотентно и только дополнением. Конфигурация `[indexing]`: `enabled=false`, `providers=["bing","yandex","indexnow","gsc"]`, `max_submit_per_run=500`, `max_inspect_per_run=20`, `stale_days=7`, `check_interval_days=7`, `gsc_inspect_daily_limit=2000`, `indexnow_daily_limit=1000`.
+
+### 0.12.1 - жизненный цикл клиента индексации
+
+`indexing run` возвращал `internal_error` для Bing и Яндекса, потому что движок индексации закрывал клиент провайдера между чтением квоты и фазой проверок/отправки, а `SeoService` держал этот закрытый клиент в кеше. Теперь `SeoService` не передаёт движку колбэк `close_client`; сервис владеет клиентами и кеширует их на весь запуск, а движок отбрасывает локальную ссылку вместо закрытия общего клиента. Регрессионный тест использует закрываемый фиктивный клиент Яндекса. `indexing status --live` не затронут; изменений API, CLI, схемы или конфигурации нет.
+
+### 0.12.2 - честная обработка 5xx переобхода Яндекса
+
+`yandex recrawl` и `indexing run --provider yandex` возвращали `UPSTREAM_UNAVAILABLE: invalid JSON response from recrawl/queue`, когда Яндекс отвечал 5xx таймаутом шлюза с пустым телом. `YandexWebmasterClient.recrawl_enqueue` теперь сначала проверяет `status >= 500` и поднимает `UPSTREAM_UNAVAILABLE` с HTTP-статусом и `retryable: true`; поведение `202`, `409 URL_ALREADY_ADDED` и `429 QUOTA_EXCEEDED` не изменилось. Офлайн-тест с 504 и пустым телом проверяет, что сообщение не содержит «invalid JSON».
+
+Проверки, записанные для этого релиза:
+
+| Проверка | Результат |
+|---|---|
+| PyPI / npm / MCP Registry | `lv24-seo 0.12.0`, `0.12.1` и `0.12.2` опубликованы |
+| Релизный workflow | запуски `44155371533` (0.12.0), `44157740063` (0.12.1) и `44160332890` (0.12.2) зелёные |
+| `indexing status --live` (lv24.by) | Bing 99 дневных / 1399 месячных, Яндекс 150, GSC 0/2000, IndexNow 0/1000, `write_secret_present: true` |
+| Первый `indexing run` (lv24.by) | отправлено 5 URL в Bing и 5 в IndexNow; проверено 15 URL GSC, 3 проиндексированы; POST Яндекса вернул HTTP 504 на стороне провайдера, ежедневное задание повторит попытку |
+| `schedule install --kind indexing` | установлено задание `lv24-seo-indexing` на 04:00 |
+| Локальный гейт | `ruff check`, `ruff format --check`, `mypy src`, registry `--check` и офлайн `pytest` зелёные на каждом тегированном коммите |
+
+Известные ограничения 0.12.2:
+
+- Только GSC даёт вердикт по каждому URL. Bing, Яндекс и IndexNow возвращают `indexed_total: null` с `no_per_url_index_count`; агрегат sitemap GSC устарел и хранится отдельно.
+- У Bing Site Scan нет публичного API; приложение только открывает официальную страницу.
+- У IndexNow нет API статуса и опубликованной квоты; локальный дневной лимит — консервативная защита.
+- Плановой отправке нужны `[indexing] enabled=true` **и** `LV24_SEO_WRITE_SECRET` в окружении планировщика; сгенерированная команда никогда не содержит секрет.
+- `indexing run` проверяет не более `max_inspect_per_run` URL за запуск (по умолчанию 20); большой сайт проверяется за несколько запусков, и `meta.truncated` сообщает об этом.
+- Переобход Яндекса может вернуть 5xx на стороне провайдера. `0.12.2` честно сообщает `UPSTREAM_UNAVAILABLE`; клиентского повтора нет, ежедневное задание повторит попытку в следующий запуск.
 
 ## Движок 0.11.0
 
@@ -852,6 +897,10 @@ node scripts/verify-sidecar.mjs \
 
 ## Предыдущие релизы
 
+- **Движок 0.11.0** добавил глубину чтения по всем платформам: GSC URL Inspection, карты сайта и
+  фильтруемую поисковую аналитику; события/карты/историю/очередь Яндекса и переобход с гейтом;
+  страницы/трафик/обход/URL/связки Bing; органическую Метрику; историю CrUX и аудиты PSI;
+  24 команды CLI и 12 инструментов.
 - **Движок 0.10.0** превратил отправку URL в Bing в защищённую запись `SubmitUrlbatch` и добавил
   представления квоты, фидов sitemap и проблем обхода только для чтения, 23 команды CLI и 12 инструментов.
 - **Приложение 0.8.0** добавило отправку URL в Bing и карточки sitemap, проблем обхода и квоты только для
@@ -921,4 +970,4 @@ Gatekeeper ожидаемы; сверьте контрольную сумму и
 
 См. [Безопасность и приватность](/ru/security/) для доверия к обновлениям и [Архитектуру](/ru/architecture/) для раскладки sidecar.
 
-Source: `_source/engine-releases-0.11.0.md`, `_source/engine-releases-0.10.0.md`, `_source/engine-releases-0.9.0.md`, `_source/engine-releases-0.8.0.md`, `_source/engine-releases-0.7.0.md`, `_source/engine-releases-0.6.0.md`, `_source/engine-releases-0.5.3.md`, `_source/engine-releases-0.5.2.md`, `_source/desktop-releases-0.9.0.md`, `_source/desktop-releases-0.8.0.md`, `_source/desktop-releases-0.7.0.md`, `_source/desktop-releases-0.6.0.md`, `_source/desktop-releases-0.5.0.md`, `_source/desktop-releases-0.4.0.md`, `_source/desktop-releases-0.3.0.md`, `_source/desktop-releases-0.2.3.md`, `_source/desktop-releases-0.2.2.md`, `_source/desktop-releases-0.2.1.md`, `_source/desktop-releases-0.2.0.md`, `_source/desktop-release.md`, `_source/desktop-security.md`.
+Source: `_source/engine-releases-0.12.2.md`, `_source/engine-releases-0.12.1.md`, `_source/engine-releases-0.12.0.md`, `_source/engine-releases-0.11.0.md`, `_source/engine-releases-0.10.0.md`, `_source/engine-releases-0.9.0.md`, `_source/engine-releases-0.8.0.md`, `_source/engine-releases-0.7.0.md`, `_source/engine-releases-0.6.0.md`, `_source/engine-releases-0.5.3.md`, `_source/engine-releases-0.5.2.md`, `_source/desktop-releases-0.9.0.md`, `_source/desktop-releases-0.8.0.md`, `_source/desktop-releases-0.7.0.md`, `_source/desktop-releases-0.6.0.md`, `_source/desktop-releases-0.5.0.md`, `_source/desktop-releases-0.4.0.md`, `_source/desktop-releases-0.3.0.md`, `_source/desktop-releases-0.2.3.md`, `_source/desktop-releases-0.2.2.md`, `_source/desktop-releases-0.2.1.md`, `_source/desktop-releases-0.2.0.md`, `_source/desktop-release.md`, `_source/desktop-security.md`.

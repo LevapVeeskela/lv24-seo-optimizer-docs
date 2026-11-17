@@ -14,12 +14,14 @@ Related: [Reports and diffs](/reports/), [Data sources and quotas](/providers/),
 ```bash
 lv24-seo schedule install --kind weekly --cron "0 6 * * 1" --config ./seo.toml --print
 lv24-seo schedule install --kind daily --cron "0 6 * * *" --config ./seo.toml
-lv24-seo schedule print --cron "0 6 * * 1" --target systemd --json
+lv24-seo schedule install --kind indexing --config ./seo.toml
+lv24-seo schedule print --kind indexing --target systemd --config ./seo.toml --json
+lv24-seo schedule status --kind indexing --config ./seo.toml --json
 ```
 
-Defaults are `weekly` at `0 6 * * 1` and `daily` at `0 6 * * *`. The generated command is `report weekly --send --json`; the daily kind adds `--days 1 --lag-days 0`. The absolute `--config` path and the config directory as working directory are embedded, so a custom filename, a path with spaces or several configs in one folder keep working.
+Defaults are `weekly` at `0 6 * * 1`, `daily` at `0 6 * * *` and `indexing` at `0 4 * * *`. The generated report command is `report weekly --send --json`; the daily kind adds `--days 1 --lag-days 0`. The absolute `--config` path and the config directory as working directory are embedded, so a custom filename, a path with spaces or several configs in one folder keep working.
 
-`schedule install` has no `--target` flag: it detects the host backend. `schedule print` takes `--target cron|systemd|windows` and renders without touching the host. There is no `schedule status` command; inspect the host scheduler with `crontab -l`, `systemctl --user list-timers` or Task Scheduler.
+`schedule install` plans by default and writes only with `--allow-write`; it takes `--target auto|cron|systemd|windows` (auto-detects the host). `schedule print` renders without touching the host. `schedule status` is read-only and reports `installed`, `outdated`, `partial`, `missing` or `unknown` with per-artefact `exists`/`matches`; `schedule uninstall --allow-write` removes exactly the generated artefacts.
 
 ## Artifacts
 
@@ -35,12 +37,41 @@ Only simple cron shapes (`M H * * *` and `M H * * DOW`) convert to systemd or Wi
 
 The install result always carries a `warnings` list with the backend limits: cron may ignore `CRON_TZ`, and Windows XML encodes a fixed offset rather than an IANA zone, so a seasonal DST change needs a review. Windows uses `tzdata` (included on Windows). Systemd enables the timer with `systemctl --user daemon-reload` and `systemctl --user enable --now`.
 
+## Indexing automation job
+
+Installing the indexing job is the explicit automation opt-in. It renders a job named
+`lv24-seo-indexing` at `0 4 * * *` (daily, in the configured timezone) whose command is
+`lv24-seo indexing run --allow-write --config <absolute path> --json`. `--allow-write` is embedded
+because installing the job is the opt-in; the engine still re-reads provider quotas, verifies the plan
+hash, skips URLs whose `last_submitted_at` is newer than their `lastmod`, and records one
+`indexing_runs` row per provider. `[indexing] enabled = true` is still required, so a job installed
+before the config is enabled only plans.
+
+**The write secret is not in the command line.** `LV24_SEO_WRITE_SECRET` must be present in the
+environment the scheduler starts the job in:
+
+- **systemd user unit:** add a drop-in that survives reinstall, for example
+  `%h/.config/systemd/user/lv24-seo-indexing.service.d/secret.conf` with `[Service]` and
+  `EnvironmentFile=%h/.config/lv24-seo/write.env`, and a `0600` env file containing
+  `LV24_SEO_WRITE_SECRET=<value>`; then run `systemctl --user daemon-reload`. A hand-edited unit is
+  reported as `outdated` and replaced on reinstall, so the drop-in is safer.
+- **Windows Task Scheduler:** set the variable once in the user environment
+  (`setx LV24_SEO_WRITE_SECRET "<value>"`) and start a new session so the task inherits it. The XML
+  carries no secret.
+- **cron:** export the variable above the managed block or source a `0600` env file from a wrapper
+  script; do not put the value on the `lv24-seo` command line.
+
+`indexing status` reports `write_secret_present: false` and `write_secret_missing` when the variable
+is absent, so a missing secret is visible before the next scheduled apply fails with
+`WRITE_DISABLED`.
+
 ## Recommended cadence
 
 | Job | When | Why |
 |---|---|---|
 | `report weekly --send` | Monday 06:00 | GSC data has 2–3 days of lag; Monday is stable |
 | `crawl --start URL` | Weekly, after the report | Keeps crawl evidence close to the reporting window |
+| `indexing run --allow-write` | Daily 04:00 | Checks due URLs and submits within fresh quotas; needs `[indexing] enabled=true` and the write secret in the scheduler environment |
 | `auth status` | Weekly | Confirms presence and source of every provider token |
 | CrUX field data | Weekly | 28-day rolling window; daily polling adds nothing |
 
@@ -76,7 +107,7 @@ Provider writes are separate from report delivery. The CLI uses a dry run follow
 
 The gate supports a pending-to-sent idempotency claim. With an initialised workspace the CLI attaches the SQLite ledger, so a failed provider call releases the claim and a retry is allowed; a completed or in-flight claim is a duplicate and returns `skipped`. Without a data directory the apply still runs, but the envelope warns that replay protection is off for the token's five-minute lifetime. A dry run opens no ledger and creates no database. A crash can leave a pending claim with no TTL, which is treated as in-flight until an operator releases it.
 
-In 0.11.0, IndexNow, Bing sitemap submit, Bing URL submission and Yandex recrawl actually submit; GSC sitemap submit and Bing sitemap delete refuse with `WRITE_DISABLED` instead of pretending. MCP write tools require `allow_write=true`; `seo_sitemap_submit` for Bing and `seo_recrawl_request` are wired, while GSC submit and Bing delete return `WRITE_DISABLED`.
+In 0.12.2, IndexNow, Bing sitemap submit, Bing URL submission, Yandex recrawl and `indexing run --allow-write` actually submit; GSC sitemap submit and Bing sitemap delete refuse with `WRITE_DISABLED` instead of pretending. MCP write tools require `allow_write=true`; `seo_sitemap_submit` for Bing and `seo_recrawl_request` are wired, while GSC submit and Bing delete return `WRITE_DISABLED`. Indexing automation has no MCP tool: it is CLI and scheduler only.
 
 ## GitHub Actions
 
@@ -107,4 +138,4 @@ Provider and delivery credentials come from repository secrets. Non-secret ident
 
 Scheduler backends apply the zone where they can and report a warning where they cannot. An invalid zone fails config validation with `CONFIG_INVALID`; it is never silently replaced. Review Windows tasks after a DST transition, and confirm that the installed cron daemon supports `CRON_TZ` before relying on it.
 
-Source: `_source/engine-scheduling.md`, `_source/engine-cli.md`, `_source/engine-config.md`, `_source/engine-releases-0.11.0.md`.
+Source: `_source/engine-scheduling.md`, `_source/engine-cli.md`, `_source/engine-config.md`, `_source/engine-releases-0.12.2.md`, `_source/engine-releases-0.12.0.md`, `_source/engine-releases-0.11.0.md`.

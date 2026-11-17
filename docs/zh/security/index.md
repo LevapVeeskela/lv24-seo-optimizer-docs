@@ -5,8 +5,8 @@ description: LV24 SEO Optimizer 的威胁模型、密钥处理、写入门禁、
 
 # 安全与隐私
 
-LV24 SEO Optimizer 以本地为先。引擎（`lv24-seo 0.11.0`）负责数据源、抓取、存储和报告；
-桌面应用（`0.3.0`）只是引擎之上的界面和进程外壳，不重新实现数据源客户端，也不代理
+LV24 SEO Optimizer 以本地为先。引擎（`lv24-seo 0.12.2`）负责数据源、抓取、存储和报告；
+桌面应用（`0.9.0`）只是引擎之上的界面和进程外壳，不重新实现数据源客户端，也不代理
 数据源流量。
 
 本页区分两个产品和两种签名：
@@ -100,6 +100,7 @@ SQLite 幂等账本，因此重放同一令牌返回 `status: skipped` 和 `reas
 | Bing 站点地图提交 | 通过 `SubmitFeed` 接通；同样的两阶段门控 |
 | Bing URL 提交 | 通过 `SubmitUrlbatch` 接通；accepted，不是 indexed |
 | Yandex recrawl | 已接通；每个 URL 一次 POST，受每日剩余配额限制 |
+| 索引自动化 | `indexing run --allow-write` 重新读取配额、校验计划哈希并为每个数据源记录一次运行；计划任务需要调度器环境中的 `LV24_SEO_WRITE_SECRET`，而不是生成的命令中 |
 | GSC sitemap 提交 | `WRITE_DISABLED` — 需要完整 `webmasters` scope，引擎不请求它 |
 | MCP 写入工具 | 两阶段 `plan_hash` + `confirm_token`；Bing 提交和 Yandex recrawl 已接通，GSC 提交和 Bing 删除返回 `WRITE_DISABLED` |
 
@@ -252,4 +253,4 @@ cookie、`Authorization` 头、`LV24_SEO_WRITE_SECRET`、`.env` 内容、`data/s
 
 信任边界见[架构](/zh/architecture/)，已签名更新的矩阵见[发布与更新](/zh/release/)。
 
-Source: `_source/engine-security.md`, `_source/desktop-security.md`, `_source/engine-architecture.md`, `_source/desktop-architecture.md`, `_source/engine-releases-0.11.0.md`, `_source/engine-releases-0.5.3.md`, `_source/desktop-releases-0.9.0.md`, `_source/desktop-releases-0.2.2.md`, `_source/desktop-releases-0.2.3.md`.
+Source: `_source/engine-security.md`, `_source/desktop-security.md`, `_source/engine-architecture.md`, `_source/desktop-architecture.md`, `_source/engine-releases-0.12.2.md`, `_source/engine-releases-0.12.0.md`, `_source/engine-releases-0.11.0.md`, `_source/engine-releases-0.5.3.md`, `_source/desktop-releases-0.9.0.md`, `_source/desktop-releases-0.2.2.md`, `_source/desktop-releases-0.2.3.md`.

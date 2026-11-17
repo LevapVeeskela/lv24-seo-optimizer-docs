@@ -5,8 +5,8 @@ description: Threat model, secret handling, write gates, SSRF defenses, desktop 
 
 # Security and privacy
 
-LV24 SEO Optimizer is local-first. The engine (`lv24-seo 0.11.0`) does the provider, crawl, storage and report work. The desktop app
-(`0.3.0`) is a UI and process shell around that engine; it does not reimplement provider clients and does not proxy provider traffic.
+LV24 SEO Optimizer is local-first. The engine (`lv24-seo 0.12.2`) does the provider, crawl, storage and report work. The desktop app
+(`0.9.0`) is a UI and process shell around that engine; it does not reimplement provider clients and does not proxy provider traffic.
 
 This page separates the two products and the two kinds of signing:
 
@@ -97,10 +97,11 @@ A dry run opens no ledger and creates no database.
 | Bing sitemap submit | Wired through `SubmitFeed`; same two-phase gate |
 | Bing URL submission | Wired through `SubmitUrlbatch`; accepted, never indexed |
 | Yandex recrawl | Wired; one POST per URL, capped to the remaining daily quota |
+| Indexing automation | `indexing run --allow-write` re-reads quotas, verifies the plan hash and records one run per provider; a scheduled job needs `LV24_SEO_WRITE_SECRET` in the scheduler environment, never in the generated command |
 | GSC sitemap submit | `WRITE_DISABLED` — needs the full `webmasters` scope, which the engine does not request |
 | MCP write tools | Two-phase `plan_hash` + `confirm_token`; Bing sitemap submit and Yandex recrawl are wired, GSC submit and Bing delete return `WRITE_DISABLED` |
 
-The CLI and the MCP server can perform provider writes. IndexNow, Bing sitemap submit, Bing URL submission and Yandex recrawl reach a provider; GSC
+The CLI and the MCP server can perform provider writes. IndexNow, Bing sitemap submit, Bing URL submission, Yandex recrawl and `indexing run --allow-write` reach a provider; GSC
 sitemap submit and Bing sitemap delete do not. The MCP write tools (`seo_recrawl_request`, `seo_sitemap_submit`) carry `destructiveHint: true` and
 default `allow_write` to `false`. They read `LV24_SEO_WRITE_SECRET` from the server environment; an empty secret is `WRITE_DISABLED`, never a weak
 default. A call without `confirm_token` is a dry run that returns `plan_hash`, `confirm_token` and `ttl_seconds`; an apply must echo the `plan_hash`
@@ -240,4 +241,4 @@ sending. A secret that was exposed should be rotated, not merely deleted from th
 
 See [Architecture](/architecture/) for the trust boundaries and [Releases and updates](/release/) for the signed updater matrix.
 
-Source: `_source/engine-security.md`, `_source/desktop-security.md`, `_source/engine-architecture.md`, `_source/desktop-architecture.md`, `_source/engine-releases-0.11.0.md`, `_source/engine-releases-0.5.3.md`, `_source/desktop-releases-0.9.0.md`, `_source/desktop-releases-0.2.2.md`, `_source/desktop-releases-0.2.3.md`.
+Source: `_source/engine-security.md`, `_source/desktop-security.md`, `_source/engine-architecture.md`, `_source/desktop-architecture.md`, `_source/engine-releases-0.12.2.md`, `_source/engine-releases-0.12.0.md`, `_source/engine-releases-0.11.0.md`, `_source/engine-releases-0.5.3.md`, `_source/desktop-releases-0.9.0.md`, `_source/desktop-releases-0.2.2.md`, `_source/desktop-releases-0.2.3.md`.

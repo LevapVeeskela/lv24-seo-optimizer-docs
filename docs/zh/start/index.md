@@ -71,11 +71,11 @@ CLI 信封为 `{ok, data, meta, warnings}`。当输入缺失、被截断或采�
 
 ## 可选桌面端
 
-桌面端是 `0.9.0`，内置 `lv24-seo 0.11.0`；它要求引擎 `0.11.0` 或更新。当你不想记参数时它很有用：在应用内创建或选择 `seo.toml`，查看仪表板，通过带校验的表单编辑配置，运行有边界的抓取，分析 nginx 日志，分诊任务，创建或恢复可移植备份，扫描组合文件夹，比较并导出带归因摘要和 CWV 卡片的周报，在只读 Diagnostics 屏幕中读取 GSC 检查/站点地图、Yandex 事件/站点地图/队列、Bing 页面/流量/抓取/URL/关联、自然搜索 Metrika 页面/目标/维度和 CWV 审计/历史，向 Bing 提交 URL 或站点地图，读取 Bing 配额、站点地图源和抓取问题，运行 IndexNow，打开官方 Bing Site Scan 页面，并把有边界的建议复制为给智能体的 Markdown 提示词。长时间引擎任务在后台运行，带窗口级横幅和 **Cancel** 按钮；提供商写入不可取消。Windows NSIS、macOS `.app` 和 Linux AppImage 可以自动更新；便携 ZIP、deb 和 rpm 仅手动更新。更新器只停止它启动的 sidecar，如果无法停止会以 `UPDATE_ENGINE_BUSY` 阻止安装。
+桌面端是 `0.9.0`，内置 `lv24-seo 0.11.0`；它要求引擎 `0.11.0` 或更新，因此引擎 `0.12.2` 通过门槛。当你不想记参数时它很有用：在应用内创建或选择 `seo.toml`，查看仪表板，通过带校验的表单编辑配置，运行有边界的抓取，分析 nginx 日志，分诊任务，创建或恢复可移植备份，扫描组合文件夹，比较并导出带归因摘要和 CWV 卡片的周报，在只读 Diagnostics 屏幕中读取 GSC 检查/站点地图、Yandex 事件/站点地图/队列、Bing 页面/流量/抓取/URL/关联、自然搜索 Metrika 页面/目标/维度和 CWV 审计/历史，向 Bing 提交 URL 或站点地图，读取 Bing 配额、站点地图源和抓取问题，运行 IndexNow，打开官方 Bing Site Scan 页面，并把有边界的建议复制为给智能体的 Markdown 提示词。索引自动化在 `0.9.0` 中仅限 CLI 和调度器。长时间引擎任务在后台运行，带窗口级横幅和 **Cancel** 按钮；提供商写入不可取消。Windows NSIS、macOS `.app` 和 Linux AppImage 可以自动更新；便携 ZIP、deb 和 rpm 仅手动更新。更新器只停止它启动的 sidecar，如果无法停止会以 `UPDATE_ENGINE_BUSY` 阻止安装。
 
 ## 状态与限制
 
-引擎为 `0.11.0`；桌面端为 `0.9.0`。1.0 之前的已知缺口：
+引擎为 `0.12.2`；桌面端为 `0.9.0`。1.0 之前的已知缺口：
 
 - GSC 支持手动提供的 OAuth 访问令牌或服务账号；普通令牌不会刷新。
 - GSC sitemap 提交和 Bing 站点地图删除返回 `WRITE_DISABLED`；Bing 站点地图提交、Bing URL 提交、IndexNow 和 Yandex 重新抓取会真正写入，并需要各自的提供商密钥或配额。
@@ -100,4 +100,4 @@ CLI 信封为 `{ok, data, meta, warnings}`。当输入缺失、被截断或采�
 - [报告与差异](/zh/reports/) — 周报、投递和快照差异。
 - [安全与隐私](/zh/security/) — token 处理、写操作门控和桌面信任边界。
 
-Source: `_source/engine-README.md`, `_source/engine-cli.md`, `_source/engine-releases-0.11.0.md`, `_source/desktop-README.md`, `_source/desktop-releases-0.9.0.md`.
+Source: `_source/engine-README.md`, `_source/engine-cli.md`, `_source/engine-releases-0.12.2.md`, `_source/engine-releases-0.12.0.md`, `_source/engine-releases-0.11.0.md`, `_source/desktop-README.md`, `_source/desktop-releases-0.9.0.md`.

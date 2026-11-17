@@ -16,14 +16,14 @@ Related: [Reports and diffs](/reports/), [Crawl and audit](/crawl/), [Automation
 | Google Search Console | Search analytics with type/filter/data-state selectors, sites, sitemaps, URL Inspection | Sitemap submit; disabled (`WRITE_DISABLED`, needs the full `webmasters` scope) | Bearer access token (`webmasters.readonly` for reads) or a service-account JSON key | 1,200 QPM per site and per user; 50,000 rows/day/site/type; URL Inspection 2,000/day, 600/min | 2–3 days; `data_age_days` floors at 3 |
 | Yandex Webmaster | Summary, SQI history, indexing, search URLs and events, samples, sitemaps, query history, recrawl queue, queries, diagnostics, broken links | Recrawl queue (gated; one POST per URL, capped to the remaining daily quota) | OAuth token, scope `webmaster:hostinfo` | Free; no published global RPD/RPS; query analytics is fragile above roughly 10k requests/hour | About 4 days |
 | Yandex Metrika | Organic and all-traffic sessions/users; organic pages, search phrases, devices, countries, engagement, goals and bytime | None | OAuth token, scope `metrika:read` | 5,000 requests/day/user; 30 rps/IP; 3 parallel; `/stat/v1/data` 200 requests per 5 minutes; up to 100k rows, 20 metrics and 10 dimensions per request | Reporting API; sampling is reported |
-| Bing Webmaster | Query/page stats, daily traffic, six-month crawl stats, query/page joins, URL and children details, site roles, account sites, crawl issues, quota, sitemap feeds | Sitemap submit, URL submission and IndexNow (all gated) | One API key per user | Free; remaining daily/monthly submission quota is reported by `GetUrlSubmissionQuota`; 500 URLs per batch | Age comes from the newest dated row; empty stats are `no_rows_for_window` |
+| Bing Webmaster | Query/page stats, daily traffic, six-month crawl stats, query/page joins, URL and children details, site roles, account sites, crawl issues, quota, sitemap feeds | Sitemap submit, URL submission, IndexNow and quota-aware indexing (all gated) | One API key per user | Free; remaining daily/monthly submission quota is reported by `GetUrlSubmissionQuota`; 500 URLs per batch | Age comes from the newest dated row; empty stats are `no_rows_for_window` |
 | Chrome UX Report (CrUX) | Field p75 LCP, INP, CLS and other metrics; weekly p75 history; collection period | None | API key | 150 QPM per project, cannot be raised | 28-day rolling window; `data_age_days` from `collectionPeriod.lastDate` |
 | PageSpeed Insights (PSI) | Lighthouse lab category scores and up to 100 bounded audits per URL | None | API key optional; keyless works with a lower quota | About 25k requests/day | Live lab run |
 | GA4 (optional) | Organic landing pages, sessions, key events | None | Google Analytics Data API credentials | Provider quota applies | Directional; thresholding can hide rows |
 | Own crawl | Pages, issues, link graph, sitemap coverage | None | None | Local | Current run |
 | Logs | User-agent bot triage for nginx JSON access logs; not proof of a verified crawler | None | Local file | Local | Log window |
 
-GA4 is an optional integration point, not part of the default path. The shipped providers are GSC, Yandex Webmaster, Yandex Metrika, Bing, CrUX and PSI. Paid SERP or backlink adapters (DataForSEO, SerpApi and others) are planned or documented only; none ships in 0.11.0.
+GA4 is an optional integration point, not part of the default path. The shipped providers are GSC, Yandex Webmaster, Yandex Metrika, Bing, CrUX and PSI. Paid SERP or backlink adapters (DataForSEO, SerpApi and others) are planned or documented only; none ships in 0.12.2.
 
 ## Authentication
 
@@ -110,6 +110,15 @@ Stable limitation codes:
 | `psi_audits_cap` | The Lighthouse audit list was capped at 100 rows |
 | `indexnow_accepted_pending` | IndexNow returned `202`; the engine still has to validate the key |
 | `recrawl_quota_exceeded` | Yandex recrawl hit `429`; the remaining URLs are in `not_attempted` |
+| `no_per_url_index_count` | The provider exposes no per-URL indexed count; `indexed_total` is `null` |
+| `bing_no_per_url_index_status` | Bing `GetUrlInfo` reports crawl state, not an index verdict |
+| `yandex_no_per_url_index_status` | Yandex exposes no per-URL index verdict |
+| `indexnow_no_status_api` | IndexNow has no status endpoint; `200` means accepted |
+| `site_scan_no_api` | Bing Site Scan has no public API; the engine does not automate it |
+| `gsc_indexed_count_deprecated` | The GSC sitemap `contents[].indexed` aggregate is deprecated |
+| `bing_quota_reset_undocumented` | Bing does not publish the monthly submission-quota reset |
+| `quota_exhausted` | The run had no remaining provider or local quota; nothing was submitted |
+| `write_secret_missing` | `LV24_SEO_WRITE_SECRET` is absent, so an apply would be refused |
 | `token_expiring` | The credential is close to expiry |
 | `paid_provider` | The row came from a paid adapter |
 | `partial_response` | The provider returned an incomplete response |
@@ -160,6 +169,25 @@ The key must be 8–128 characters from `A-Z`, `a-z`, `0-9` and `-`; it is valid
 
 Provider statuses are actionable: `200` accepted, `202` accepted-pending (warning plus `indexnow_accepted_pending`, never "indexed"), `400` invalid format (`INVALID_INPUT`), `403` key file missing or mismatched (`AUTH_INVALID` with the exact expected key URL), `422` host/key mismatch (`INVALID_INPUT`) and `429` spam/quota (`QUOTA_EXCEEDED`, retryable). Error messages keep the host, path and status; the key appears only inside the public key-file URL the operator must publish.
 
+## Indexing automation
+
+`indexing status|run|history` keeps one local queue per provider and URL (`indexing_state`, schema v5) and plans submissions and checks inside fresh quotas. `indexing run` reads the project sitemap by default (root plus five child documents, 10,000 URLs) and merges explicit `--url` values; off-host URLs are skipped and every cap is reported.
+
+| Provider | Submission path | Quota source | Per-URL index check | Honest limits |
+|---|---|---|---|---|
+| Bing | `SubmitUrlbatch`, 500 URLs per call | `GetUrlSubmissionQuota`: `daily_remaining` / `monthly_remaining` (remaining, not totals) | `GetUrlInfo` gives `http_status` and `last_crawled_date` only | `bing_no_per_url_index_status`, `no_per_url_index_count`, `site_scan_no_api`, `bing_quota_reset_undocumented` |
+| Yandex | `recrawl/queue`, one URL per request | `recrawl/quota`: `daily_quota` / `quota_remainder` | none | `yandex_no_per_url_index_status`, `no_per_url_index_count`, `one_url_per_call` |
+| IndexNow | one POST, 10,000 URLs maximum | local UTC-day counter capped by `[indexing].indexnow_daily_limit` (default 1,000) | none | `indexnow_no_status_api`, `no_per_url_index_count`; `200` is accepted, never indexed |
+| GSC | not used for submission | local UTC-day counter capped by `[indexing].gsc_inspect_daily_limit` (default 2,000) | URL Inspection: `PASS` / `Submitted and indexed` → `indexed`; `NEUTRAL` / `FAIL` → `not_indexed`; anything else `unknown` | `gsc_indexed_count_deprecated` for the separate sitemap aggregate |
+
+Priority is never-submitted URLs first, then URLs whose sitemap `lastmod` is newer than `last_submitted_at`, then URLs whose `last_checked_at` is older than `check_interval_days`. A URL submitted after its `lastmod` is skipped unless `--force` is set. Without `--allow-write` the command only checks and plans; with it the engine re-reads quotas, verifies the plan hash, consumes an internal confirm token and records one `indexing_runs` row per provider. A replayed confirm token returns `skipped`/`duplicate` and adds no queue entry or run row.
+
+Index counts stay honest: GSC URL Inspection is the only per-URL verdict. The GSC sitemap `contents[].indexed` aggregate is reported separately as `indexed_total` and always tagged `gsc_indexed_count_deprecated`. Bing, Yandex and IndexNow report `indexed_total: null` with `no_per_url_index_count`; a zero is never rendered as "all indexed". Bing Site Scan has no public API (`site_scan_no_api`).
+
+A scheduled apply needs `[indexing] enabled = true` **and** `LV24_SEO_WRITE_SECRET` in the environment the host scheduler starts the job in. The generated `lv24-seo-indexing` command contains `--allow-write` but never the secret; `indexing status` reports `write_secret_present` and `write_secret_missing` before the next apply fails. See [Automation and delivery](/automation/).
+
+On 2026-11-17, `indexing status --live` against `lv24.by` reported Bing 99 daily / 1399 monthly remaining, Yandex 150, GSC 0/2000 used, IndexNow 0/1000 and `write_secret_present: true`. The first run submitted 5 Bing and 5 IndexNow URLs and checked 15 GSC URLs (3 indexed); the Yandex POST returned HTTP 504 provider-side and is retried by the daily job.
+
 ## Sitemap scope
 
 A sitemap `<loc>` is fetched only when its origin is in scope: the seed sitemap origin plus the final origin of every document actually read. A redirect to a CDN mirror therefore stays in scope, while a loc pointing at an unrelated host does not. Rejected locs are dropped and reported once as `off_origin_loc`, so a reader without an external scoped fetcher still never follows a sitemap to another site. The same origin check applies to child sitemaps in an index.
@@ -176,4 +204,4 @@ Optional paid adapters are bring-your-own-key and off by default. They must use 
 
 Scheduler generators apply the same zone where the backend supports it. Cron depends on `CRON_TZ`, systemd writes the zone into `OnCalendar`, and Task Scheduler XML carries a fixed offset with a DST warning. See [Automation and delivery](/automation/).
 
-Source: `_source/engine-data-sources.md`, `_source/engine-cli.md`, `_source/engine-config.md`, `_source/engine-releases-0.11.0.md`, `_source/engine-releases-0.10.0.md`, `_source/engine-releases-0.5.3.md`.
+Source: `_source/engine-data-sources.md`, `_source/engine-cli.md`, `_source/engine-config.md`, `_source/engine-releases-0.12.2.md`, `_source/engine-releases-0.12.0.md`, `_source/engine-releases-0.11.0.md`, `_source/engine-releases-0.10.0.md`, `_source/engine-releases-0.5.3.md`.

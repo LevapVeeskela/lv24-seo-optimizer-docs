@@ -26,13 +26,13 @@ version.
 With `--json`, a command prints exactly one JSON document and nothing else:
 
 ```json
-{ "ok": true, "data": {}, "meta": { "version": "0.11.0", "duration_ms": 812 }, "warnings": [] }
+{ "ok": true, "data": {}, "meta": { "version": "0.12.2", "duration_ms": 812 }, "warnings": [] }
 ```
 
 A failed command uses the same shape with `ok: false` and an `error` object instead of `data`:
 
 ```json
-{ "ok": false, "error": { "code": "AUTH_REQUIRED", "message": "Google Search Console token is missing", "retryable": false, "next_action": "lv24-seo auth login --provider gsc" }, "meta": { "version": "0.11.0" }, "warnings": ["gsc: token missing"] }
+{ "ok": false, "error": { "code": "AUTH_REQUIRED", "message": "Google Search Console token is missing", "retryable": false, "next_action": "lv24-seo auth login --provider gsc" }, "meta": { "version": "0.12.2" }, "warnings": ["gsc: token missing"] }
 ```
 
 - `data` is command-specific. `meta` always carries `version` and often adds `duration_ms`,
@@ -107,7 +107,7 @@ The full key list, defaults and secret handling live in the [configuration refer
 
 ### Read-only by default and the write gate
 
-Only `sitemap submit`, `bing submit`, `yandex recrawl` and `indexnow submit` can change provider state. They use a
+Only `sitemap submit`, `bing submit`, `yandex recrawl`, `indexnow submit` and `indexing run --allow-write` can change provider state. They use a
 two-step flow:
 
 1. Set a long random `LV24_SEO_WRITE_SECRET`, then run the command with `--allow-write` and no
@@ -123,7 +123,7 @@ claim under `/srv/site/data` even when the shell is elsewhere. Without a data di
 runs, but the envelope warns that replay protection is off for the token's five-minute lifetime; the
 plan opens no ledger and creates no database.
 
-Bing sitemap submit, Bing URL submission, IndexNow and Yandex recrawl actually write. Bing URL submission reports
+Bing sitemap submit, Bing URL submission, IndexNow, Yandex recrawl and `indexing run --allow-write` actually write. Bing URL submission reports
 `accepted`, never indexed, because `SubmitUrlbatch` has no per-URL status. GSC sitemap submit and Bing
 sitemap delete return `WRITE_DISABLED` instead of pretending the provider call happened.
 
@@ -158,6 +158,7 @@ envelope remains the stable diagnostic interface.
 | Yandex Metrika | `metrika pages`, `metrika goals`, `metrika queries`, `metrika devices`, `metrika countries`, `metrika engagement`, `metrika bytime` | Read-only organic traffic views; every call applies `ym:s:lastTrafficSource=='organic'`. |
 | IndexNow | `indexnow submit` | A gated write that submits explicit URLs or URLs read from the project sitemap. |
 | Bing | `bing submit`, `bing pages`, `bing traffic`, `bing crawl`, `bing urlinfo`, `bing children`, `bing users`, `bing sites`, `bing joins`, `bing sitemaps`, `bing issues`, `bing quota` | `submit` is a gated `SubmitUrlbatch` write; the rest read page, traffic, crawl, URL, join, sitemap, issue and quota data. |
+| Indexing | `indexing status`, `indexing run`, `indexing history` | `status` and `history` are read-only; `run` plans by default and submits within fresh provider quotas only with `--allow-write`. |
 | Crawl and audit | `crawl` | Provider-independent; stores local pages and issues when a store is configured. |
 | CWV | `cwv collect`, `cwv audits`, `cwv history` | `collect` persists CrUX field p75 rows; `audits` and `history` are read-only PSI/CrUX reads. |
 | Reports | `report weekly`, `report diff` | `weekly` stores a local snapshot; `diff` is read-only. |
@@ -168,7 +169,7 @@ envelope remains the stable diagnostic interface.
 | Portfolio | `portfolio list` | Read-only rollup of local projects below one folder; no provider call, no token read, no write. |
 | Agents and MCP | `mcp serve`, `install`, `export tools`, `export skills` | Host config, generated files or a local server. |
 
-The CLI has 24 top-level commands: 17 groups and 7 commands (`version`, `doctor`, `init`, `properties`, `stats`, `crawl`, `install`).
+The CLI has 25 top-level commands: 18 groups and 7 commands (`version`, `doctor`, `init`, `properties`, `stats`, `crawl`, `install`).
 
 ## Examples
 
@@ -293,6 +294,43 @@ set changed. A missing key is `AUTH_REQUIRED` at plan time. Provider statuses ma
 accepted-pending, `400` invalid format, `403` a missing/mismatched key file, `422` a host/key mismatch
 and `429` quota/spam; the key is never echoed.
 
+### Indexing automation
+
+```bash
+lv24-seo indexing status --live --json
+lv24-seo indexing status --provider bing --limit 50 --json
+lv24-seo indexing run --from-sitemap --max-submit 20 --max-inspect 5 --json
+lv24-seo indexing run --from-sitemap --allow-write --json
+lv24-seo indexing history --limit 20 --json
+```
+
+`indexing status` is read-only. `--live` reads Bing `GetUrlSubmissionQuota` and Yandex
+`recrawl/quota`; without it the last recorded quota is shown with `quota_not_live`. GSC and IndexNow
+use local UTC-day counters because neither provider exposes a remaining-count endpoint. Each provider
+entry carries `urls`, `submitted`, `inspected`, `indexed`, `not_indexed`, `crawled`, `queued`,
+`pending`, `stale`, `quota` and `limitations`, plus `write_secret_present`.
+
+`indexing run` builds a same-host queue from `<project.base_url>/sitemap.xml` (10,000 URLs and six
+sitemap documents) and/or repeatable `--url`, then plans in priority order: never submitted, `lastmod`
+newer than `last_submitted_at`, a check older than `check_interval_days`, then the rest. Checks are
+read-only and run in both modes: GSC URL Inspection (`PASS`/`Submitted and indexed` → `indexed`;
+`NEUTRAL`/`FAIL` → `not_indexed`) and Bing `GetUrlInfo` (`crawled` when a crawl date exists, otherwise
+`unknown`). Without `--allow-write` nothing is submitted. With it, the engine re-reads quotas,
+re-validates the plan hash, mints and consumes an internal confirm token and records one
+`indexing_runs` row per provider.
+
+Caps are enforced before the provider call: `max_submit_per_run` (default 500), Bing's remaining
+daily/monthly quota, Yandex's `quota_remainder`, `max_inspect_per_run` (default 20), GSC's local
+`gsc_inspect_daily_limit` (2,000) and IndexNow's local `indexnow_daily_limit` (1,000). An exhausted
+quota is `quota_exhausted` with `submitted: 0` and `not_attempted`; zero never means "all indexed".
+`--allow-write` requires `[indexing] enabled = true` and `LV24_SEO_WRITE_SECRET`, otherwise the
+command fails with `WRITE_DISABLED`.
+
+GSC's sitemap `contents[].indexed` aggregate is reported separately as `indexed_total` with
+`gsc_indexed_count_deprecated`. Bing, Yandex and IndexNow expose no per-URL index count, so their
+`indexed_total` stays `null` with `no_per_url_index_count`; Bing also carries
+`site_scan_no_api`, Yandex `yandex_no_per_url_index_status` and IndexNow `indexnow_no_status_api`.
+
 ### Core Web Vitals
 
 ```bash
@@ -400,10 +438,12 @@ different periods. `--markdown` prints only Markdown on stdout; warnings go to s
 ### Scheduling
 
 ```bash
-lv24-seo schedule print --cron "0 6 * * 1" --target systemd --json
+lv24-seo schedule print --kind weekly --cron "0 6 * * 1" --target systemd --json
 lv24-seo schedule install --kind weekly --json
 lv24-seo schedule install --kind weekly --allow-write --json
-lv24-seo schedule status --json
+lv24-seo schedule install --kind indexing --json
+lv24-seo schedule install --kind indexing --allow-write --json
+lv24-seo schedule status --kind indexing --json
 lv24-seo schedule uninstall --kind weekly --allow-write --json
 ```
 
@@ -413,8 +453,12 @@ and `installed: false`, and writes only with `--allow-write` (`--print` stays an
 wins over `--allow-write`). `status` is read-only and reports `installed`, `outdated`, `partial`,
 `missing` or `unknown` with per-artefact `exists`/`matches`. `uninstall` is plan-only by default and
 removes exactly the generated artefacts with `--allow-write`; unrelated cron lines and tasks are never
-touched. The generated job runs `report weekly --send --json`. Only simple cron expressions
-(`M H * * *` and `M H * * DOW`) convert to systemd or Windows schedules.
+touched. `--kind` accepts `weekly`, `daily` and `indexing`. The report jobs run
+`report weekly --send --json`; the `indexing` job is named `lv24-seo-indexing`, runs daily at `04:00`,
+and calls `indexing run --allow-write --config <absolute path> --json`. It still needs
+`[indexing] enabled = true` and `LV24_SEO_WRITE_SECRET` in the scheduler environment; the generated
+command never contains the secret. Only simple cron expressions (`M H * * *` and `M H * * DOW`)
+convert to systemd or Windows schedules.
 
 ### MCP and agent clients
 
@@ -462,4 +506,4 @@ packaged `SKILL.md` files and their manifest. Both write local files only.
 - [MCP and agent skills](/mcp/)
 - [Troubleshooting](/troubleshooting/)
 
-Source: `_source/engine-cli.md`, `_source/engine-mcp.md`, `_source/engine-releases-0.11.0.md`, `_source/engine-releases-0.10.0.md`, `_source/engine-releases-0.9.0.md`, `_source/engine-releases-0.8.0.md`, `_source/engine-releases-0.7.0.md`, `_source/engine-releases-0.6.0.md`, `_source/engine-releases-0.5.3.md`; 0.11.0 `--help` output in the engine repository.
+Source: `_source/engine-cli.md`, `_source/engine-mcp.md`, `_source/engine-releases-0.12.2.md`, `_source/engine-releases-0.12.0.md`, `_source/engine-releases-0.11.0.md`, `_source/engine-releases-0.10.0.md`, `_source/engine-releases-0.9.0.md`, `_source/engine-releases-0.8.0.md`, `_source/engine-releases-0.7.0.md`, `_source/engine-releases-0.6.0.md`, `_source/engine-releases-0.5.3.md`; 0.12.2 `--help` output in the engine repository.

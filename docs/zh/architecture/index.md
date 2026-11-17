@@ -7,9 +7,9 @@ description: 引擎包结构、数据源信封、存储、报告快照、桌面 
 
 产品有一个权威引擎和一个外壳：
 
-- `lv24-seo 0.11.0` 负责数据源客户端、抓取、分析、报告、存储、MCP 工具、CLI 命令和
-  自动化。
-- 桌面应用 `0.3.0` 是 React webview 加 Rust 进程外壳。它渲染界面、编辑配置并启动
+- `lv24-seo 0.12.2` 负责数据源客户端、抓取、分析、报告、存储、MCP 工具、CLI 命令、
+  索引自动化和自动化。
+- 桌面应用 `0.9.0` 是 React webview 加 Rust 进程外壳。它渲染界面、编辑配置并启动
   内置引擎；不重新实现引擎行为。
 
 当两者指向同一工作区时，共享同一份 SQLite 历史。
@@ -122,6 +122,9 @@ SQLite 以 WAL 模式运行。`data/seo.sqlite3` 被 git 忽略。`seo.toml` 中
 | `snapshots` | 报告差异基线：规范 JSON，gzip 压缩 |
 | `sends` | 投递账本和幂等占位 |
 | `runs` | 每次抓取、报告或数据源操作 |
+| `indexing_state` | 每个数据源/URL 的本地队列位置：`last_submitted_at`、`last_checked_at`、`submit_status`、`index_status`、`next_check_at`（模式 v5） |
+| `indexing_runs` | 每次索引运行每个数据源一行：计划、提交、检查、跳过、前后配额和状态（模式 v5） |
+| `quota_usage` | GSC 检查和 IndexNow 的本地 UTC 日计数器（模式 v5） |
 | `schema_migrations` | 只追加的迁移账本 |
 
 按日行和窗口聚合在结构上位于不同表，因此重叠窗口不会互相覆盖。单维键按原样存储；
@@ -232,4 +235,4 @@ UI 将其视为离线并显示提示。更新的引擎通过门禁，但不是�
 
 控制措施见[安全与隐私](/zh/security/)，打包方式见[发布与更新](/zh/release/)。
 
-Source: `_source/engine-architecture.md`, `_source/desktop-architecture.md`, `_source/engine-releases-0.11.0.md`, `_source/engine-releases-0.5.3.md`, `_source/desktop-releases-0.9.0.md`, `_source/desktop-releases-0.2.2.md`, `_source/desktop-release.md`.
+Source: `_source/engine-architecture.md`, `_source/desktop-architecture.md`, `_source/engine-releases-0.12.2.md`, `_source/engine-releases-0.12.0.md`, `_source/engine-releases-0.11.0.md`, `_source/engine-releases-0.5.3.md`, `_source/desktop-releases-0.9.0.md`, `_source/desktop-releases-0.2.2.md`, `_source/desktop-release.md`.

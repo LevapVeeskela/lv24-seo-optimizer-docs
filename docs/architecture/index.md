@@ -7,9 +7,9 @@ description: Engine package layout, provider envelopes, storage, report snapshot
 
 The product has one engine of record and one shell:
 
-- `lv24-seo 0.11.0` owns provider clients, crawl, analysis, reports, storage, MCP tools,
-  CLI commands and automation.
-- The desktop app `0.3.0` is a React webview plus a Rust process shell. It renders
+- `lv24-seo 0.12.2` owns provider clients, crawl, analysis, reports, storage, MCP tools,
+  CLI commands, indexing automation and automation.
+- The desktop app `0.9.0` is a React webview plus a Rust process shell. It renders
   screens, edits configuration and launches the bundled engine; it does not reimplement
   engine behaviour.
 
@@ -30,7 +30,9 @@ core             config · http · errors · time · write gate
 ```
 
 Dependencies point downward only. `providers` and `crawl` never import `report` or `cli`. Analysis depends on store models, not on provider client classes.
-Adapters never mutate the database; the caller persists.
+Adapters never mutate the database; the caller persists. `indexing.py` is the quota-aware
+submission/check engine: `SeoService` builds its clients and targets, the engine reads and writes
+`indexing_state`/`indexing_runs` and calls provider adapters only through the write gate.
 
 ## Engine package layout
 
@@ -121,6 +123,9 @@ config file's parent; the built-in default and `LV24_SEO_DATA_DIR` stay process-
 | `snapshots` | Report diff base: canonical JSON, gzipped |
 | `sends` | Delivery ledger and idempotency claims |
 | `runs` | Every executed crawl, report or provider operation |
+| `indexing_state` | Local queue position per provider/URL: `last_submitted_at`, `last_checked_at`, `submit_status`, `index_status`, `next_check_at` (schema v5) |
+| `indexing_runs` | One row per provider per indexing run: planned, submitted, checked, skipped, quota before/after and status (schema v5) |
+| `quota_usage` | Local UTC-day counters for GSC inspection and IndexNow (schema v5) |
 | `schema_migrations` | Append-only migration ledger |
 
 Daily rows and window aggregates live in different tables by construction, so overlapping windows never overwrite each other. A single-dimension key is stored
@@ -128,7 +133,7 @@ raw; multi-dimension keys are JSON-encoded, so a value containing `|` cannot col
 
 Schema changes are numbered migrations in `store/db.py`, recorded in `schema_migrations`. User rows are never deleted by an upgrade. Migration 2 labels
 pre-migration GSC daily rows with `accuracy=legacy_unknown_granularity`; their original window cannot be recovered. Normal daily reads exclude them, and callers
-may inspect them explicitly with `include_legacy=True`.
+may inspect them explicitly with `include_legacy=True`. Migration 5 adds `indexing_state`, `indexing_runs` and `quota_usage`; a fresh database records versions 1..5. All migrations are additive.
 
 There are no on-disk raw provider archives. Snapshots are gzipped canonical JSON inside the `snapshots` table. `raw_retention_days` is a reserved setting;
 pruning logs that it has no effect.
@@ -229,4 +234,4 @@ Windows, macOS and Linux are supported targets:
 
 See [Security and privacy](/security/) for the controls and [Releases and updates](/release/) for packaging.
 
-Source: `_source/engine-architecture.md`, `_source/desktop-architecture.md`, `_source/engine-releases-0.11.0.md`, `_source/engine-releases-0.5.3.md`, `_source/desktop-releases-0.9.0.md`, `_source/desktop-releases-0.2.2.md`, `_source/desktop-release.md`.
+Source: `_source/engine-architecture.md`, `_source/desktop-architecture.md`, `_source/engine-releases-0.12.2.md`, `_source/engine-releases-0.12.0.md`, `_source/engine-releases-0.11.0.md`, `_source/engine-releases-0.5.3.md`, `_source/desktop-releases-0.9.0.md`, `_source/desktop-releases-0.2.2.md`, `_source/desktop-release.md`.

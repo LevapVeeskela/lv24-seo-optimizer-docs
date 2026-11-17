@@ -5,8 +5,8 @@ description: Модель угроз, хранение секретов, write-�
 
 # Безопасность и приватность
 
-LV24 SEO Optimizer работает локально. Движок (`lv24-seo 0.11.0`) выполняет работу с
-провайдерами, обход, хранение и отчёты. Приложение (`0.3.0`) — это UI и оболочка
+LV24 SEO Optimizer работает локально. Движок (`lv24-seo 0.12.2`) выполняет работу с
+провайдерами, обход, хранение и отчёты. Приложение (`0.9.0`) — это UI и оболочка
 процессов вокруг движка; оно не переписывает провайдерские клиенты и не проксирует
 трафик.
 
@@ -115,6 +115,7 @@ CLI подключает SQLite-журнал идемпотентности, п�
 | Bing sitemap submit | Подключён через `SubmitFeed`; те же двухфазные ворота |
 | Bing URL submission | Подключён через `SubmitUrlbatch`; accepted, но не indexed |
 | Yandex recrawl | Подключён; один POST на URL, с ограничением по остатку дневной квоты |
+| Автоматизация индексации | `indexing run --allow-write` заново читает квоты, проверяет хеш плана и пишет один запуск на провайдера; плановой задаче нужен `LV24_SEO_WRITE_SECRET` в окружении планировщика, а не в сгенерированной команде |
 | GSC sitemap submit | `WRITE_DISABLED` — нужен полный scope `webmasters`, который движок не запрашивает |
 | MCP write-инструменты | Двухфазный контракт `plan_hash` + `confirm_token`; отправка Bing и переобход Яндекса подключены, GSC submit и Bing delete возвращают `WRITE_DISABLED` |
 
@@ -308,4 +309,4 @@ Sidecar — это дерево PyInstaller **onedir**, а не onefile. `script
 
 См. [Архитектура](/ru/architecture/) для границ доверия и [Релизы и обновление](/ru/release/) для матрицы подписанных обновлений.
 
-Source: `_source/engine-security.md`, `_source/desktop-security.md`, `_source/engine-architecture.md`, `_source/desktop-architecture.md`, `_source/engine-releases-0.11.0.md`, `_source/engine-releases-0.5.3.md`, `_source/desktop-releases-0.9.0.md`, `_source/desktop-releases-0.2.2.md`, `_source/desktop-releases-0.2.3.md`.
+Source: `_source/engine-security.md`, `_source/desktop-security.md`, `_source/engine-architecture.md`, `_source/desktop-architecture.md`, `_source/engine-releases-0.12.2.md`, `_source/engine-releases-0.12.0.md`, `_source/engine-releases-0.11.0.md`, `_source/engine-releases-0.5.3.md`, `_source/desktop-releases-0.9.0.md`, `_source/desktop-releases-0.2.2.md`, `_source/desktop-releases-0.2.3.md`.

@@ -71,14 +71,16 @@ The CLI envelope is `{ok, data, meta, warnings}`. `meta.complete` is `false` whe
 
 ## Optional desktop
 
-The desktop is at `0.9.0` and bundles `lv24-seo 0.11.0`; it requires engine `0.11.0` or newer. It is useful when you do not want to remember flags: create or choose a `seo.toml` in the app, read the dashboard, edit configuration through a validated form, run a bounded crawl, analyse an nginx log, triage tasks, create or restore a portable backup, scan a folder of sites in the portfolio, compare and export weekly reports with the attributed digest and CWV card, read GSC inspection/sitemaps, Yandex events/sitemaps/queue, Bing pages/traffic/crawl/URL/joins, organic Metrika pages/goals/dimensions and CWV audits/history in the read-only Diagnostics screen, submit Bing URLs or a sitemap, read Bing quota, sitemap feeds and crawl issues, run IndexNow, open the official Bing Site Scan page, and copy a bounded recommendation as a Markdown prompt for an agent. Long engine jobs run in the background with a window-wide banner and a **Cancel** button; provider writes are not cancellable. Windows NSIS, macOS `.app` and Linux AppImage can auto-update; portable ZIP, deb and rpm are manual-only. The updater stops only the sidecar PIDs it started and blocks with `UPDATE_ENGINE_BUSY` if one cannot be stopped.
+The desktop is at `0.9.0` and bundles `lv24-seo 0.11.0`; it requires engine `0.11.0` or newer, so engine `0.12.2` passes the gate. It is useful when you do not want to remember flags: create or choose a `seo.toml` in the app, read the dashboard, edit configuration through a validated form, run a bounded crawl, analyse an nginx log, triage tasks, create or restore a portable backup, scan a folder of sites in the portfolio, compare and export weekly reports with the attributed digest and CWV card, read GSC inspection/sitemaps, Yandex events/sitemaps/queue, Bing pages/traffic/crawl/URL/joins, organic Metrika pages/goals/dimensions and CWV audits/history in the read-only Diagnostics screen, submit Bing URLs or a sitemap, read Bing quota, sitemap feeds and crawl issues, run IndexNow, open the official Bing Site Scan page, and copy a bounded recommendation as a Markdown prompt for an agent. Indexing automation is CLI and scheduler only in `0.9.0`. Long engine jobs run in the background with a window-wide banner and a **Cancel** button; provider writes are not cancellable. Windows NSIS, macOS `.app` and Linux AppImage can auto-update; portable ZIP, deb and rpm are manual-only. The updater stops only the sidecar PIDs it started and blocks with `UPDATE_ENGINE_BUSY` if one cannot be stopped.
 
 ## Status and limits
 
-The engine is `0.11.0`; the desktop is `0.9.0`. Known gaps before 1.0:
+The engine is `0.12.2`; the desktop is `0.9.0`. Known gaps before 1.0:
 
 - GSC supports a manually supplied OAuth access token or a service account; a plain token is not refreshed.
-- GSC sitemap submit and Bing sitemap delete return `WRITE_DISABLED`; Bing sitemap submit, Bing URL submission, IndexNow and Yandex recrawl really write and need their provider keys or quota.
+- GSC sitemap submit and Bing sitemap delete return `WRITE_DISABLED`; Bing sitemap submit, Bing URL submission, IndexNow, Yandex recrawl and `indexing run --allow-write` really write and need their provider keys or quota.
+- Only GSC exposes a per-URL index verdict. Bing, Yandex and IndexNow report `indexed_total: null` with `no_per_url_index_count`, and the GSC sitemap `indexed` aggregate is deprecated.
+- A scheduled indexing apply needs `[indexing] enabled=true` and `LV24_SEO_WRITE_SECRET` in the scheduler environment; the generated command never contains the secret.
 - Bing URL submission reports `accepted`, never indexed; quota values are remaining, not totals, and the monthly window can bind first. `bing sitemaps` has no per-URL errors and `bing issues` has no severity or date.
 - Bing stats and joins return `no_rows_for_window` rather than zero impressions, and URL Inspection is one URL per call, not a live test.
 - The desktop opens the official Bing Site Scan page but does not start, monitor or import a scan.
@@ -100,4 +102,4 @@ Unknown values stay unknown instead of being filled in. That is deliberate: a bo
 - [Reports and diffs](/reports/) — weekly reports, delivery and snapshot diffs.
 - [Security and privacy](/security/) — token handling, write gates and the desktop trust boundary.
 
-Source: `_source/engine-README.md`, `_source/engine-cli.md`, `_source/engine-releases-0.11.0.md`, `_source/desktop-README.md`, `_source/desktop-releases-0.9.0.md`.
+Source: `_source/engine-README.md`, `_source/engine-cli.md`, `_source/engine-releases-0.12.2.md`, `_source/engine-releases-0.12.0.md`, `_source/engine-releases-0.11.0.md`, `_source/desktop-README.md`, `_source/desktop-releases-0.9.0.md`.

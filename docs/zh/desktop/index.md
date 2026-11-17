@@ -7,7 +7,7 @@ description: LV24 SEO Optimizer 桌面外壳增加了什么、签名更新如何
 
 LV24 SEO Optimizer Desktop 是围绕 `lv24-seo` 引擎的本地、离线优先 Tauri v2 外壳。Python CLI 仍是核心引擎：它负责提供商客户端、抓取规则、分析、报告构建和投递。桌面端增加的是 React 界面和 Rust 进程桥，而不是第二套 SEO 实现。
 
-`0.9.0` 以内置 PyInstaller onedir 边车的形式捆绑 `lv24-seo 0.11.0`，并增加只读 Diagnostics 屏幕，包含 Google、Yandex、Bing、Metrika 和 Core Web Vitals 五个标签页。它保留 Bing 索引卡片、站点地图、IndexNow 和 Site Scan 操作以及每会话写入密钥。它要求引擎 `0.11.0` 或更新（`MIN_ENGINE_VERSION`）。没有云账号、遥测、本地 HTTP API 或搜索结果页抓取。桌面端通过固定且带允许列表的子进程桥与引擎通信。
+`0.9.0` 以内置 PyInstaller onedir 边车的形式捆绑 `lv24-seo 0.11.0`，并增加只读 Diagnostics 屏幕，包含 Google、Yandex、Bing、Metrika 和 Core Web Vitals 五个标签页。它保留 Bing 索引卡片、站点地图、IndexNow 和 Site Scan 操作以及每会话写入密钥。它要求引擎 `0.11.0` 或更新（`MIN_ENGINE_VERSION`）；引擎 `0.12.2` 通过该门槛，但索引自动化（`indexing status|run|history`）在 `0.9.0` 中仅限 CLI 和调度器，桌面 `0.9.1` 才加入状态卡片。没有云账号、遥测、本地 HTTP API 或搜索结果页抓取。桌面端通过固定且带允许列表的子进程桥与引擎通信。
 
 ## 增加了什么
 
@@ -375,6 +375,8 @@ webview 不再拥有更新器插件的下载和安装权限；其能力列表只
 - 一次一个日志文件，最多 100 MiB；没有轮转、glob、远程获取或持久日志历史。
 - `MIN_ENGINE_VERSION` 为 `0.11.0`，因此 `0.10.x` 引擎会被拒绝；桌面端不会静默把命令降级到旧引擎。
 - Diagnostics 屏幕是只读的，覆盖 18 个白名单命令；没有重新抓取、站点地图或 URL 提交操作，面板不会轮询或自动重试。
+- `0.9.0` 不展示 `indexing status|run|history`：配额感知的索引自动化仅限 CLI 和调度器，`0.9.1` 之前没有索引状态卡片。
+- 只有 GSC 提供逐 URL 索引判定。桌面端展示引擎的 `no_per_url_index_count` 和 `gsc_indexed_count_deprecated` 限制，而不是编造总索引数。
 - Metrika 目标仅显示为总计，CWV 历史“all devices”省略设备过滤，而不是发明合并行。
 - Bing 站点地图提交需要 Bing Webmaster API 密钥，IndexNow 需要 `providers.bing.indexnow_key` 和托管的密钥文件。缺少密钥时会报告 `AUTH_REQUIRED`，而不是通用失败。
 - Bing URL 提交使用 `providers.bing.site`；桌面端没有每次运行的 `--site` 覆盖。已接受表示 Bing 收到了批次，不表示 URL 已被索引，重复 URL 可能消耗配额。
@@ -392,4 +394,4 @@ webview 不再拥有更新器插件的下载和安装权限；其能力列表只
 - 建议文案已本地化为 en/ru/zh；在 `0.2.3` 之前排队的任务保留已存储的英文文本。
 - 这是 `0.x` 预览：配置输出、更新器行为和界面细节可能在 1.0 前变化。
 
-Source: `_source/desktop-README.md`, `_source/desktop-releases-0.9.0.md`, `_source/desktop-releases-0.8.0.md`, `_source/desktop-releases-0.7.0.md`, `_source/desktop-releases-0.6.0.md`, `_source/desktop-releases-0.5.0.md`, `_source/desktop-releases-0.4.0.md`, `_source/desktop-releases-0.3.0.md`, `_source/desktop-releases-0.2.3.md`, `_source/desktop-releases-0.2.2.md`, `_source/desktop-releases-0.2.1.md`, `_source/desktop-releases-0.2.0.md`, `_source/desktop-security.md`, `_source/desktop-architecture.md`.
+Source: `_source/desktop-README.md`, `_source/desktop-releases-0.9.0.md`, `_source/desktop-releases-0.8.0.md`, `_source/desktop-releases-0.7.0.md`, `_source/desktop-releases-0.6.0.md`, `_source/desktop-releases-0.5.0.md`, `_source/desktop-releases-0.4.0.md`, `_source/desktop-releases-0.3.0.md`, `_source/desktop-releases-0.2.3.md`, `_source/desktop-releases-0.2.2.md`, `_source/desktop-releases-0.2.1.md`, `_source/desktop-releases-0.2.0.md`, `_source/desktop-security.md`, `_source/desktop-architecture.md`, `_source/engine-releases-0.12.2.md`, `_source/engine-releases-0.11.0.md`.

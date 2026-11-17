@@ -14,12 +14,14 @@ description: 安装 cron、systemd 或 Task Scheduler 任务，投递 email 与 
 ```bash
 lv24-seo schedule install --kind weekly --cron "0 6 * * 1" --config ./seo.toml --print
 lv24-seo schedule install --kind daily --cron "0 6 * * *" --config ./seo.toml
-lv24-seo schedule print --cron "0 6 * * 1" --target systemd --json
+lv24-seo schedule install --kind indexing --config ./seo.toml
+lv24-seo schedule print --kind indexing --target systemd --config ./seo.toml --json
+lv24-seo schedule status --kind indexing --config ./seo.toml --json
 ```
 
-默认 `weekly` 为 `0 6 * * 1`，`daily` 为 `0 6 * * *`。生成的命令是 `report weekly --send --json`；`daily` 类型会追加 `--days 1 --lag-days 0`。绝对 `--config` 路径和配置目录会作为工作目录写入，因此自定义文件名、带空格的路径或同一目录中的多个配置都能继续工作。
+默认 `weekly` 为 `0 6 * * 1`，`daily` 为 `0 6 * * *`，`indexing` 为 `0 4 * * *`。生成的报告命令是 `report weekly --send --json`；`daily` 类型会追加 `--days 1 --lag-days 0`。绝对 `--config` 路径和配置目录会作为工作目录写入，因此自定义文件名、带空格的路径或同一目录中的多个配置都能继续工作。
 
-`schedule install` 没有 `--target` 标志：它会检测主机后端。`schedule print` 接受 `--target cron|systemd|windows`，只渲染而不触碰主机。没有 `schedule status` 命令；请用 `crontab -l`、`systemctl --user list-timers` 或任务计划程序检查主机。
+`schedule install` 默认只生成计划，只有 `--allow-write` 才写入；它接受 `--target auto|cron|systemd|windows`（auto 检测主机）。`schedule print` 只渲染而不触碰主机。`schedule status` 只读，报告 `installed`、`outdated`、`partial`、`missing` 或 `unknown` 以及每个产物的 `exists`/`matches`；`schedule uninstall --allow-write` 只删除生成的产物。
 
 ## 产物
 
@@ -35,12 +37,36 @@ cron 块由 `# >>> lv24-seo:<name> >>>` 和 `# <<< lv24-seo:<name> <<<` 界定�
 
 安装结果始终带有 `warnings` 列表说明后端限制：cron 可能忽略 `CRON_TZ`，Windows XML 编码固定偏移而非 IANA 时区，因此季节性 DST 变化需要复核。Windows 使用 `tzdata`（Windows 自带）。systemd 通过 `systemctl --user daemon-reload` 和 `systemctl --user enable --now` 启用计时器。
 
+## 索引自动化任务
+
+安装索引任务是自动化的显式选择。它会生成名为 `lv24-seo-indexing` 的任务，每天 `0 4 * * *`
+（按配置时区）运行，命令为 `lv24-seo indexing run --allow-write --config <absolute path> --json`。
+`--allow-write` 被写入是因为安装任务本身就是选择；引擎仍会重新读取配额、校验计划哈希、跳过
+`last_submitted_at` 晚于 `lastmod` 的 URL，并为每个数据源写入一行 `indexing_runs`。
+`[indexing] enabled = true` 仍是必需项，因此在启用配置前安装的任务只会规划。
+
+**写入密钥不在命令行中。** `LV24_SEO_WRITE_SECRET` 必须存在于调度器启动任务的环境中：
+
+- **systemd 用户单元：** 添加能在重装后保留的 drop-in，例如
+  `%h/.config/systemd/user/lv24-seo-indexing.service.d/secret.conf`，内容为 `[Service]` 和
+  `EnvironmentFile=%h/.config/lv24-seo/write.env`，并在 `0600` 环境文件中写入
+  `LV24_SEO_WRITE_SECRET=<value>`；然后运行 `systemctl --user daemon-reload`。手工修改的单元会被
+  报告为 `outdated` 并在重装时替换，因此 drop-in 更安全。
+- **Windows 任务计划程序：** 在用户环境中设置一次
+  （`setx LV24_SEO_WRITE_SECRET "<value>"`），然后开始新会话让任务继承它。XML 不包含密钥。
+- **cron：** 在受管块上方导出变量，或从包装脚本加载 `0600` 环境文件；不要把值放在 `lv24-seo`
+  命令行上。
+
+`indexing status` 在变量缺失时报告 `write_secret_present: false` 和 `write_secret_missing`，
+因此在下一次计划应用以 `WRITE_DISABLED` 失败前就能看到。
+
 ## 建议频率
 
 | 任务 | 时间 | 原因 |
 |---|---|---|
 | `report weekly --send` | 周一 06:00 | GSC 数据有 2–3 天延迟；周一较稳定 |
 | `crawl --start URL` | 每周，报告之后 | 让抓取证据贴近报告窗口 |
+| `indexing run --allow-write` | 每天 04:00 | 检查到期 URL 并在最新配额内提交；需要 `[indexing] enabled=true` 和调度器环境中的写入密钥 |
 | `auth status` | 每周 | 确认每个提供商令牌的存在与来源 |
 | CrUX 字段数据 | 每周 | 28 天滚动窗口；每日轮询没有额外价值 |
 
@@ -76,7 +102,7 @@ Telegram 通过 Bot API `sendMessage` 发送相同的 78 列本地化文本。HT
 
 工作区初始化后，闸门支持 pending-to-sent 幂等声明：CLI 附加 SQLite 账本，提供商调用失败会释放声明并允许重试；已完成或仍在进行中的声明视为重复并返回 `skipped`。没有数据目录时仍会应用，但信封会警告：在令牌五分钟有效期内没有重放保护。试运行不打开账本，也不创建数据库。崩溃可能留下没有 TTL 的 pending 声明（0.5.2），在操作员释放前会被视为进行中。
 
-0.11.0 中只有 IndexNow、Bing 站点地图提交、Bing URL 提交和 Yandex 重新抓取真正提交；GSC 站点地图提交和 Bing 站点地图删除会以 `WRITE_DISABLED` 拒绝，而不是假装成功。MCP 写入工具要求 `allow_write=true`；Bing 的 `seo_sitemap_submit` 和 `seo_recrawl_request` 已接通，而 GSC 提交和 Bing 删除返回 `WRITE_DISABLED`。
+0.12.2 中只有 IndexNow、Bing 站点地图提交、Bing URL 提交、Yandex 重新抓取和 `indexing run --allow-write` 真正提交；GSC 站点地图提交和 Bing 站点地图删除会以 `WRITE_DISABLED` 拒绝，而不是假装成功。MCP 写入工具要求 `allow_write=true`；Bing 的 `seo_sitemap_submit` 和 `seo_recrawl_request` 已接通，而 GSC 提交和 Bing 删除返回 `WRITE_DISABLED`。索引自动化没有 MCP 工具：仅限 CLI 和调度器。
 
 ## GitHub Actions
 
@@ -107,4 +133,4 @@ uvx --from lv24-seo lv24-seo report weekly --send --json
 
 调度后端在支持时应用该时区，不支持时给出警告。无效时区会在配置校验时以 `CONFIG_INVALID` 失败，绝不会被静默替换。DST 转换后要复核 Windows 任务，并在依赖 `CRON_TZ` 前确认已安装的 cron 守护进程支持它。
 
-Source: `_source/engine-scheduling.md`, `_source/engine-cli.md`, `_source/engine-config.md`, `_source/engine-releases-0.11.0.md`.
+Source: `_source/engine-scheduling.md`, `_source/engine-cli.md`, `_source/engine-config.md`, `_source/engine-releases-0.12.2.md`, `_source/engine-releases-0.12.0.md`, `_source/engine-releases-0.11.0.md`.

@@ -153,6 +153,29 @@ GA4 описан как необязательный будущий источн
 | `data_dir` | путь | `"data"` | Локальный каталог для `seo.sqlite3` и состояния движка. Относительное значение из файла разрешается относительно каталога конфига; встроенное значение по умолчанию — относительно рабочего каталога. `LV24_SEO_DATA_DIR` перекрывает файл и остаётся process-scoped. |
 | `raw_retention_days` | целое ≥ 0 | `90` | Зарезервировано. Сырые архивы не пишутся, поэтому очистка — это запись в лог без действий. |
 
+### `[indexing]`
+
+Автоматизация отправки и проверки индексации с учётом квот по умолчанию выключена. `enabled = true`
+нужен, чтобы `lv24-seo indexing run --allow-write` что-то применял; без него запуск остаётся
+планом только для чтения. `providers` выбирает участвующие движки; ненастроенный провайдер
+сообщается как `not_configured`, а не угадывается.
+
+| Ключ | Умолчание | Значение |
+|---|---|---|
+| `enabled` | `false` | Явное согласие на отправку провайдерам. |
+| `providers` | `["bing", "yandex", "gsc", "indexnow"]` | Движки, входящие в `--provider all`. |
+| `max_submit_per_run` | `500` | Общий лимит отправок за один запуск. |
+| `max_inspect_per_run` | `20` | Проверки GSC URL Inspection / Bing `GetUrlInfo` за запуск. |
+| `stale_days` | `7` | `indexing status` помечает состояние старше этого как `stale`. |
+| `check_interval_days` | `7` | Частота повторных проверок; также задаёт `next_check_at`. |
+| `gsc_inspect_daily_limit` | `2000` | Локальный лимит UTC-дня (GSC не показывает остаток). |
+| `indexnow_daily_limit` | `1000` | Локальный лимит UTC-дня для отправок IndexNow. |
+
+Движок по-прежнему применяет квоты провайдеров во время запуска: остаток дневной/месячной квоты
+Bing, `quota_remainder` Яндекса, 500 URL на пакет Bing и один URL на запрос Яндекса. Плановому
+`lv24-seo indexing run --allow-write` также нужен `LV24_SEO_WRITE_SECRET` в окружении планировщика;
+см. [Автоматизация и доставка](/ru/automation/).
+
 ## Каталог данных
 
 `storage.data_dir` имеет три области:
@@ -309,6 +332,16 @@ user_agent = "lv24-seo/0.1"
 [storage]
 data_dir = "./data"      # relative to this file; absolute values and LV24_SEO_DATA_DIR are used as-is
 raw_retention_days = 90
+
+[indexing]
+enabled = false          # explicit opt-in for provider submissions
+providers = ["bing", "yandex", "gsc", "indexnow"]
+max_submit_per_run = 500
+max_inspect_per_run = 20
+stale_days = 7
+check_interval_days = 7
+gsc_inspect_daily_limit = 2000
+indexnow_daily_limit = 1000
 ```
 
 Доставка остаётся выключенной, пока на канале не задано `enabled = true`. Пароль SMTP и токен
@@ -321,4 +354,4 @@ Telegram-бота держите в хранилище секретов, а не
 - [Автоматизация и доставка](/ru/automation/)
 - [Устранение неполадок](/ru/troubleshooting/)
 
-Source: `_source/engine-config.md`, `_source/engine-data-sources.md`, `_source/engine-releases-0.5.2.md`; модель конфигурации 0.5.2 в репозитории движка.
+Source: `_source/engine-config.md`, `_source/engine-data-sources.md`, `_source/engine-releases-0.12.0.md`, `_source/engine-releases-0.5.2.md`; модель конфигурации 0.12.2 в репозитории движка.

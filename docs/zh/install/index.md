@@ -82,7 +82,7 @@ GSC 也可以使用服务账号而不是粘贴 OAuth 令牌。把 `providers.gsc
 
 ## 桌面安装矩阵
 
-桌面端 `0.9.0` 是当前版本，内置 `lv24-seo 0.11.0`；它要求引擎 `0.11.0` 或更新。从项目的 Releases 页面下载资源文件；`SHA256SUMS.txt` 覆盖所有已发布资源。
+桌面端 `0.9.0` 是当前版本，内置 `lv24-seo 0.11.0`；它要求引擎 `0.11.0` 或更新，因此引擎 `0.12.2` 兼容。从项目的 Releases 页面下载资源文件；`SHA256SUMS.txt` 覆盖所有已发布资源。
 
 | 平台 | 文件 | 自动更新 |
 |---|---|---|
@@ -90,7 +90,7 @@ GSC 也可以使用服务账号而不是粘贴 OAuth 令牌。把 `providers.gsc
 | Linux x64 | `LV24.SEO.Optimizer_0.9.0_amd64.AppImage`（+ `.AppImage.sig`）、`LV24.SEO.Optimizer_0.9.0_amd64.deb`、`LV24.SEO.Optimizer-0.9.0-1.x86_64.rpm` | 仅 AppImage；deb/rpm 手动更新 |
 | macOS 13+ arm64/x64 | 首次安装用 `LV24.SEO.Optimizer_0.9.0_aarch64.dmg` / `LV24.SEO.Optimizer_0.9.0_x64.dmg`，更新用 `LV24.SEO.Optimizer_0.9.0_aarch64.app.tar.gz` / `LV24.SEO.Optimizer_0.9.0_x64.app.tar.gz`（+ `.sig`） | 仅 `.app`；DMG 用于首次安装 |
 
-引擎 `0.11.0` 增加全平台读取深度：GSC URL Inspection 和站点地图、Yandex 事件/站点地图/历史/队列和受限重新抓取、Bing 页面/流量/抓取/URL/关联读取、自然搜索 `metrika` 组、CrUX 历史和 PSI 审计，以及更严格的 IndexNow 密钥规则。桌面端 `0.9.0` 在只读 Diagnostics 屏幕中展示这些读取；限制见[发行说明](/zh/release/)。
+引擎 `0.12.2` 增加配额感知的索引自动化：`indexing status|run|history` 组、Bing/Yandex/IndexNow/GSC 配额、诚实的逐 URL 索引计数、每日 `lv24-seo-indexing` 任务和模式 v5。它保留 0.11.0 的读取深度（GSC URL Inspection 和站点地图、Yandex 事件/站点地图/历史/队列、Bing 页面/流量/抓取/URL/关联、自然搜索 `metrika`、CrUX 历史和 PSI 审计）。桌面端 `0.9.0` 在只读 Diagnostics 屏幕中展示 0.11.0 的读取；索引自动化在桌面 `0.9.1` 之前仅限 CLI 和调度器。限制见[发行说明](/zh/release/)。
 
 ### Windows
 

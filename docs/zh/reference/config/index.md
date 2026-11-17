@@ -146,6 +146,27 @@ description: seo.toml 的位置与优先级、所有键及默认值，以及密�
 | `data_dir` | 路径 | `"data"` | 存放 `seo.sqlite3` 和引擎状态的本地目录。文件中写入的相对值相对于配置目录解析；内置默认值相对于工作目录。`LV24_SEO_DATA_DIR` 覆盖文件并保持进程作用域。 |
 | `raw_retention_days` | 整数 ≥ 0 | `90` | 保留。不会写入原始归档，因此清理是记录日志的空操作。 |
 
+### `[indexing]`
+
+配额感知的提交与索引检查自动化默认关闭。`lv24-seo indexing run --allow-write` 需要
+`enabled = true` 才会应用任何内容；否则运行只是只读计划。`providers` 选择参与的数据源；未配置的
+数据源报告为 `not_configured`，绝不猜测。
+
+| 键 | 默认值 | 含义 |
+|---|---|---|
+| `enabled` | `false` | 显式允许向数据源提交。 |
+| `providers` | `["bing", "yandex", "gsc", "indexnow"]` | `--provider all` 包含的数据源。 |
+| `max_submit_per_run` | `500` | 单次运行的全局提交上限。 |
+| `max_inspect_per_run` | `20` | 每次运行的 GSC URL Inspection / Bing `GetUrlInfo` 检查数。 |
+| `stale_days` | `7` | `indexing status` 将早于此的状态标为 `stale`。 |
+| `check_interval_days` | `7` | 重新检查频率；同时设置 `next_check_at`。 |
+| `gsc_inspect_daily_limit` | `2000` | 本地 UTC 日上限（GSC 不暴露剩余量）。 |
+| `indexnow_daily_limit` | `1000` | IndexNow 提交的本地 UTC 日上限。 |
+
+引擎在运行时仍执行数据源上限：Bing 每日/每月剩余配额、Yandex `quota_remainder`、每批 500 个 Bing
+URL 和每个 Yandex 请求一个 URL。计划的 `lv24-seo indexing run --allow-write` 还需要调度器环境中的
+`LV24_SEO_WRITE_SECRET`；参见[自动化与投递](/zh/automation/)。
+
 ## 数据目录
 
 `storage.data_dir` 有三种作用域：
@@ -295,6 +316,16 @@ user_agent = "lv24-seo/0.1"
 [storage]
 data_dir = "./data"      # relative to this file; absolute values and LV24_SEO_DATA_DIR are used as-is
 raw_retention_days = 90
+
+[indexing]
+enabled = false          # explicit opt-in for provider submissions
+providers = ["bing", "yandex", "gsc", "indexnow"]
+max_submit_per_run = 500
+max_inspect_per_run = 20
+stale_days = 7
+check_interval_days = 7
+gsc_inspect_daily_limit = 2000
+indexnow_daily_limit = 1000
 ```
 
 在渠道上设置 `enabled = true` 之前，投递保持关闭。SMTP 密码和 Telegram 机器人令牌应放在密钥
@@ -307,4 +338,4 @@ raw_retention_days = 90
 - [自动化与投递](/zh/automation/)
 - [故障排查](/zh/troubleshooting/)
 
-Source: `_source/engine-config.md`, `_source/engine-data-sources.md`, `_source/engine-releases-0.5.2.md`; 引擎仓库中 0.5.2 的配置模型。
+Source: `_source/engine-config.md`, `_source/engine-data-sources.md`, `_source/engine-releases-0.12.0.md`, `_source/engine-releases-0.5.2.md`; 引擎仓库中 0.12.2 的配置模型。

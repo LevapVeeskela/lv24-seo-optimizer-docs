@@ -9,7 +9,7 @@ Start with `error.code`, not the exit code: several failures share an exit statu
 `--json`:
 
 ```json
-{"ok": false, "error": {"code": "AUTH_REQUIRED", "message": "Google Search Console token is missing", "retryable": false, "next_action": "lv24-seo auth login --provider gsc"}, "meta": {"version": "0.11.0"}, "warnings": ["gsc: token missing"]}
+{"ok": false, "error": {"code": "AUTH_REQUIRED", "message": "Google Search Console token is missing", "retryable": false, "next_action": "lv24-seo auth login --provider gsc"}, "meta": {"version": "0.12.2"}, "warnings": ["gsc: token missing"]}
 ```
 
 MCP tools return the same envelope as `structuredContent` and set `isError: true` on failure. The desktop maps `ok=false` to a typed UI error.
@@ -49,9 +49,11 @@ A 401 means the token is expired, revoked, malformed or from the wrong account �
 property or host access instead of re-authenticating. For Yandex, compare `providers.yandex_webmaster.host_id` with the exact id (`https:example.com:443`, not a
 URL); an unverified host looks like a 403.
 
-The current engine has no OAuth refresh flow and no service-account auth. `auth set --provider gsc` stores one string sent as `Authorization: Bearer`; that is a
-Google access token, which normally lives about an hour. Store a fresh one per run. `auth status` reports `present` and the source (`env`, `keyring`, `file`)
-but never a value. An environment token is read-only: `auth set` and `auth logout` return `WRITE_DISABLED` while it is set.
+The current engine supports a manually supplied access token or a GSC service account. `auth set --provider gsc` stores one string sent as
+`Authorization: Bearer`; that is a Google access token, which normally lives about an hour. For unattended runs set
+`providers.gsc.service_account_file` or `LV24_SEO_GSC_SERVICE_ACCOUNT_FILE`; the engine signs an RS256 JWT, exchanges it and refreshes it before expiry.
+`auth status` reports `present` and the source (`env`, `keyring`, `file`) but never a value. An environment token is read-only: `auth set` and
+`auth logout` return `WRITE_DISABLED` while it is set.
 
 ## `data_dir` and relative paths
 
@@ -72,6 +74,22 @@ A write apply with `--confirm` uses the workspace SQLite idempotency ledger when
 returns `status: skipped` with `reason: duplicate` and the provider is called once. A dry run opens no ledger and creates no database.
 Without a data directory the apply still runs, but the envelope warns that replay protection is off for the token's five-minute lifetime.
 A `pending` claim left by a crash has no TTL and is treated as in-flight until an operator releases it.
+
+## Indexing automation
+
+`indexing run --allow-write` is a provider write. The most common refusals are local and happen before any submission:
+
+| Symptom | Cause | Fix |
+|---|---|---|
+| `WRITE_DISABLED` | `[indexing] enabled` is false, or `LV24_SEO_WRITE_SECRET` is absent | Set `enabled = true` in `seo.toml` and export the secret in the same environment |
+| `quota_exhausted`, `submitted: 0` | Bing daily/monthly, Yandex remainder, GSC inspection or IndexNow local cap is used up | Wait for the reset (`quota.reset`), or run a smaller plan; zero never means everything is indexed |
+| `internal_error` after the quota read | Engine `0.12.0` closed a cached provider client between phases | Upgrade to `0.12.1` or newer |
+| `UPSTREAM_UNAVAILABLE` with `recrawl/queue upstream HTTP 5xx` | Yandex returned a gateway error; `0.12.2` reports it honestly | The daily job retries; there is no client-side retry |
+| `indexed_total: null` with `no_per_url_index_count` | Bing, Yandex and IndexNow have no per-URL index status | Use GSC URL Inspection for a per-URL verdict; do not read null as zero |
+| `write_secret_present: false` | The scheduler or shell cannot see the secret | Put it in the scheduler environment (systemd drop-in, user environment or cron export), never in the command line |
+
+`indexing status` is read-only and safe to run before a plan. A scheduled apply also needs `[indexing] enabled = true`; installing the job alone only plans.
+The generated `lv24-seo-indexing` command embeds `--allow-write` but never the secret.
 
 ## Storage errors `STORE_*`
 
@@ -143,7 +161,7 @@ The command merges the host configuration and prints what it changed.
 | Symptom | Fix |
 |---|---|
 | “not valid JSON” but the file looks valid | UTF-8 BOM, often from PowerShell 5.1; rewrite without BOM or delete and rerun |
-| `No such command 'mcp'` | Old build without `mcp serve`; upgrade to 0.11.0 |
+| `No such command 'mcp'` | Old build without `mcp serve`; upgrade to 0.12.2 |
 | GUI client cannot start the server | Put the absolute `uvx` path in `command`; the app does not inherit the shell `PATH` |
 | VS Code lists nothing | `install` writes `mcpServers`; VS Code uses `servers`; rename the key |
 
@@ -157,7 +175,7 @@ because the document can contain other servers' tokens.
 The npm package is a thin launcher. It forwards arguments to an installed `lv24-seo` binary or to `uvx --from lv24-seo==<version> lv24-seo`. On Windows, Node
 cannot spawn a `.cmd` shim with `shell: false`; it fails with `EINVAL`.
 
-Version 0.11.0 ignores `lv24-seo.cmd` and `.bat` shims and prefers `lv24-seo.exe` or an extensionless binary before falling back to `uvx`. If the launcher still
+Since 0.11.0, the launcher ignores `lv24-seo.cmd` and `.bat` shims and prefers `lv24-seo.exe` or an extensionless binary before falling back to `uvx`. If the launcher still
 picks the wrong binary, set an absolute override:
 
 ```bash
@@ -284,5 +302,5 @@ Report security problems through the private advisory described in `SECURITY.md`
 
 See [Security and privacy](/security/) for the write gates and [Releases and updates](/release/) for updater behaviour.
 
-Source: `_source/engine-troubleshooting.md`, `_source/engine-releases-0.11.0.md`, `_source/engine-releases-0.5.3.md`, `_source/desktop-releases-0.9.0.md`, `_source/desktop-releases-0.2.2.md`, `_source/desktop-releases-0.2.3.md`, `_source/desktop-releases-0.2.1.md`, `_source/desktop-releases-0.2.0.md`, `_source/desktop-security.md`,
+Source: `_source/engine-troubleshooting.md`, `_source/engine-releases-0.12.2.md`, `_source/engine-releases-0.12.0.md`, `_source/engine-releases-0.11.0.md`, `_source/engine-releases-0.5.3.md`, `_source/desktop-releases-0.9.0.md`, `_source/desktop-releases-0.2.2.md`, `_source/desktop-releases-0.2.3.md`, `_source/desktop-releases-0.2.1.md`, `_source/desktop-releases-0.2.0.md`, `_source/desktop-security.md`,
 `_source/desktop-architecture.md`.

@@ -9,7 +9,7 @@ Live at <https://seo.lv24.by/>. The site ships English at `/`, Russian at
 locales with identical commands and code blocks (`npm test` enforces this), and
 the pages carry `hreflang` alternates.
 
-Documented releases: engine `lv24-seo 0.11.0`, desktop `0.9.0`.
+Documented releases: engine `lv24-seo 0.12.2`, desktop `0.9.0`.
 
 ## Coverage
 
@@ -24,7 +24,7 @@ The documented product surface today:
 
 | Surface | Count |
 |---|---|
-| CLI | 24 top-level commands (17 groups + 7 commands), every command with `--json` |
+| CLI | 25 top-level commands (18 groups + 7 commands), every command with `--json` |
 | MCP | 12 tools, 3 resources, 3 prompts |
 | Skills | 3 canonical skills (`seo-weekly`, `seo-indexing-triage`, `seo-technical-audit`) |
 | Desktop | Windows NSIS/portable, Linux AppImage/deb/rpm, macOS DMG; signed updates for NSIS, `.app` and AppImage |

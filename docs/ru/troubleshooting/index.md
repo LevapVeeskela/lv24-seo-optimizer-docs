@@ -9,7 +9,7 @@ description: Диагностика аутентификации, хранили
 `PROPERTY_NOT_FOUND` нет отдельного кода. Каждая CLI-команда принимает `--json`:
 
 ```json
-{"ok": false, "error": {"code": "AUTH_REQUIRED", "message": "Google Search Console token is missing", "retryable": false, "next_action": "lv24-seo auth login --provider gsc"}, "meta": {"version": "0.11.0"}, "warnings": ["gsc: token missing"]}
+{"ok": false, "error": {"code": "AUTH_REQUIRED", "message": "Google Search Console token is missing", "retryable": false, "next_action": "lv24-seo auth login --provider gsc"}, "meta": {"version": "0.12.2"}, "warnings": ["gsc: token missing"]}
 ```
 
 MCP-инструменты возвращают тот же конверт как `structuredContent` и ставят
@@ -96,6 +96,21 @@ Apply записи с `--confirm` использует SQLite-журнал ид�
 отключена на пять минут жизни токена. Pending-заявка после падения не имеет TTL и считается
 выполняющейся, пока оператор её не освободит.
 
+## Автоматизация индексации
+
+`indexing run --allow-write` — запись к провайдеру. Чаще всего отказы локальные и происходят до любой отправки:
+
+| Симптом | Причина | Что делать |
+|---|---|---|
+| `WRITE_DISABLED` | `[indexing] enabled` выключен или нет `LV24_SEO_WRITE_SECRET` | Включите `enabled = true` в `seo.toml` и экспортируйте секрет в том же окружении |
+| `quota_exhausted`, `submitted: 0` | Дневная/месячная квота Bing, остаток Яндекса, инспекция GSC или локальный лимит IndexNow исчерпаны | Дождитесь сброса (`quota.reset`) или запустите меньший план; ноль не значит, что всё проиндексировано |
+| `internal_error` после чтения квоты | Движок `0.12.0` закрывал кешированный клиент провайдера между фазами | Обновитесь до `0.12.1` или новее |
+| `UPSTREAM_UNAVAILABLE` с `recrawl/queue upstream HTTP 5xx` | Яндекс вернул ошибку шлюза; `0.12.2` сообщает её честно | Ежедневная задача повторит попытку; клиентского повтора нет |
+| `indexed_total: null` с `no_per_url_index_count` | У Bing, Яндекса и IndexNow нет статуса по URL | Используйте GSC URL Inspection для вердикта; не читайте null как ноль |
+| `write_secret_present: false` | Планировщик или оболочка не видят секрет | Поместите его в окружение планировщика (drop-in systemd, окружение пользователя или экспорт cron), но не в командную строку |
+
+`indexing status` только читает и безопасен до плана. Плановому применению также нужен `[indexing] enabled = true`; одна установка задачи только планирует. Сгенерированная команда `lv24-seo-indexing` содержит `--allow-write`, но никогда — секрет.
+
 ## Ошибки хранилища `STORE_*`
 
 Сбой SQLite типизирован, а не выглядит как общий `INTERNAL`:
@@ -181,7 +196,7 @@ lv24-seo install --client vscode --print
 | Симптом | Причина | Исправление |
 |---|---|---|
 | «not valid JSON», хотя файл выглядит валидным | UTF-8 BOM, часто от PowerShell 5.1 | Перепишите без BOM или удалите файл и повторите |
-| `No such command 'mcp'` | Старая сборка без `mcp serve` | Обновитесь до 0.11.0 |
+| `No such command 'mcp'` | Старая сборка без `mcp serve` | Обновитесь до 0.12.2 |
 | GUI-клиент не запускает сервер | Приложение не наследует `PATH` оболочки | Укажите абсолютный путь `uvx` в `command` |
 | VS Code ничего не показывает | `install` пишет `mcpServers`; VS Code использует `servers` | Переименуйте ключ или используйте блок для VS Code |
 
@@ -196,7 +211,7 @@ npm-пакет — тонкий лаунчер. Он передаёт аргум
 `uvx --from lv24-seo==<version> lv24-seo`. В Windows Node не может запустить `.cmd`-шим
 с `shell: false`; это падает с `EINVAL`.
 
-Версия 0.11.0 игнорирует шимы `lv24-seo.cmd` и `.bat` и предпочитает `lv24-seo.exe` или
+Начиная с 0.11.0, лаунчер игнорирует шимы `lv24-seo.cmd` и `.bat` и предпочитает `lv24-seo.exe` или
 бинарник без расширения, прежде чем откатиться к `uvx`. Если лаунчер всё равно выбирает
 не тот бинарник, задайте абсолютное переопределение:
 
@@ -349,4 +364,4 @@ actual (redacted --json envelope):
 
 См. [Безопасность и приватность](/ru/security/) для write-гейтов и [Релизы и обновление](/ru/release/) для поведения updater.
 
-Source: `_source/engine-troubleshooting.md`, `_source/engine-releases-0.11.0.md`, `_source/engine-releases-0.5.3.md`, `_source/desktop-releases-0.9.0.md`, `_source/desktop-releases-0.2.2.md`, `_source/desktop-releases-0.2.3.md`, `_source/desktop-releases-0.2.1.md`, `_source/desktop-releases-0.2.0.md`, `_source/desktop-security.md`, `_source/desktop-architecture.md`.
+Source: `_source/engine-troubleshooting.md`, `_source/engine-releases-0.12.2.md`, `_source/engine-releases-0.12.0.md`, `_source/engine-releases-0.11.0.md`, `_source/engine-releases-0.5.3.md`, `_source/desktop-releases-0.9.0.md`, `_source/desktop-releases-0.2.2.md`, `_source/desktop-releases-0.2.3.md`, `_source/desktop-releases-0.2.1.md`, `_source/desktop-releases-0.2.0.md`, `_source/desktop-security.md`, `_source/desktop-architecture.md`.

@@ -25,13 +25,13 @@ description: Команды, глобальные флаги, JSON-конвер�
 С флагом `--json` команда печатает ровно один JSON-документ и ничего больше:
 
 ```json
-{ "ok": true, "data": {}, "meta": { "version": "0.11.0", "duration_ms": 812 }, "warnings": [] }
+{ "ok": true, "data": {}, "meta": { "version": "0.12.2", "duration_ms": 812 }, "warnings": [] }
 ```
 
 Неудачная команда использует ту же форму с `ok: false` и объектом `error` вместо `data`:
 
 ```json
-{ "ok": false, "error": { "code": "AUTH_REQUIRED", "message": "Google Search Console token is missing", "retryable": false, "next_action": "lv24-seo auth login --provider gsc" }, "meta": { "version": "0.11.0" }, "warnings": ["gsc: token missing"] }
+{ "ok": false, "error": { "code": "AUTH_REQUIRED", "message": "Google Search Console token is missing", "retryable": false, "next_action": "lv24-seo auth login --provider gsc" }, "meta": { "version": "0.12.2" }, "warnings": ["gsc: token missing"] }
 ```
 
 - `data` зависит от команды. В `meta` всегда есть `version`, часто добавляются `duration_ms`,
@@ -117,7 +117,7 @@ lv24-seo report weekly --days 7 --strict --json
 
 ### Только чтение по умолчанию и шлюз записи
 
-Менять состояние провайдера могут только `sitemap submit`, `bing submit`, `yandex recrawl` и `indexnow submit`.
+Менять состояние провайдера могут только `sitemap submit`, `bing submit`, `yandex recrawl`, `indexnow submit` и `indexing run --allow-write`.
 Они работают в два шага:
 
 1. Задайте длинный случайный `LV24_SEO_WRITE_SECRET`, затем запустите команду с `--allow-write` и без
@@ -171,6 +171,7 @@ redacting-handler в CLI и `lv24-seo mcp serve`; если переменная 
 | IndexNow | `indexnow submit` | Защищённая запись, которая отправляет явные URL или URL, прочитанные из sitemap проекта. |
 | Bing | `bing submit`, `bing pages`, `bing traffic`, `bing crawl`, `bing urlinfo`, `bing children`, `bing users`, `bing sites`, `bing joins`, `bing sitemaps`, `bing issues`, `bing quota` | `submit` — защищённая запись `SubmitUrlbatch`; остальные читают страницы, трафик, обход, URL, связки, карты, проблемы и квоту. |
 | Crawl and audit | `crawl` | Не зависит от провайдеров; сохраняет локальные страницы и проблемы, если настроено хранилище. |
+| Indexing | `indexing status`, `indexing run`, `indexing history` | `status` и `history` только читают; `run` по умолчанию планирует и отправляет в пределах свежих квот только с `--allow-write`. |
 | CWV | `cwv collect`, `cwv audits`, `cwv history` | `collect` сохраняет полевые строки p75 CrUX; `audits` и `history` — чтение PSI/CrUX. |
 | Reports | `report weekly`, `report diff` | `weekly` сохраняет локальный снимок; `diff` только читает. |
 | Scheduling | `schedule print`, `schedule install`, `schedule status`, `schedule uninstall` | `print` только рендерит; `install` и `uninstall` по умолчанию планируют и пишут только с `--allow-write`; `status` только читает. |
@@ -180,7 +181,7 @@ redacting-handler в CLI и `lv24-seo mcp serve`; если переменная 
 | Portfolio | `portfolio list` | Сводка локальных проектов ниже одного каталога только для чтения; без вызова провайдера, чтения токена и записи. |
 | Agents and MCP | `mcp serve`, `install`, `export tools`, `export skills` | Конфиг хоста, сгенерированные файлы или локальный сервер. |
 
-В CLI 24 команды верхнего уровня: 17 групп и 7 команд (`version`, `doctor`, `init`, `properties`, `stats`, `crawl`, `install`).
+В CLI 25 команд верхнего уровня: 18 групп и 7 команд (`version`, `doctor`, `init`, `properties`, `stats`, `crawl`, `install`).
 
 ## Примеры
 
@@ -306,6 +307,43 @@ URL несёт `never_crawled`. `bing children` листает не более 1
 accepted-pending, `400` формат, `403` отсутствующий/несовпадающий файл ключа, `422` несоответствие
 хоста/ключа и `429` квота/спам; ключ никогда не выводится.
 
+### Автоматизация индексации
+
+```bash
+lv24-seo indexing status --live --json
+lv24-seo indexing status --provider bing --limit 50 --json
+lv24-seo indexing run --from-sitemap --max-submit 20 --max-inspect 5 --json
+lv24-seo indexing run --from-sitemap --allow-write --json
+lv24-seo indexing history --limit 20 --json
+```
+
+`indexing status` только читает. `--live` читает квоты Bing `GetUrlSubmissionQuota` и Яндекса
+`recrawl/quota`; без него показывается последняя записанная квота с `quota_not_live`. GSC и IndexNow
+используют локальные счётчики UTC-дня, потому что ни один провайдер не отдаёт остаток. Каждая запись
+провайдера несёт `urls`, `submitted`, `inspected`, `indexed`, `not_indexed`, `crawled`, `queued`,
+`pending`, `stale`, `quota` и `limitations`, плюс `write_secret_present`.
+
+`indexing run` собирает очередь того же хоста из `<project.base_url>/sitemap.xml` (10 000 URL и шесть
+документов sitemap) и/или повторяемых `--url`, затем планирует по приоритету: ещё не отправленные,
+`lastmod` новее `last_submitted_at`, проверка старше `check_interval_days`, затем остальные. Проверки
+только читают и выполняются в обоих режимах: GSC URL Inspection (`PASS`/`Submitted and indexed` →
+`indexed`; `NEUTRAL`/`FAIL` → `not_indexed`) и Bing `GetUrlInfo` (`crawled`, если есть дата обхода,
+иначе `unknown`). Без `--allow-write` ничего не отправляется. С ним движок заново читает квоты,
+проверяет хеш плана, выпускает и расходует внутренний confirm-токен и пишет одну строку
+`indexing_runs` на провайдера.
+
+Лимиты применяются до вызова провайдера: `max_submit_per_run` (по умолчанию 500), остаток
+дневной/месячной квоты Bing, `quota_remainder` Яндекса, `max_inspect_per_run` (по умолчанию 20),
+локальный `gsc_inspect_daily_limit` (2 000) и `indexnow_daily_limit` (1 000). Исчерпанная квота —
+`quota_exhausted` с `submitted: 0` и `not_attempted`; ноль никогда не означает «всё проиндексировано».
+`--allow-write` требует `[indexing] enabled = true` и `LV24_SEO_WRITE_SECRET`, иначе команда падает
+с `WRITE_DISABLED`.
+
+Агрегат GSC `contents[].indexed` из sitemap отдаётся отдельно как `indexed_total` с
+`gsc_indexed_count_deprecated`. Bing, Яндекс и IndexNow не дают счётчик по URL, поэтому их
+`indexed_total` равен `null` с `no_per_url_index_count`; Bing также несёт `site_scan_no_api`,
+Яндекс — `yandex_no_per_url_index_status`, IndexNow — `indexnow_no_status_api`.
+
 ### Core Web Vitals
 
 ```bash
@@ -416,10 +454,12 @@ Markdown; предупреждения идут в stderr.
 ### Расписание
 
 ```bash
-lv24-seo schedule print --cron "0 6 * * 1" --target systemd --json
+lv24-seo schedule print --kind weekly --cron "0 6 * * 1" --target systemd --json
 lv24-seo schedule install --kind weekly --json
 lv24-seo schedule install --kind weekly --allow-write --json
-lv24-seo schedule status --json
+lv24-seo schedule install --kind indexing --json
+lv24-seo schedule install --kind indexing --allow-write --json
+lv24-seo schedule status --kind indexing --json
 lv24-seo schedule uninstall --kind weekly --allow-write --json
 ```
 
@@ -429,8 +469,12 @@ lv24-seo schedule uninstall --kind weekly --allow-write --json
 плана и важнее `--allow-write`). `status` только читает и сообщает `installed`, `outdated`, `partial`,
 `missing` или `unknown` с `exists`/`matches` по артефактам. `uninstall` по умолчанию только планирует,
 а с `--allow-write` удаляет ровно сгенерированные артефакты; чужие строки cron и задачи никогда не
-трогаются. Сгенерированная задача запускает `report weekly --send --json`. В systemd и Windows
-конвертируются только простые выражения cron (`M H * * *` и `M H * * DOW`).
+трогаются. `--kind` принимает `weekly`, `daily` и `indexing`. Задачи отчётов запускают
+`report weekly --send --json`; задача `indexing` называется `lv24-seo-indexing`, идёт ежедневно в
+`04:00` и вызывает `indexing run --allow-write --config <absolute path> --json`. Ей по-прежнему нужны
+`[indexing] enabled = true` и `LV24_SEO_WRITE_SECRET` в окружении планировщика; сгенерированная
+команда никогда не содержит секрет. В systemd и Windows конвертируются только простые выражения
+cron (`M H * * *` и `M H * * DOW`).
 
 ### MCP и клиенты агентов
 
@@ -479,4 +523,4 @@ lv24-seo export skills --out skills/
 - [MCP и навыки агентов](/ru/mcp/)
 - [Устранение неполадок](/ru/troubleshooting/)
 
-Source: `_source/engine-cli.md`, `_source/engine-mcp.md`, `_source/engine-releases-0.11.0.md`, `_source/engine-releases-0.10.0.md`, `_source/engine-releases-0.9.0.md`, `_source/engine-releases-0.8.0.md`, `_source/engine-releases-0.7.0.md`, `_source/engine-releases-0.6.0.md`, `_source/engine-releases-0.5.3.md`; вывод `--help` версии 0.11.0 в репозитории движка.
+Source: `_source/engine-cli.md`, `_source/engine-mcp.md`, `_source/engine-releases-0.12.2.md`, `_source/engine-releases-0.12.0.md`, `_source/engine-releases-0.11.0.md`, `_source/engine-releases-0.10.0.md`, `_source/engine-releases-0.9.0.md`, `_source/engine-releases-0.8.0.md`, `_source/engine-releases-0.7.0.md`, `_source/engine-releases-0.6.0.md`, `_source/engine-releases-0.5.3.md`; вывод `--help` версии 0.12.2 в репозитории движка.

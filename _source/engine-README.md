@@ -55,7 +55,7 @@ No paid SEO platform required. Everything in the default path has a free tier.
 
 ## Status
 
-**Beta (v0.11.0).** Working today: six
+**Beta (v0.12.2).** Working today: six
 provider adapters (GSC, Yandex Webmaster, Yandex Metrika, Bing/IndexNow, CrUX, PSI), a 30-rule
 crawler, SQLite history, analysis (deltas, opportunities, indexing triage, multi-engine fusion,
 nginx log analysis with UA-only bot triage, CWV by template), per-provider `stats`, report builders
@@ -64,13 +64,17 @@ finding/task lifecycle, portable backup bundles with non-destructive and two-pha
 read-only multi-site portfolio scan, SMTP/Telegram delivery with idempotency, Bing page/traffic/
 crawl/URL diagnostics, Bing sitemap and URL submission, one-click IndexNow from the project
 sitemap, GSC URL inspection + sitemap reads + filtered search analytics, Yandex events/sitemaps/
-history/recrawl-queue reads, organic Metrika pages/goals/dimensions, the 24-command CLI,
+history/recrawl-queue reads, organic Metrika pages/goals/dimensions, quota-aware indexing automation
+(status/run/history with Bing, Yandex, IndexNow and GSC checks), the 25-command CLI,
 the MCP server
 (12 tools, 3 resources, 3 prompts) and a plan-by-default scheduler lifecycle. Canonical source ids,
 GSC-only headline deltas, partial provider isolation and window/daily storage separation are
-enforced with regression tests. `0.11.0` is the current release: full-platform read depth across
-GSC, Yandex, Bing, Metrika and CWV/IndexNow (PyPI, npm and the MCP Registry, 2026-11-17),
-and desktop `0.9.0` bundles engine `0.11.0`. See
+enforced with regression tests. `0.12.2` is the current release: quota-aware indexing automation
+across Bing, Yandex, IndexNow and GSC, with the indexing client-lifecycle and Yandex 5xx fixes
+(PyPI, npm and the MCP Registry, 2026-11-17), and desktop `0.9.0` bundles engine `0.11.0`. See
+[`docs/releases/0.12.2.md`](docs/releases/0.12.2.md),
+[`docs/releases/0.12.1.md`](docs/releases/0.12.1.md),
+[`docs/releases/0.12.0.md`](docs/releases/0.12.0.md),
 [`docs/releases/0.11.0.md`](docs/releases/0.11.0.md),
 [`docs/releases/0.10.0.md`](docs/releases/0.10.0.md),
 [`docs/releases/0.9.0.md`](docs/releases/0.9.0.md),
@@ -109,6 +113,8 @@ lv24-seo yandex sitemaps --json                 # sitemap ids, URLs, counts, err
 lv24-seo yandex history --kind sqi --json       # SQI / in-search / queries / query series
 lv24-seo yandex queue --json                    # recrawl tasks + provider total (read-only)
 lv24-seo yandex recrawl --url https://example.com/page --allow-write  # plan; confirm to POST
+lv24-seo indexing status --live --json          # indexed/submitted/queued per provider + quotas
+lv24-seo indexing run --from-sitemap --json     # plan; add --allow-write to submit within quotas
 lv24-seo report weekly --days 7 --out reports/
 lv24-seo report diff --markdown                 # week-over-week diff of stored snapshots
 lv24-seo stats --days 7 --json                  # read-only per-provider dashboard snapshot
@@ -210,9 +216,9 @@ audit → plan → fix → verify.
 |---|---|
 | **Reports** | weekly search performance + delta, indexing triage, striking-distance opportunities, content decay, technical regressions, and a Core Web Vitals section fed by `cwv collect` (CrUX URL+device p75, PSI lab); `cwv audits` returns bounded Lighthouse diagnostics and `cwv history` weekly CrUX p75 periods |
 | **MCP tools** | 12 tools across GSC, Yandex, crawl, reports, logs and gated writes — see the table below |
-| **CLI** | 24 top-level commands (17 groups + 7 commands): `version`, `doctor`, `init`, `properties`, `stats`, `crawl`, `install`, `auth`, `config`, `gsc`, `yandex`, `metrika`, `sitemap`, `indexnow`, `bing`, `report`, `cwv`, `schedule`, `export`, `logs`, `tasks`, `backup`, `portfolio`, `mcp`; read commands accept `--strict` to exit `5` on truncated data |
+| **CLI** | 25 top-level commands (18 groups + 7 commands): `version`, `doctor`, `init`, `properties`, `stats`, `crawl`, `install`, `auth`, `config`, `gsc`, `yandex`, `metrika`, `sitemap`, `indexnow`, `bing`, `indexing`, `report`, `cwv`, `schedule`, `export`, `logs`, `tasks`, `backup`, `portfolio`, `mcp`; read commands accept `--strict` to exit `5` on truncated data |
 | **Skills** | `seo-weekly`, `seo-indexing-triage`, `seo-technical-audit` — decision trees + tool recipes + output contracts (install from the wheel: `lv24-seo export skills --out ./skills`) |
-| **Automation** | cron / systemd timer / Windows Task Scheduler generators with plan-first `schedule install` (`--allow-write` to apply), read-only `schedule status`, exact and idempotent `schedule uninstall`, plus a GitHub Actions recipe |
+| **Automation** | cron / systemd timer / Windows Task Scheduler generators with plan-first `schedule install` (`--allow-write` to apply), read-only `schedule status`, exact and idempotent `schedule uninstall`, a daily `indexing run` job, plus a GitHub Actions recipe |
 
 ### MCP tools
 
@@ -266,6 +272,9 @@ Resources: `seo://config`, `seo://report/latest`, `seo://docs/tools`. Prompts: `
 * [Configuration](docs/config.md) — `seo.toml`, env vars, secret storage
 * [Scheduling & delivery](docs/scheduling.md) — cron/systemd/Task Scheduler, SMTP, Telegram
 * [Agent skills](docs/skills.md) — skill format and mirrors
+* [Release notes 0.12.2](docs/releases/0.12.2.md) — Yandex recrawl 5xx mapping
+* [Release notes 0.12.1](docs/releases/0.12.1.md) — fix the indexing client lifecycle (Bing/Yandex `internal_error`)
+* [Release notes 0.12.0](docs/releases/0.12.0.md) — quota-aware indexing automation: status/run/history, Bing/Yandex/IndexNow/GSC quotas, honest index counts
 * [Release notes 0.11.0](docs/releases/0.11.0.md) — full-platform read depth: GSC inspection/sitemaps, Yandex events/sitemaps/recrawl, Bing page/crawl/URL diagnostics, organic Metrika, CWV audits/history
 * [Release notes 0.10.0](docs/releases/0.10.0.md) — Bing URL submission, remaining quota, sitemap feeds, crawl-issue bitmask
 * [Release notes 0.9.0](docs/releases/0.9.0.md) — Bing sitemap submit, one-click IndexNow

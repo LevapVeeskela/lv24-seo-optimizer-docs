@@ -14,12 +14,14 @@ description: Установка задач cron, systemd или Task Scheduler, 
 ```bash
 lv24-seo schedule install --kind weekly --cron "0 6 * * 1" --config ./seo.toml --print
 lv24-seo schedule install --kind daily --cron "0 6 * * *" --config ./seo.toml
-lv24-seo schedule print --cron "0 6 * * 1" --target systemd --json
+lv24-seo schedule install --kind indexing --config ./seo.toml
+lv24-seo schedule print --kind indexing --target systemd --config ./seo.toml --json
+lv24-seo schedule status --kind indexing --config ./seo.toml --json
 ```
 
-По умолчанию `weekly` — это `0 6 * * 1`, а `daily` — `0 6 * * *`. Генерируемая команда — `report weekly --send --json`; вид `daily` добавляет `--days 1 --lag-days 0`. Абсолютный путь `--config` и каталог конфигурации как рабочий каталог встраиваются, поэтому нестандартное имя файла, путь с пробелами или несколько конфигов в одной папке продолжают работать.
+По умолчанию `weekly` — это `0 6 * * 1`, `daily` — `0 6 * * *`, `indexing` — `0 4 * * *`. Генерируемая команда отчёта — `report weekly --send --json`; вид `daily` добавляет `--days 1 --lag-days 0`. Абсолютный путь `--config` и каталог конфигурации как рабочий каталог встраиваются, поэтому нестандартное имя файла, путь с пробелами или несколько конфигов в одной папке продолжают работать.
 
-У `schedule install` нет флага `--target`: он определяет бэкенд хоста. `schedule print` принимает `--target cron|systemd|windows` и рендерит, не трогая хост. Команды `schedule status` нет; смотрите планировщик хоста через `crontab -l`, `systemctl --user list-timers` или Task Scheduler.
+`schedule install` по умолчанию только планирует и пишет лишь с `--allow-write`; он принимает `--target auto|cron|systemd|windows` (auto определяет хост). `schedule print` рендерит, не трогая хост. `schedule status` только читает и сообщает `installed`, `outdated`, `partial`, `missing` или `unknown` с `exists`/`matches` по артефактам; `schedule uninstall --allow-write` удаляет ровно сгенерированные артефакты.
 
 ## Артефакты
 
@@ -35,12 +37,41 @@ lv24-seo schedule print --cron "0 6 * * 1" --target systemd --json
 
 Результат установки всегда несёт список `warnings` с ограничениями бэкенда: cron может игнорировать `CRON_TZ`, а XML Windows кодирует фиксированное смещение, а не IANA-зону, поэтому сезонный переход на летнее время требует проверки. В Windows используется `tzdata` (входит в Windows). Systemd включает таймер через `systemctl --user daemon-reload` и `systemctl --user enable --now`.
 
+## Задача автоматизации индексации
+
+Установка задачи индексации — это явное согласие на автоматизацию. Создаётся задача
+`lv24-seo-indexing` в `0 4 * * *` (ежедневно, в настроенной зоне) с командой
+`lv24-seo indexing run --allow-write --config <absolute path> --json`. `--allow-write` встроен,
+потому что установка задачи и есть согласие; движок всё равно заново читает квоты, проверяет хеш
+плана, пропускает URL, у которых `last_submitted_at` новее `lastmod`, и пишет одну строку
+`indexing_runs` на провайдера. `[indexing] enabled = true` всё ещё обязателен, поэтому задача,
+установленная до включения конфигурации, только планирует.
+
+**Секрет записи не попадает в командную строку.** `LV24_SEO_WRITE_SECRET` должен быть в окружении,
+из которого планировщик запускает задачу:
+
+- **Пользовательский unit systemd:** добавьте drop-in, который переживает переустановку, например
+  `%h/.config/systemd/user/lv24-seo-indexing.service.d/secret.conf` с `[Service]` и
+  `EnvironmentFile=%h/.config/lv24-seo/write.env`, и файл окружения `0600` с
+  `LV24_SEO_WRITE_SECRET=<value>`; затем выполните `systemctl --user daemon-reload`. Изменённый
+  вручную unit помечается как `outdated` и заменяется при переустановке, поэтому drop-in надёжнее.
+- **Планировщик заданий Windows:** задайте переменную один раз в окружении пользователя
+  (`setx LV24_SEO_WRITE_SECRET "<value>"`) и начните новый сеанс, чтобы задача её унаследовала. XML
+  не содержит секрет.
+- **cron:** экспортируйте переменную над управляемым блоком или подключите файл окружения `0600` из
+  скрипта-обёртки; не указывайте значение в командной строке `lv24-seo`.
+
+`indexing status` сообщает `write_secret_present: false` и `write_secret_missing`, когда переменной
+нет, поэтому пропавший секрет виден до того, как следующее плановое применение упадёт с
+`WRITE_DISABLED`.
+
 ## Рекомендуемая частота
 
 | Задача | Когда | Почему |
 |---|---|---|
 | `report weekly --send` | Понедельник, 06:00 | У данных GSC задержка 2–3 дня; понедельник стабилен |
 | `crawl --start URL` | Раз в неделю, после отчёта | Держит доказательства обхода рядом с окном отчёта |
+| `indexing run --allow-write` | Ежедневно 04:00 | Проверяет положенные URL и отправляет в пределах свежих квот; нужны `[indexing] enabled=true` и секрет записи в окружении планировщика |
 | `auth status` | Раз в неделю | Подтверждает наличие и источник каждого токена |
 | Полевые данные CrUX | Раз в неделю | Скользящее окно 28 дней; ежедневный опрос ничего не добавляет |
 
@@ -76,7 +107,7 @@ Telegram отправляет тот же локализованный текс�
 
 Ворота поддерживают идемпотентную заявку pending-to-sent. При инициализированной рабочей области CLI подключает SQLite-журнал, поэтому сбой провайдера освобождает заявку и повтор разрешён; завершённая или выполняющаяся заявка считается дублем и возвращает `skipped`. Без каталога данных применение всё равно выполняется, но конверт предупреждает, что защита от повтора отключена на пять минут жизни токена. Dry run не открывает журнал и не создаёт базу. Падение может оставить pending-заявку без TTL в 0.5.2; она считается выполняющейся, пока оператор её не освободит.
 
-В 0.11.0 реально отправляют IndexNow, отправка sitemap в Bing, отправка URL в Bing и переобход Yandex; отправка карты сайта GSC и удаление sitemap в Bing отказывают с `WRITE_DISABLED`, а не делают вид, что запись произошла. Инструменты записи MCP требуют `allow_write=true`; `seo_sitemap_submit` для Bing и `seo_recrawl_request` подключены, а GSC submit и Bing delete возвращают `WRITE_DISABLED`.
+В 0.12.2 реально отправляют IndexNow, отправка sitemap в Bing, отправка URL в Bing, переобход Yandex и `indexing run --allow-write`; отправка карты сайта GSC и удаление sitemap в Bing отказывают с `WRITE_DISABLED`, а не делают вид, что запись произошла. Инструменты записи MCP требуют `allow_write=true`; `seo_sitemap_submit` для Bing и `seo_recrawl_request` подключены, а GSC submit и Bing delete возвращают `WRITE_DISABLED`. У автоматизации индексации нет MCP-инструмента: только CLI и планировщик.
 
 ## GitHub Actions
 
@@ -107,4 +138,4 @@ uvx --from lv24-seo lv24-seo report weekly --send --json
 
 Бэкенды расписаний применяют зону там, где могут, и сообщают предупреждение, где не могут. Неверная зона отклоняется при валидации конфигурации с `CONFIG_INVALID`; она никогда не подменяется молча. Проверяйте задачи Windows после перехода на летнее время и убедитесь, что установленный cron-демон поддерживает `CRON_TZ`, прежде чем на него полагаться.
 
-Source: `_source/engine-scheduling.md`, `_source/engine-cli.md`, `_source/engine-config.md`, `_source/engine-releases-0.11.0.md`.
+Source: `_source/engine-scheduling.md`, `_source/engine-cli.md`, `_source/engine-config.md`, `_source/engine-releases-0.12.2.md`, `_source/engine-releases-0.12.0.md`, `_source/engine-releases-0.11.0.md`.

@@ -23,7 +23,7 @@ description: Матрица возможностей провайдеров, а�
 | Собственный обход | Страницы, проблемы, граф ссылок, покрытие карты сайта | Нет | Нет | Локально | Текущий запуск |
 | Логи | Триаж ботов по User-Agent для JSON access-логов nginx; не доказательство проверенного краулера | Нет | Локальный файл | Локально | Окно лога |
 
-GA4 — необязательная точка интеграции, а не часть пути по умолчанию. Поставляемые провайдеры: GSC, Yandex Webmaster, Yandex Metrika, Bing, CrUX и PSI. Платные адаптеры для SERP и ссылок (DataForSEO, SerpApi и другие) запланированы или только описаны; в 0.11.0 ни один не поставляется.
+GA4 — необязательная точка интеграции, а не часть пути по умолчанию. Поставляемые провайдеры: GSC, Yandex Webmaster, Yandex Metrika, Bing, CrUX и PSI. Платные адаптеры для SERP и ссылок (DataForSEO, SerpApi и другие) запланированы или только описаны; в 0.12.2 ни один не поставляется.
 
 ## Аутентификация
 
@@ -105,6 +105,15 @@ pip install "lv24-seo[secrets]"
 | `psi_audits_cap` | Список аудитов Lighthouse ограничен 100 строками |
 | `indexnow_accepted_pending` | IndexNow вернул `202`; движок ещё должен проверить ключ |
 | `recrawl_quota_exceeded` | Переобход Yandex получил `429`; остаток URL в `not_attempted` |
+| `no_per_url_index_count` | Провайдер не даёт счётчик проиндексированных по URL; `indexed_total` равен `null` |
+| `bing_no_per_url_index_status` | Bing `GetUrlInfo` сообщает состояние обхода, а не вердикт индексации |
+| `yandex_no_per_url_index_status` | Yandex не даёт вердикт индексации по URL |
+| `indexnow_no_status_api` | У IndexNow нет API статуса; `200` означает «принято» |
+| `site_scan_no_api` | У Bing Site Scan нет публичного API; движок его не автоматизирует |
+| `gsc_indexed_count_deprecated` | Агрегат GSC `contents[].indexed` устарел |
+| `bing_quota_reset_undocumented` | Bing не публикует сброс месячной квоты отправки |
+| `quota_exhausted` | У запуска не осталось квоты провайдера или локального лимита; ничего не отправлено |
+| `write_secret_missing` | `LV24_SEO_WRITE_SECRET` отсутствует, применение будет отклонено |
 | `token_expiring` | Срок действия учётных данных близок к концу |
 | `paid_provider` | Строка пришла из платного адаптера |
 | `partial_response` | Провайдер вернул неполный ответ |
@@ -122,6 +131,25 @@ pip install "lv24-seo[secrets]"
 **CrUX и PSI.** `cwv history (--url | --origin) [--device] [--weeks 1..40]` читает недельные p75-периоды с `first_date`/`last_date`; пропуски — `crux_history_gaps`, короткая история — `crux_history_short`. `cwv audits` возвращает до 100 аудитов Lighthouse с оценкой, отображаемым значением, описанием без HTML и экономией; `runtimeError`, CAPTCHA и другой `finalUrl` — предупреждения/ограничения, а не чистый запуск. `collectionPeriod` определяет `data_age_days`; двухдневная эвристика — только запасной вариант с `crux_period_missing`, нормализация URL даёт `crux_url_normalized`.
 
 **IndexNow.** Ключ `[A-Za-z0-9-]{8,128}` проверяется до планирования; `keyLocation` на том же хосте ограничивает каталог. `200` — accepted, `202` — accepted-pending, `400` — формат, `403` — отсутствующий/несовпадающий файл ключа с точным URL, `422` — несоответствие хоста/ключа, `429` — квота/спам. Ключ никогда не выводится.
+
+## Автоматизация индексации
+
+`indexing status|run|history` ведёт одну локальную очередь на провайдера и URL (`indexing_state`, схема v5) и планирует отправки и проверки в пределах свежих квот. `indexing run` по умолчанию читает sitemap проекта (корень плюс пять дочерних документов, 10 000 URL) и объединяет явные `--url`; чужие хосты пропускаются, каждый лимит отражается.
+
+| Провайдер | Отправка | Источник квоты | Проверка индекса по URL | Честные ограничения |
+|---|---|---|---|---|
+| Bing | `SubmitUrlbatch`, 500 URL за вызов | `GetUrlSubmissionQuota`: `daily_remaining` / `monthly_remaining` (остаток, не всего) | `GetUrlInfo` даёт только `http_status` и `last_crawled_date` | `bing_no_per_url_index_status`, `no_per_url_index_count`, `site_scan_no_api`, `bing_quota_reset_undocumented` |
+| Yandex | `recrawl/queue`, один URL за запрос | `recrawl/quota`: `daily_quota` / `quota_remainder` | нет | `yandex_no_per_url_index_status`, `no_per_url_index_count`, `one_url_per_call` |
+| IndexNow | один POST, максимум 10 000 URL | локальный счётчик UTC-дня, ограничен `[indexing].indexnow_daily_limit` (по умолчанию 1 000) | нет | `indexnow_no_status_api`, `no_per_url_index_count`; `200` — принято, не проиндексировано |
+| GSC | не используется для отправки | локальный счётчик UTC-дня, ограничен `[indexing].gsc_inspect_daily_limit` (по умолчанию 2 000) | URL Inspection: `PASS` / `Submitted and indexed` → `indexed`; `NEUTRAL` / `FAIL` → `not_indexed`; остальное `unknown` | `gsc_indexed_count_deprecated` для отдельного агрегата sitemap |
+
+Приоритет: сначала URL, которые ещё не отправляли; затем URL, у которых sitemap `lastmod` новее `last_submitted_at`; затем URL, у которых `last_checked_at` старше `check_interval_days`. URL, отправленный позже своего `lastmod`, пропускается без `--force`. Без `--allow-write` команда только проверяет и планирует; с ним движок заново читает квоты, проверяет хеш плана, расходует внутренний confirm-токен и пишет одну строку `indexing_runs` на провайдера. Повторное применение того же confirm-токена возвращает `skipped`/`duplicate` и не добавляет запись очереди или `indexing_runs`.
+
+Счётчики индексации честные: только GSC URL Inspection даёт вердикт по URL. Агрегат GSC `contents[].indexed` отдаётся отдельно как `indexed_total` и всегда помечается `gsc_indexed_count_deprecated`. Bing, Яндекс и IndexNow возвращают `indexed_total: null` с `no_per_url_index_count`; ноль никогда не выдаётся за «всё проиндексировано». У Bing Site Scan нет публичного API (`site_scan_no_api`).
+
+Плановой отправке нужны `[indexing] enabled = true` **и** `LV24_SEO_WRITE_SECRET` в окружении, из которого планировщик запускает задание. Сгенерированная команда `lv24-seo-indexing` содержит `--allow-write`, но никогда — секрет; `indexing status` показывает `write_secret_present` и `write_secret_missing` до того, как следующее применение упадёт с `WRITE_DISABLED`. См. [Автоматизация и доставка](/ru/automation/).
+
+17 ноября 2026 `indexing status --live` для `lv24.by` показал Bing 99 дневных / 1399 месячных, Яндекс 150, GSC 0/2000, IndexNow 0/1000 и `write_secret_present: true`. Первый запуск отправил 5 URL в Bing и 5 в IndexNow и проверил 15 URL GSC (3 проиндексированы); POST Яндекса вернул HTTP 504 на стороне провайдера, ежедневное задание повторит попытку.
 
 ## Область карты сайта
 
@@ -144,4 +172,4 @@ pip install "lv24-seo[secrets]"
 
 Генераторы расписаний применяют ту же зону там, где бэкенд это поддерживает. Cron зависит от `CRON_TZ`, systemd записывает зону в `OnCalendar`, а XML Task Scheduler несёт фиксированное смещение с предупреждением о DST. См. [Автоматизация и доставка](/ru/automation/).
 
-Source: `_source/engine-data-sources.md`, `_source/engine-cli.md`, `_source/engine-config.md`, `_source/engine-releases-0.11.0.md`, `_source/engine-releases-0.10.0.md`, `_source/engine-releases-0.5.3.md`.
+Source: `_source/engine-data-sources.md`, `_source/engine-cli.md`, `_source/engine-config.md`, `_source/engine-releases-0.12.2.md`, `_source/engine-releases-0.12.0.md`, `_source/engine-releases-0.11.0.md`, `_source/engine-releases-0.10.0.md`, `_source/engine-releases-0.5.3.md`.
