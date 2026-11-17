@@ -1,29 +1,31 @@
 ---
 title: 桌面应用
-description: LV24 SEO Optimizer 桌面外壳增加了什么、签名更新如何工作，以及 0.6.0 的可取消运行与 0.5.0 及更早历史。
+description: LV24 SEO Optimizer 桌面外壳增加了什么、签名更新如何工作，以及 0.7.0 的 Bing 索引面板与 0.6.0 及更早历史。
 ---
 
 # 桌面应用
 
 LV24 SEO Optimizer Desktop 是围绕 `lv24-seo` 引擎的本地、离线优先 Tauri v2 外壳。Python CLI 仍是核心引擎：它负责提供商客户端、抓取规则、分析、报告构建和投递。桌面端增加的是 React 界面和 Rust 进程桥，而不是第二套 SEO 实现。
 
-`0.6.0` 以内置 PyInstaller onedir 边车的形式捆绑 `lv24-seo 0.8.0`，并增加可取消的后台运行。它要求引擎 `0.8.0` 或更新（`MIN_ENGINE_VERSION`）。没有云账号、遥测、本地 HTTP API 或搜索结果页抓取。桌面端通过固定且带允许列表的子进程桥与引擎通信。
+`0.7.0` 以内置 PyInstaller onedir 边车的形式捆绑 `lv24-seo 0.9.0`，并增加 Bing 索引面板、Site Scan 打开器和每会话写入密钥。它要求引擎 `0.9.0` 或更新（`MIN_ENGINE_VERSION`）。没有云账号、遥测、本地 HTTP API 或搜索结果页抓取。桌面端通过固定且带允许列表的子进程桥与引擎通信。
 
 ## 增加了什么
 
 - **工作区选择器。** 在 Settings 中通过原生文件对话框选择引擎应使用的 `seo.toml`。选中的配置路径就是工作区身份。配置被移动或删除时会显示为缺失，可重新选择，而不是阻塞启动。
 - **统计仪表板。** 渲染有边界的 `stats` 信封：每个已配置提供商一张卡片，包含当前值、上一窗口比较、覆盖率、数据年龄、截断和限制。CTR 变化以百分点显示。不补零，也不做跨引擎合计；未知保持未知。
-- **设置表单和配置输出。** Settings 屏幕是可编辑表单。Configuration 屏幕只读，包含 Overview、Effective、Source TOML、Diff、Validation、Doctor 和 Environment 标签页。Source TOML 已脱敏且只读；没有原始 TOML 编辑器。保存使用字段级补丁，保留注释和键顺序，用引擎校验，创建带时间戳的备份（保留最近五个）并原子替换文件。在 `0.6.0` 中，临时文件和备份在 POSIX 上权限为 `0600`，在 Windows 上带仅所有者 DACL，两者都会 fsync，重命名后还会 fsync 父目录。读取上限为 8 MiB；设置按字段加载；Windows 保留设备名和结尾点/空格在每个路径组件中都会被拒绝。GSC 服务账号在表单外配置：设置 `providers.gsc.service_account_file` 或 `LV24_SEO_GSC_SERVICE_ACCOUNT_FILE`，Configuration 屏幕会显示生效的脱敏配置。
+- **设置表单和配置输出。** Settings 屏幕是可编辑表单。Configuration 屏幕只读，包含 Overview、Effective、Source TOML、Diff、Validation、Doctor 和 Environment 标签页。Source TOML 已脱敏且只读；没有原始 TOML 编辑器。保存使用字段级补丁，保留注释和键顺序，用引擎校验，创建带时间戳的备份（保留最近五个）并原子替换文件。在 `0.7.0` 中，临时文件和备份在 POSIX 上权限为 `0600`，在 Windows 上带仅所有者 DACL，两者都会 fsync，重命名后还会 fsync 父目录。读取上限为 8 MiB；设置按字段加载；Windows 保留设备名和结尾点/空格在每个路径组件中都会被拒绝。GSC 服务账号在表单外配置：设置 `providers.gsc.service_account_file` 或 `LV24_SEO_GSC_SERVICE_ACCOUNT_FILE`，Configuration 屏幕会显示生效的脱敏配置。
 - **报告。** 在本地运行周报，将 `report.json` 和 `report.html` 写入应用数据目录，并在默认浏览器中打开 HTML。报告 HTML 从不嵌入应用 webview。它比较两个最新存储的快照，导出 JSON（`lv24-seo.report/v1`）或 CSV，渲染引擎的归因变更摘要（包含原因、置信度、证据行和下一步操作），并按 URL 模板和设备显示 Core Web Vitals 卡片。
 - **建议与智能体队列。** 将报告和统计发现转换为有边界的 Markdown 提示词。你可以复制提示词、导出为 `.md`，或将其保存在带状态的本地智能体队列中。队列存储在 webview 的本地存储中；不会自动提交任何内容。
 - **通过 stdin 传递密钥。** token 输入是密码字段，只通过 IPC 发送一次。Rust 层将其传给 `lv24-seo auth set --provider <p> --stdin`，清零缓冲区，并且从不把值写入日志、MobX 存储、localStorage、剪贴板或诊断包。保存后，界面只显示是否存在及来源。
-- **Yandex Metrika 令牌。** `0.6.0` 在 TypeScript 和 Rust 允许列表、Settings 徽章、密钥对话框和 en/ru/zh 标签中保留独立的 `metrika` 提供商（`yandex_metrika_token`）。Metrika 计数器绝不借用 Webmaster 令牌。引擎 `0.8.0` 修复了 `stat/v1/data` 的 offset，因此卡片不再出现已配置但为空的情况。
+- **Yandex Metrika 令牌。** `0.7.0` 在 TypeScript 和 Rust 允许列表、Settings 徽章、密钥对话框和 en/ru/zh 标签中保留独立的 `metrika` 提供商（`yandex_metrika_token`）。Metrika 计数器绝不借用 Webmaster 令牌。引擎 `0.9.0` 保留 `stat/v1/data` 的 offset 修复，因此卡片不再出现已配置但为空的情况。
 - **与 CLI 共享密钥存储。** 桌面应用在同一操作系统用户下运行同一引擎，因此在终端通过 `lv24-seo auth set` 保存的 token 在桌面应用中可见，反之亦然。系统钥匙串条目使用服务名 `lv24-seo` 和相同的密钥名。`LV24_SEO_*` 环境变量会被继承，但在 UI 中显示为只读：桌面端无法删除环境变量，因此会明确说明，而不是提供一个无效的删除按钮。只有两个界面使用同一 workspace/data 目录时，才共享显式启用的 `<data-dir>/secrets.json` 回退文件。
 - **Logs 页面。** 原生 `pick_log_file` 选择一个 nginx JSON 访问日志（不超过 100 MiB）；其他路径会以 `PATH_NOT_APPROVED` 拒绝。页面显示机器人过滤、解析摘要、带按机器人拆分的抓取浪费、机器人汇总表和 JSON/CSV 导出。机器人仅按 User-Agent，结果标记为分诊。
 - **Tasks 页面。** 最新优先的发现，包含属性、类型、状态、规则、URL、时间和存储的证据；支持过滤和最多 500 行的限制。状态变化遵循允许的转换，添加表单幂等，证据上限 16 KiB。
 - **Backup 页面。** `backup create` 把可移植归档写入导出目录或原生对话框选择的目录；面板显示路径、大小、SHA-256、是否包含数据库、属性和快照数量以及成员表。恢复区从原生对话框选择的归档生成计划，并且只有确认后使用计划令牌应用；替换前当前数据库和配置会复制到 `.pre-restore-<utc>`。
 - **Portfolio 页面。** 通过原生目录对话框选择文件夹；引擎最多向下三层扫描 `seo.toml`，每次最多检查 50 个站点。提供汇总计数、排序和过滤，打开一行会通过常规 shell 流程切换工作区。扫描不调用提供商、不读取令牌、不写磁盘。
 - **可取消的后台运行。** 抓取、周报、日志分析、备份创建/恢复和计划任务安装作为后台子进程运行，带稳定 run id。窗口级横幅显示类型、耗时、状态和 **Cancel** 按钮；离开路由不会清除它。取消只向本应用为该运行注册的确切子进程 PID（以及 Unix 上的进程组）发信号，在确认仍是引擎映像或受跟踪子进程后执行；绝不按名称匹配。未知或已完成的运行返回 `false`，UI 不会声称取消。已取消运行返回 `RUN_CANCELLED`，与成功和失败运行分开显示。取消不是回滚，也没有任务队列。
+- **Bing 索引面板。** Integrations 面板可计划并应用 Bing 站点地图提交，把站点地图 URL 发送到 IndexNow，并打开官方 Bing Site Scan 页面；两种写入都是两阶段的，先展示引擎计划。
+- **每会话写入密钥。** 启动时外壳从操作系统 CSPRNG 取 32 字节，仅将 64 字符十六进制 `LV24_SEO_WRITE_SECRET` 保存在 Rust 内存中，释放时清零。它在 `env_clear()` 后设置到每个引擎子进程，绝不写入设置、argv、日志、诊断或 webview。同一会话的计划和应用共用该密钥，因此上一会话的计划令牌会被拒绝，UI 会重新生成计划。
 - **更新面板。** 在启动时和按需检查已签名的 `latest.json`，显示发行说明，并且只有在你确认后才安装。安装器启动前，只停止本应用实例登记的引擎 sidecar PID；如果无法停止，安装会被 `UPDATE_ENGINE_BUSY` 阻止。下载和安装都在 Rust 中执行，而不是在 webview 中，并且可以在安装器启动前取消下载。
 
 仪表板和报告屏幕基于与终端相同的引擎命令：
@@ -39,12 +41,12 @@ lv24-seo report weekly --days 7 --lag-days 2 --json
 
 | 包类型 | 安装方式 | 应用内更新 |
 |---|---|---|
-| Windows NSIS | `LV24.SEO.Optimizer_0.6.0_x64-setup.exe` | 是 |
-| Windows 便携 ZIP | `LV24-SEO-Optimizer_0.6.0_x64-portable.zip`；解压整个文件夹并运行 `lv24-seo-desktop.exe` | 否 |
-| Linux AppImage | `LV24.SEO.Optimizer_0.6.0_amd64.AppImage`；`chmod +x` 并运行 | 是 |
-| Linux deb | `LV24.SEO.Optimizer_0.6.0_amd64.deb`；`sudo apt install ./*_amd64.deb` | 否 |
-| Linux rpm | `LV24.SEO.Optimizer-0.6.0-1.x86_64.rpm`；`sudo dnf install ./*_amd64.rpm` | 否 |
-| macOS `.app`（来自 DMG） | `LV24.SEO.Optimizer_0.6.0_aarch64.dmg` 或 `LV24.SEO.Optimizer_0.6.0_x64.dmg`；拖到 Applications | 是 |
+| Windows NSIS | `LV24.SEO.Optimizer_0.7.0_x64-setup.exe` | 是 |
+| Windows 便携 ZIP | `LV24-SEO-Optimizer_0.7.0_x64-portable.zip`；解压整个文件夹并运行 `lv24-seo-desktop.exe` | 否 |
+| Linux AppImage | `LV24.SEO.Optimizer_0.7.0_amd64.AppImage`；`chmod +x` 并运行 | 是 |
+| Linux deb | `LV24.SEO.Optimizer_0.7.0_amd64.deb`；`sudo apt install ./*_amd64.deb` | 否 |
+| Linux rpm | `LV24.SEO.Optimizer-0.7.0-1.x86_64.rpm`；`sudo dnf install ./*_amd64.rpm` | 否 |
+| macOS `.app`（来自 DMG） | `LV24.SEO.Optimizer_0.7.0_aarch64.dmg` 或 `LV24.SEO.Optimizer_0.7.0_x64.dmg`；拖到 Applications | 是 |
 | MSI | 本项目不生产 | 否 |
 
 Windows 需要 Windows 10/11 x64 和 WebView2。Linux 仅提供 x64，基于 Ubuntu 22.04 构建，glibc 2.35 基线。macOS 需要 13 或更高；Apple silicon 使用 arm64 DMG，Intel 使用 x64 DMG。操作系统包未签名或仅 ad-hoc 签名，因此 SmartScreen 和 Gatekeeper 警告是预期行为。运行安装器前请校验 `SHA256SUMS.txt`。
@@ -83,7 +85,9 @@ Windows 需要 Windows 10/11 x64 和 WebView2。Linux 仅提供 x64，基于 Ubu
 方式验证：已安装的 `0.3.0` 报告 **Desktop 0.4.0**、**Engine 0.6.0** 且引擎就绪。`0.4.0 → 0.5.0` 更新通过
 Rust 更新器验证：已安装的 `0.4.0` 报告 **Desktop 0.5.0**、**Engine 0.7.0** 且引擎就绪，Portfolio 页面可加载。
 `0.5.0 → 0.6.0` 更新通过同一更新器验证：已安装的 `0.5.0` 报告 **Desktop 0.6.0**、**Engine 0.8.0**
-且引擎就绪，真实 `lv24.by` 工作区加载。任何 `0.2.x` 安装都可直接升级到 `0.6.0`。
+且引擎就绪，已配置工作区加载。`0.6.0 → 0.7.0` 更新通过同一更新器验证：已安装的 `0.6.0` 报告
+**Desktop 0.7.0**、**Engine 0.9.0** 且引擎就绪，Integrations 屏幕显示 Bing 索引面板。任何 `0.2.x`
+安装都可直接升级到 `0.7.0`。
 
 `0.2.2` 的安装也已在 macOS 和 Linux 上验证：macOS 27.2 上的 arm64 DMG 通过
 `codesign --verify --deep --strict`，启动后引擎 `0.5.2` 就绪并获取了 `0.2.2` 清单；
@@ -93,6 +97,42 @@ Ubuntu 24.04 上的 deb、AppImage extract-and-run fallback 和 Fedora 45 上的
 `0.2.1 → 0.2.2` 更新由旧的 `0.2.1` 更新器执行，其中没有新的受跟踪 PID 清理。如果首次更新期间
 有 sidecar 正在运行，请在其退出后重试，或手动安装 `0.2.2`。`0.2.2 → 0.2.3` 使用受跟踪 PID
 清理，并在无法停止受跟踪 sidecar 时以 `UPDATE_ENGINE_BUSY` 阻止。
+
+## 0.7.0 Bing 索引
+
+2026-11-17 发布。它捆绑 `lv24-seo 0.9.0` 并要求 `MIN_ENGINE_VERSION` `0.9.0`，因此 `0.8.x` 引擎会被报告为不兼容。
+
+- **Bing 站点地图面板。** Integrations 屏幕增加站点地图提交卡片，用于
+  `sitemap submit --provider bing --config <path> [--url <abs>] --allow-write [--confirm <token>] --json`。
+  计划发送写入同意但不发送令牌，只生成计划，不调用 Bing。卡片显示动作、目标、摘要、计划哈希、TTL、
+  载荷详情和限制，**Apply** 发送审核后的令牌。缺少 `bing_api_key` 时显示 `AUTH_REQUIRED` 并在 Settings
+  中提示。URL 留空时使用 `{project.base_url}/sitemap.xml`；提供的 URL 必须是绝对 `http(s)://`。
+- **从站点地图运行 IndexNow。** `indexnow_submit` 构造
+  `indexnow submit --from-sitemap --config <path> [--sitemap-url <abs>] --allow-write [--confirm <token>] --json`。
+  计划以只读方式获取并解析站点地图，对 URL 去重，跳过 IndexNow 主机外的 URL，并报告 `truncated`、
+  `total` 和 `limitations`。结果卡片显示引擎状态和已提交 URL 数，以及跳过或重复行。主机、密钥和密钥
+  位置来自 `providers.bing.site`、`providers.bing.indexnow_key` 和
+  `providers.bing.indexnow_key_location`；站点地图变化会使计划失效。
+- **Bing Site Scan 打开器。** Bing 没有启动 Site Scan 的公开 API，因此 `open_bing_sitescan` 只在默认
+  浏览器中打开硬编码的官方页面 `https://www.bing.com/webmasters/sitescan?siteUrl=<percent-encoded>`。
+  桌面端不启动、轮询或导入扫描，也绝不报告扫描已启动。
+- **每会话写入密钥。** 外壳在启动时从操作系统 CSPRNG 取 32 字节，仅将 64 字符十六进制
+  `LV24_SEO_WRITE_SECRET` 保存在 Rust 内存中（释放时清零），并在 `env_clear()` 后设置到每个引擎
+  子进程。它绝不写入设置、argv、日志、诊断或 webview。同一会话的计划和应用共用该密钥，因此旧计划
+  令牌会被拒绝，UI 会重新生成计划。
+- **引擎 0.9.0 与契约。** Sidecar 增加带幂等账本的 Bing `SubmitFeed`、从有界站点地图一键运行
+  IndexNow，以及新的 Bing 配置键。契约从 `lv24-seo 0.9.0` 重新生成；`seo_sitemap_submit` 输入模式
+  增加可选 `provider`。`MIN_ENGINE_VERSION` 为 `0.9.0`，因为 `0.9.0` 之前的引擎会用
+  `CLI_INVALID_JSON` 回应新命令。
+
+0.7.0 的已知限制：
+
+- Bing Site Scan 在 Bing 页面启动；桌面端只打开页面，不监控、取消或导入扫描。
+- IndexNow 需要位于 `https://<host>/<key>.txt` 或所配置位置的托管密钥文件；文件缺失或不匹配时不会提交任何内容。
+- 站点地图提交和 IndexNow 是提供商网络写入：它们不是可取消的后台运行，不会自动重试，也没有回滚。
+- 计划令牌绑定审核过的计划和应用会话；站点地图变化、新会话或 TTL 过期都需要新计划。
+- GSC 站点地图提交/删除、Bing 站点地图删除和 Yandex 重新抓取仍为 `WRITE_DISABLED`。
+- `MIN_ENGINE_VERSION` 为 `0.9.0`，因此 `0.8.x` 引擎会被拒绝。
 
 ## 0.6.0 可取消运行
 
@@ -213,7 +253,7 @@ webview 不再拥有更新器插件的下载和安装权限；其能力列表只
 | 症状 | 可能原因 | 怎么做 |
 |---|---|---|
 | 没有工作区配置 | 未选择 `seo.toml`，或保存的路径已移动/删除 | 运行 `lv24-seo init`，然后在 Settings 中选择文件 |
-| 引擎被标记为离线 | 引擎缺失或低于外壳的最低版本（`0.8.0`） | 使用内置引擎，或将 `LV24_SEO_BIN` 指向兼容引擎 |
+| 引擎被标记为离线 | 引擎缺失或低于外壳的最低版本（`0.9.0`） | 使用内置引擎，或将 `LV24_SEO_BIN` 指向兼容引擎 |
 | SmartScreen 或 Gatekeeper 警告 | 操作系统构建未签名或仅 ad-hoc 签名 | 校验 `SHA256SUMS.txt`，然后使用文档化的 **Run anyway** 或 **Open Anyway** 流程 |
 | AppImage 无法启动 | 缺少 FUSE 2 | 安装 `libfuse2` 或改用 deb/rpm |
 | 更新检查失败 | GitHub 端点被阻止或离线 | 保持当前版本；启动时的静默检查不会显示错误 |
@@ -238,7 +278,7 @@ webview 不再拥有更新器插件的下载和安装权限；其能力列表只
 - 更新器需要访问 GitHub Releases 端点。端点被阻止或离线时，应用会停留在当前版本。
 - 更新器只能停止它自己启动的 sidecar。从终端或另一个应用副本启动的引擎不会被杀死；如果它占用已安装 sidecar，安装会被 `UPDATE_ENGINE_BUSY` 阻止。
 - `0.2.1 → 0.2.2` 更新由旧的 `0.2.1` 更新器执行，其中没有受跟踪 PID 清理。如果首次更新期间有 sidecar 正在运行，请在其退出后重试，或手动安装 `0.2.2`。`0.2.2 → 0.2.3` 及后续更新使用清理。
-- 取消不是回滚，`0.6.0` 也没有任务队列：已取消的抓取、报告、日志分析、备份或计划任务安装可能留下部分产物，已取消的就地恢复保留 `.pre-restore-<utc>` 副本，但可能已替换一个文件，因此重试前请构建新计划。关闭窗口不会把运行移入队列。
+- 取消不是回滚，`0.7.0` 也没有任务队列：已取消的抓取、报告、日志分析、备份或计划任务安装可能留下部分产物，已取消的就地恢复保留 `.pre-restore-<utc>` 副本，但可能已替换一个文件，因此重试前请构建新计划。关闭窗口不会把运行移入队列。
 - 恢复替换数据库和配置，绝不合并；`.pre-restore-<utc>` 副本是唯一回滚手段，被其他进程打开的数据库在 Windows 上无法替换。令牌被排除，因此恢复后需要重新认证。`backup restore --to` 是仅限 CLI 的解压。
 - 计划任务安装会修改主机：只有确认后才会写入 cron 条目、systemd 用户定时器或 Windows 任务，并且只在本机。桌面端不管理、修复或卸载任务；请使用 CLI 的 `schedule status`/`schedule uninstall`。
 - GSC 服务账号在表单外配置：在 `seo.toml` 中设置 `providers.gsc.service_account_file`，或在环境中设置 `LV24_SEO_GSC_SERVICE_ACCOUNT_FILE`。桌面端没有该字段。
@@ -246,9 +286,12 @@ webview 不再拥有更新器插件的下载和安装权限；其能力列表只
 - 组合只报告本地历史，每次扫描最多检查 50 个站点，并且从不调用提供商。
 - 机器人分诊仅基于 User-Agent：伪造的 UA 不会被发现，非搜索爬虫归为 `other`。
 - 一次一个日志文件，最多 100 MiB；没有轮转、glob、远程获取或持久日志历史。
-- `MIN_ENGINE_VERSION` 为 `0.8.0`，因此 `0.7.x` 引擎会被拒绝；桌面端不会静默把命令降级到旧引擎。
+- `MIN_ENGINE_VERSION` 为 `0.9.0`，因此 `0.8.x` 引擎会被拒绝；桌面端不会静默把命令降级到旧引擎。
+- Bing 站点地图提交需要 Bing Webmaster API 密钥，IndexNow 需要 `providers.bing.indexnow_key` 和托管的密钥文件。缺少密钥时会报告 `AUTH_REQUIRED`，而不是通用失败。
+- Bing Site Scan 打开器只启动官方页面；扫描在 Bing UI 中启动和管理。桌面端绝不声称扫描已启动。
+- 站点地图提交和 IndexNow 会写入提供商：它们不可取消、不会自动重试，也没有回滚；计划令牌随应用会话过期。
 - 摘要是基于证据的分诊，不是因果证明；没有证据的条目保持 `unexplained`。
-- 计划运行只有在确认后才会安装，并且只安装在本机；桌面端不管理或卸载任务，也不编辑 MCP 客户端配置。请使用 CLI 的 `schedule status`/`schedule uninstall`。它也不执行数据源写入。
+- 计划运行只有在确认后才会安装，并且只安装在本机；桌面端不管理或卸载任务，也不编辑 MCP 客户端配置。请使用 CLI 的 `schedule status`/`schedule uninstall`。计划运行绝不写入提供商；Bing 索引面板是唯一的提供商写入，并受审核过的计划门控。
 - 配置路径批准按进程生效，外加持久化的 `knownConfigs` 列表；两者之外的路径仍需要原生对话框。
 - Windows ACL 加固是尽力而为。如果 `icacls` 失败，保存仍会继续，草稿保留目录的继承 DACL。
 - 更新取消只在安装器启动前生效。安装开始后没有回滚。
@@ -256,4 +299,4 @@ webview 不再拥有更新器插件的下载和安装权限；其能力列表只
 - 建议文案已本地化为 en/ru/zh；在 `0.2.3` 之前排队的任务保留已存储的英文文本。
 - 这是 `0.x` 预览：配置输出、更新器行为和界面细节可能在 1.0 前变化。
 
-Source: `_source/desktop-README.md`, `_source/desktop-releases-0.6.0.md`, `_source/desktop-releases-0.5.0.md`, `_source/desktop-releases-0.4.0.md`, `_source/desktop-releases-0.3.0.md`, `_source/desktop-releases-0.2.3.md`, `_source/desktop-releases-0.2.2.md`, `_source/desktop-releases-0.2.1.md`, `_source/desktop-releases-0.2.0.md`, `_source/desktop-security.md`, `_source/desktop-architecture.md`.
+Source: `_source/desktop-README.md`, `_source/desktop-releases-0.7.0.md`, `_source/desktop-releases-0.6.0.md`, `_source/desktop-releases-0.5.0.md`, `_source/desktop-releases-0.4.0.md`, `_source/desktop-releases-0.3.0.md`, `_source/desktop-releases-0.2.3.md`, `_source/desktop-releases-0.2.2.md`, `_source/desktop-releases-0.2.1.md`, `_source/desktop-releases-0.2.0.md`, `_source/desktop-security.md`, `_source/desktop-architecture.md`.

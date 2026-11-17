@@ -83,6 +83,8 @@ Every key below is optional. An absent provider block means "not configured", no
 | Key | Type | Default | Notes |
 |---|---|---|---|
 | `site` | string | `""` | Site URL as registered in Bing Webmaster Tools. |
+| `indexnow_key` | string | `""` | Public IndexNow key and key-file name; safe to keep in `seo.toml`. |
+| `indexnow_key_location` | string | `""` | Optional absolute URL of the hosted key file; defaults to `https://<host>/<key>.txt`. |
 
 ### `[providers.crux]`
 
@@ -266,6 +268,8 @@ goals = [1, 2]
 
 [providers.bing]
 site = "https://example.com"
+indexnow_key = "abc12345"
+indexnow_key_location = "https://example.com/abc12345.txt"
 
 [providers.crux]
 origin = "https://example.com"

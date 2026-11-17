@@ -24,13 +24,13 @@ description: lv24-seo 命令行的命令、全局参数、JSON 信封、退出�
 使用 `--json` 时，命令只输出一个 JSON 文档，不会输出其他内容：
 
 ```json
-{ "ok": true, "data": {}, "meta": { "version": "0.8.0", "duration_ms": 812 }, "warnings": [] }
+{ "ok": true, "data": {}, "meta": { "version": "0.9.0", "duration_ms": 812 }, "warnings": [] }
 ```
 
 失败的命令使用相同结构，但 `ok: false`，并用 `error` 对象代替 `data`：
 
 ```json
-{ "ok": false, "error": { "code": "AUTH_REQUIRED", "message": "Google Search Console token is missing", "retryable": false, "next_action": "lv24-seo auth login --provider gsc" }, "meta": { "version": "0.8.0" }, "warnings": ["gsc: token missing"] }
+{ "ok": false, "error": { "code": "AUTH_REQUIRED", "message": "Google Search Console token is missing", "retryable": false, "next_action": "lv24-seo auth login --provider gsc" }, "meta": { "version": "0.9.0" }, "warnings": ["gsc: token missing"] }
 ```
 
 - `data` 因命令而异。`meta` 始终包含 `version`，通常还会加入 `duration_ms`、`truncated`、
@@ -107,10 +107,10 @@ SQLite 问题不再表现为通用的 `INTERNAL`，而是三个稳定代码：
 
 只有 `sitemap submit`、`yandex recrawl` 和 `indexnow submit` 可以改变提供方状态。它们分两步执行：
 
-1. 不带 `--confirm` 运行命令。它会返回试运行结果，包含 `data.plan`、`data.plan_hash`、
-   `data.confirm_token` 和 `meta.dry_run: true`。
-2. 在同一个 shell 中设置一个足够长的随机 `LV24_SEO_WRITE_SECRET`，然后在五分钟内使用
-   `--allow-write --confirm TOKEN` 重新运行。
+1. 设置足够长的随机 `LV24_SEO_WRITE_SECRET`，然后带 `--allow-write` 且不带 `--confirm` 运行命令。
+   它会返回计划，包含 `data.plan`、`data.plan_hash`、`data.confirm_token` 和 `meta.dry_run: true`，
+   且不联系提供商。
+2. 在五分钟内使用 `--allow-write --confirm TOKEN` 重新运行。
 
 令牌是对操作、目标、完整计划哈希和有效期的 HMAC，因此任何输入变化都会使其失效。工作区初始化
 后，CLI 会附加 SQLite 幂等账本：重放同一令牌返回 `status: skipped` 和 `reason: duplicate`，
@@ -118,8 +118,8 @@ SQLite 问题不再表现为通用的 `INTERNAL`，而是三个稳定代码：
 `/srv/site/data`，即使 shell 在别处。没有数据目录时仍会应用，但信封会警告：在令牌五分钟有效期内
 没有重放保护；试运行不打开账本，也不创建数据库。
 
-IndexNow 会真正提交 URL。GSC sitemap submit 和 Yandex
-recrawl 目前返回 `WRITE_DISABLED`，不会假装提供方调用已经发生。
+Bing 站点地图提交和 IndexNow 会真正写入。GSC sitemap submit、Bing 站点地图删除和 Yandex
+recrawl 返回 `WRITE_DISABLED`，不会假装提供方调用已经发生。
 
 ### 日志
 
@@ -145,9 +145,10 @@ recrawl 目前返回 `WRITE_DISABLED`，不会假装提供方调用已经发生�
 | Start | `version`, `doctor`, `init`, `properties`, `stats` | 本地文件和环境；`stats` 只读取提供方 KPI，不写入。 |
 | Authentication | `auth status`, `auth set`, `auth login`, `auth logout` | 本地密钥存储；`login` 只打印说明。 |
 | Configuration | `config show` | 有效配置，凭据已掩码。 |
-| Google Search Console | `gsc query`, `sitemap submit` | 查询只读；sitemap submit 是受控写入。 |
+| Google Search Console | `gsc query` | 只读搜索分析。 |
+| Sitemap | `sitemap submit` | 受控写入；Bing `SubmitFeed` 已接通，GSC 提交仍返回 `WRITE_DISABLED`。 |
 | Yandex Webmaster | `yandex queries`, `yandex indexing`, `yandex recrawl` | 查询只读；recrawl 是受控写入。`queries` 保留 `avg_click_position`、`query_id` 和 `extra_indicators`；`indexing` 合并历史系列并报告 `site_problems`。 |
-| IndexNow | `indexnow submit` | 受控写入，会真正提交 URL。 |
+| IndexNow | `indexnow submit` | 受控写入，提交显式 URL 或从项目站点地图读取的 URL。 |
 | Crawl and audit | `crawl` | 与提供方无关；配置了存储时保存本地页面和问题。 |
 | CWV | `cwv collect` | 按 URL 和设备查询 CrUX 并持久化字段 p75 行；PSI 实验室行会返回但绝不存储。 |
 | Reports | `report weekly`, `report diff` | `weekly` 保存本地快照；`diff` 只读。 |
@@ -193,6 +194,24 @@ lv24-seo yandex indexing --json
 `avg_click_position`，在提供商发送时返回 `query_id`，并把未映射指标保留在 `extra_indicators` 中而不是
 丢弃整行。`yandex indexing` 显示配置的 `host_id` 的索引历史、搜索中页面数、诊断、`site_problems` 和
 搜索 URL 事件，并把 `indexing/history` 系列（`http_2xx` … `other`）合并为每个日期一行。
+
+### Bing 与 IndexNow
+
+```bash
+lv24-seo sitemap submit --provider bing --allow-write --json
+lv24-seo sitemap submit --provider bing --allow-write --confirm TOKEN --json
+lv24-seo indexnow submit --from-sitemap --allow-write --json
+lv24-seo indexnow submit --from-sitemap --allow-write --confirm TOKEN --json
+```
+
+`sitemap submit` 的 `--provider` 默认为 `gsc`；`bing` 从 `providers.bing.site` 或 `--property` 取站点，
+从 `--url` 或 `<project.base_url>/sitemap.xml` 取站点地图，从 `bing_api_key` 秘密取密钥。计划需要
+`--allow-write` 和 `LV24_SEO_WRITE_SECRET`，在不调用 Bing 的情况下生成令牌；应用发送审核后的令牌，
+并把声明记入幂等账本。`indexnow submit --from-sitemap` 在计划阶段读取站点地图，并从
+`providers.bing.site`、`providers.bing.indexnow_key` 和 `providers.bing.indexnow_key_location` 解析
+主机、密钥和密钥位置。`<sitemapindex>` 限制为根加五个子站点地图和 10,000 个 URL；显式 `--url` 先合并，
+主机外 URL 被跳过。应用会重新获取站点地图，如果 URL 集合变化，则以 `CONFIRM_REQUIRED` 使令牌失效。
+缺少密钥时计划返回 `AUTH_REQUIRED`，密钥文件缺失或不匹配时应用返回 `INVALID_INPUT`。
 
 ### Core Web Vitals
 
@@ -306,4 +325,4 @@ lv24-seo export skills --out skills/
 - [MCP 与智能体技能](/zh/mcp/)
 - [故障排查](/zh/troubleshooting/)
 
-Source: `_source/engine-cli.md`, `_source/engine-mcp.md`, `_source/engine-releases-0.5.2.md`, `_source/engine-releases-0.5.3.md`, `_source/engine-releases-0.6.0.md`, `_source/engine-releases-0.7.0.md`, `_source/engine-releases-0.8.0.md`; 引擎仓库中 0.8.0 的 `--help` 输出。
+Source: `_source/engine-cli.md`, `_source/engine-mcp.md`, `_source/engine-releases-0.5.2.md`, `_source/engine-releases-0.5.3.md`, `_source/engine-releases-0.6.0.md`, `_source/engine-releases-0.7.0.md`, `_source/engine-releases-0.8.0.md`, `_source/engine-releases-0.9.0.md`; 引擎仓库中 0.9.0 的 `--help` 输出。

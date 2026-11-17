@@ -54,7 +54,7 @@ GSC accepts a manually supplied OAuth access token or a service account (`provid
 
 By default the tool does not change provider state. `stats`, `doctor`, `config show`, `properties`, `gsc query`, `yandex queries`, `yandex indexing` and `report diff` do not write at all. `report weekly` without `--send` only builds and stores a local snapshot; `crawl` writes only to the local SQLite store; `init` writes `seo.toml` and `data/`.
 
-Provider writes are gated. A dry run returns a plan and a `confirm_token`; applying it requires `--allow-write` and a fresh `--confirm <token>` within five minutes, plus `LV24_SEO_WRITE_SECRET` in the environment. With an initialised workspace the apply uses the SQLite idempotency ledger, so replaying the same token returns `skipped` / `duplicate` and the provider is called once. Without a data directory the apply still runs, but the envelope warns that replay protection is off for the token's five-minute lifetime. IndexNow really submits URLs. GSC sitemap submit and Yandex recrawl currently return `WRITE_DISABLED` instead of pretending the provider path is wired.
+Provider writes are gated. A plan requires `--allow-write` and `LV24_SEO_WRITE_SECRET` and returns the plan and a `confirm_token` without contacting the provider; applying it requires a fresh `--confirm <token>` within five minutes. With an initialised workspace the apply uses the SQLite idempotency ledger, so replaying the same token returns `skipped` / `duplicate` and the provider is called once. Without a data directory the apply still runs, but the envelope warns that replay protection is off for the token's five-minute lifetime. Bing sitemap submit and IndexNow really write; GSC sitemap submit, Bing sitemap delete and Yandex recrawl return `WRITE_DISABLED` instead of pretending the provider path is wired.
 
 The MCP server is read-only by default; its write tools are annotated and gated, and some provider paths still return `WRITE_DISABLED`. The desktop requires a confirmation dialog that names the exact target before it sends a report, installs a scheduler job, installs an MCP client entry or runs a provider write.
 
@@ -71,16 +71,17 @@ The CLI envelope is `{ok, data, meta, warnings}`. `meta.complete` is `false` whe
 
 ## Optional desktop
 
-The desktop is at `0.6.0` and bundles `lv24-seo 0.8.0`; it requires engine `0.8.0` or newer. It is useful when you do not want to remember flags: create or choose a `seo.toml` in the app, read the dashboard, edit configuration through a validated form, run a bounded crawl, analyse an nginx log, triage tasks, create or restore a portable backup, scan a folder of sites in the portfolio, compare and export weekly reports with the attributed digest and CWV card, and copy a bounded recommendation as a Markdown prompt for an agent. Long engine jobs run in the background with a window-wide banner and a **Cancel** button. Windows NSIS, macOS `.app` and Linux AppImage can auto-update; portable ZIP, deb and rpm are manual-only. The updater stops only the sidecar PIDs it started and blocks with `UPDATE_ENGINE_BUSY` if one cannot be stopped.
+The desktop is at `0.7.0` and bundles `lv24-seo 0.9.0`; it requires engine `0.9.0` or newer. It is useful when you do not want to remember flags: create or choose a `seo.toml` in the app, read the dashboard, edit configuration through a validated form, run a bounded crawl, analyse an nginx log, triage tasks, create or restore a portable backup, scan a folder of sites in the portfolio, compare and export weekly reports with the attributed digest and CWV card, plan and apply a Bing sitemap submission or IndexNow run, open the official Bing Site Scan page, and copy a bounded recommendation as a Markdown prompt for an agent. Long engine jobs run in the background with a window-wide banner and a **Cancel** button; provider writes are not cancellable. Windows NSIS, macOS `.app` and Linux AppImage can auto-update; portable ZIP, deb and rpm are manual-only. The updater stops only the sidecar PIDs it started and blocks with `UPDATE_ENGINE_BUSY` if one cannot be stopped.
 
 ## Status and limits
 
-The engine is `0.8.0`; the desktop is `0.6.0`. Known gaps before 1.0:
+The engine is `0.9.0`; the desktop is `0.7.0`. Known gaps before 1.0:
 
 - GSC supports a manually supplied OAuth access token or a service account; a plain token is not refreshed.
-- GSC sitemap submit and Yandex recrawl return `WRITE_DISABLED`; IndexNow really submits.
+- GSC sitemap submit, Bing sitemap delete and Yandex recrawl return `WRITE_DISABLED`; Bing sitemap submit and IndexNow really write and need their provider keys.
+- The desktop opens the official Bing Site Scan page but does not start, monitor or import a scan.
 - `storage.raw_retention_days` is reserved; no raw archives are written yet.
-- The desktop has crawl, logs, tasks, backup, restore, schedule install and portfolio screens. Long engine calls run in the background with a window-wide banner and a **Cancel** button, but cancel is not rollback and there is no job queue.
+- The desktop has crawl, logs, tasks, backup, restore, schedule install, portfolio and Bing indexing screens. Long engine calls run in the background with a window-wide banner and a **Cancel** button, but cancel is not rollback and there is no job queue; provider writes are not cancellable.
 - `cwv collect`, `backup restore --to` and `schedule status`/`uninstall` are CLI-only; the desktop renders stored CWV rows, plans in-place restores and installs scheduler jobs after confirmation.
 - `report indexing`, `report opportunities` and `report history` are planned, not shipped.
 - Logging is opt-in: set `LV24_SEO_LOG_LEVEL` to install the redacting handler in the CLI and `mcp serve`. The `--json` envelope remains the stable diagnostic interface.

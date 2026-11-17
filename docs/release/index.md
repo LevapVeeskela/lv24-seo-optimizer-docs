@@ -1,6 +1,6 @@
 ---
 title: Releases and updates
-description: Engine 0.8.0 and desktop 0.6.0 releases, the 0.7.0, 0.6.0, 0.5.3, 0.3.0 and older history, signed auto-update matrix, release pipeline, version pinning and rollback.
+description: Engine 0.9.0 and desktop 0.7.0 releases, the 0.8.0, 0.6.0, 0.5.3, 0.3.0 and older history, signed auto-update matrix, release pipeline, version pinning and rollback.
 ---
 
 # Releases and updates
@@ -9,10 +9,87 @@ The current releases are:
 
 | Product | Version | Released | Notes |
 |---|---|---|---|
-| Engine | `lv24-seo 0.8.0` | 2026-11-16 | CWV writer, GSC service accounts, richer Yandex indicators, non-destructive restore, scheduler lifecycle, 22 CLI commands and 12 MCP tools |
-| Desktop | `0.6.0` | 2026-11-16 | Cancellable background runs, confirmed schedule install with `--allow-write`, bundled engine 0.8.0 and `MIN_ENGINE_VERSION` 0.8.0 |
+| Engine | `lv24-seo 0.9.0` | 2026-11-17 | Bing sitemap submit, IndexNow from sitemap, optional MCP sitemap provider, 22 CLI commands and 12 MCP tools |
+| Desktop | `0.7.0` | 2026-11-17 | Bing indexing panel, Site Scan opener, per-session write secret, bundled engine 0.9.0 and `MIN_ENGINE_VERSION` 0.9.0 |
 
-The desktop version and the engine version are independent, but the desktop pins an exact engine and refuses one below its minimum. `0.6.0` bundles `0.8.0` and requires at least `0.8.0`, so an installed `0.7.x` engine is reported as incompatible.
+The desktop version and the engine version are independent, but the desktop pins an exact engine and refuses one below its minimum. `0.7.0` bundles `0.9.0` and requires at least `0.9.0`, so an installed `0.8.x` engine is reported as incompatible.
+
+## Engine 0.9.0
+
+Released on 2026-11-17. It turns Bing sitemap submission into a real gated write and lets IndexNow
+read its URL list from the project sitemap and its host and key from `seo.toml`. The CLI still has
+22 top-level commands; the MCP surface stays at 12 tools and the SQLite schema stays at version 4.
+
+What changed:
+
+- **Bing sitemap submit.** `sitemap submit --provider bing [--property SITE] [--url ABS] [--allow-write] [--confirm TOKEN]` sends the site's sitemap through the current Bing Webmaster JSON endpoint `POST .../SubmitFeed` with `{"siteUrl": …, "feedUrl": …}`. The site comes from `providers.bing.site` or `--property`, the sitemap from `--url` or `<project.base_url>/sitemap.xml`, and the key from the `bing_api_key` secret; a missing site, base URL or key fails before any network call. HTTP 401/403 map to `AUTH_INVALID`, 404 to `PROPERTY_NOT_FOUND`, 429 to `QUOTA_EXCEEDED`, 5xx to `UPSTREAM_UNAVAILABLE` and other 4xx to `INVALID_INPUT`, and the key never appears in an error. `--provider` defaults to `gsc`, so existing scripts keep the GSC plan.
+- **Two-phase Bing write.** Plan and apply both need `--allow-write` and `LV24_SEO_WRITE_SECRET`; the plan contacts no provider and creates no database. Apply adds `--confirm TOKEN`, the SQLite idempotency ledger records the claim under the selected workspace, and a replay returns `status: skipped` with `reason: duplicate`. A provider failure releases the claim. Bing sitemap delete stays `WRITE_DISABLED`.
+- **IndexNow from the sitemap.** `indexnow submit --from-sitemap [--sitemap-url ABS] [--url ABS …]` fetches and parses the sitemap read-only during the plan and resolves the host from `providers.bing.site`, the key from `providers.bing.indexnow_key` and the key location from `providers.bing.indexnow_key_location` or `https://<host>/<key>.txt`. A `<urlset>` is read directly; a `<sitemapindex>` is bounded to the root plus five child sitemaps and 10,000 URLs. URLs are deduplicated, explicit `--url` values are merged first, and off-host URLs are skipped. `meta.truncated`, `meta.total` and `meta.limitations` describe what was capped instead of claiming a complete inventory.
+- **Sitemap-bound plan token.** Apply re-fetches the sitemap; if its URL set changed, the token is invalidated with `CONFIRM_REQUIRED` and nothing is submitted. A stable sitemap submits the refreshed merged list, capped at 10,000 URLs. A missing or mismatched key file is `INVALID_INPUT` with the exact key-file location, and a missing `providers.bing.indexnow_key` is `AUTH_REQUIRED` at plan time. IndexNow remains CLI/desktop-only: no thirteenth MCP tool is added.
+- **MCP `seo_sitemap_submit`.** The tool keeps its name and the 12-tool surface. Inputs gain an optional `provider` (`gsc|bing`, default `gsc`), optional `property` and optional `sitemap_url`; for Bing the URL defaults to `<project.base_url>/sitemap.xml`. Bing apply calls the same `SeoService.submit_sitemap` path as the CLI. GSC submit and Bing delete still return `WRITE_DISABLED`.
+- **Configuration and surface.** `[providers.bing]` gains the public `indexnow_key` and optional `indexnow_key_location`; the Bing Webmaster API key stays a secret and is never read from `seo.toml`. 22 top-level CLI commands (15 groups and 7 commands, no command added or removed), 12 MCP tools (10 read-class: 7 pure read-only plus 3 local-state writers; 2 gated writes), 3 resources and 3 prompts unchanged, schema version 4 and no migration. `schemas/tools.json` is regenerated because the `seo_sitemap_submit` inputs changed.
+
+Verification recorded for this release:
+
+| Check | Result |
+|---|---|
+| PyPI | `lv24-seo 0.9.0` published |
+| npm | `@lv24/seo 0.9.0` published |
+| MCP Registry | `io.github.LevapVeeskela/lv24-seo 0.9.0` published |
+| CI | run `44038720401` green |
+| Release workflow | run `44039013284` green |
+| Desktop | `0.7.0` published with engine `0.9.0`; assets named `0.7.0` / `-0.7.0-` |
+| Bing sitemap, configured workspace | plan → apply → `submitted` through the JSON `SubmitFeed` endpoint |
+| IndexNow, configured workspace | plan returns `AUTH_REQUIRED` until the key and the hosted key file exist; nothing is submitted |
+
+Known limits in 0.9.0:
+
+- Bing sitemap submit needs a Bing Webmaster API key; without one the plan is `AUTH_REQUIRED` before any network call. Bing sitemap delete remains `WRITE_DISABLED`.
+- IndexNow needs the public key and a live key file at `https://<host>/<key>.txt` or the configured location; a missing or mismatched key file fails with `INVALID_INPUT` and nothing is submitted.
+- Sitemap discovery is bounded to the root plus five child sitemaps and 10,000 URLs; off-host URLs are skipped and the caps are reported through truncation and limitations.
+- A plan token is bound to the sitemap URL set and expires after five minutes; a changed sitemap needs a fresh plan.
+- GSC sitemap submit, Bing sitemap delete and Yandex recrawl remain `WRITE_DISABLED`; IndexNow has no MCP tool.
+- The Bing Webmaster UI remains the authority for crawl issues and sitemap status; the API result says what Bing accepted, not how fast it recrawls.
+
+## Desktop 0.7.0
+
+Released on 2026-11-17. It adds the Bing indexing panel, opens the official Bing Site Scan page without
+claiming a scan started, generates a per-session write secret, bundles `lv24-seo 0.9.0` and raises
+`MIN_ENGINE_VERSION` to `0.9.0`, so an installed `0.8.x` engine is reported as incompatible.
+
+What changed:
+
+- **Bing sitemap submit.** The Integrations screen adds a sitemap submit card that builds `sitemap submit --provider bing --config <path> [--url <abs>] --allow-write [--confirm <token>] --json`. Planning sends the write opt-in but no token and only mints the plan; it does not call Bing. The card shows the action, target, summary, plan hash, TTL, payload details and limitations, and **Apply** sends the reviewed token. A missing key is `AUTH_REQUIRED` with a Settings hint.
+- **IndexNow from the sitemap.** `indexnow_submit` builds `indexnow submit --from-sitemap --config <path> [--sitemap-url <abs>] --allow-write [--confirm <token>] --json`. The card reports the engine status and submitted URL count plus skipped or duplicate rows and the truncated flag. Host, key and key location come from `providers.bing.site`, `providers.bing.indexnow_key` and `providers.bing.indexnow_key_location`; a changed sitemap invalidates the plan token.
+- **Bing Site Scan opener.** Bing has no public API for starting a Site Scan, so `open_bing_sitescan` only opens the hard-coded official page `https://www.bing.com/webmasters/sitescan?siteUrl=<percent-encoded>` in the default browser. The desktop does not start, poll or import a scan, and never reports that one started.
+- **Per-session write secret.** At startup the shell draws 32 bytes from the OS CSPRNG, keeps the 64-character hex `LV24_SEO_WRITE_SECRET` only in Rust memory (zeroized on drop) and sets it on every engine child after `env_clear()`. It is never written to settings, argv, logs, diagnostics or the webview. Plan tokens are session-bound; a new session rejects an old token and the UI re-plans.
+- **Engine 0.9.0 and contracts.** The sidecar adds Bing `SubmitFeed` with the idempotency ledger, one-click IndexNow from a bounded sitemap and the new Bing config keys. Contracts were regenerated from `lv24-seo 0.9.0`; the fixture envelopes change the version string and the `seo_sitemap_submit` input schema gains the optional `provider`. `MIN_ENGINE_VERSION` is `0.9.0` because a pre-`0.9.0` engine would answer the new commands with `CLI_INVALID_JSON`.
+
+Verification recorded for this release:
+
+| Check | Result |
+|---|---|
+| Published assets | 18 on `v0.7.0` for Windows x64, Linux x64 and macOS arm64/x64, including the Windows portable `.zip.sha256` |
+| Updater manifest | `latest.json` reports `0.7.0` |
+| CI | run `44041103066` green |
+| Release workflow | run `44043493145` green |
+| In-app update | `0.6.0 → 0.7.0` verified through the Rust updater on Windows NSIS: **Desktop 0.7.0**, **Engine 0.9.0** and engine ready |
+| Workspace smoke test | a configured workspace loaded on the relaunched build without exposing query data |
+| Bing sitemap submit | plan and apply from the Integrations card; the apply returned `duplicate` because the same sitemap had already been submitted from the CLI, so the ledger prevented a second provider call |
+| IndexNow plan | `AUTH_REQUIRED` until `providers.bing.indexnow_key` and the hosted key file exist; no URL was submitted |
+| Bing Site Scan opener | the official Bing page opened in the default browser; no API call was made and no scan was reported as started |
+| Write secret | the shell generated `LV24_SEO_WRITE_SECRET` per session and passed it to every engine child; plan calls sent `allowWrite: true` |
+
+Known limits in 0.7.0:
+
+- The Bing Site Scan starts on the Bing page; the desktop only opens it and does not start, monitor, cancel or import a scan.
+- IndexNow still needs a hosted key file, and a missing or mismatched file means nothing is submitted.
+- Sitemap submit and IndexNow are provider network writes: they are not cancellable background runs, are not retried automatically and have no rollback. Review a fresh plan before retrying.
+- Plan tokens are bound to the reviewed plan and the app session; a changed sitemap, a new session or an expired TTL requires a fresh plan.
+- GSC sitemap submit/delete, Bing sitemap delete and Yandex recrawl remain `WRITE_DISABLED`.
+- `MIN_ENGINE_VERSION` is `0.9.0`, so an `0.8.x` engine is rejected.
+- Linux and macOS sidecar pins remain `null`; the release gate relies on rebuild-aware reports.
+
 
 ## Engine 0.8.0
 
@@ -597,11 +674,12 @@ Manual-only is deliberate. A deb or rpm install is owned by the package database
 replace it; a portable ZIP has no installer to replace and may live on removable media. The desktop reports the installed bundle type and disables the in-app
 installer for those cases. It does not pretend that a manual package was updated.
 
-The Windows NSIS path has now been verified end-to-end seven times: `0.2.0 → 0.2.1`, `0.2.1 → 0.2.2`,
-`0.2.2 → 0.2.3`, `0.2.3 → 0.3.0`, `0.3.0 → 0.4.0`, `0.4.0 → 0.5.0` and `0.5.0 → 0.6.0`. For the
-seventh run, an installed `0.5.0` build updated through the Rust updater, downloaded and verified the
-signed package, installed it, relaunched, and reported **Desktop 0.6.0** with **Engine 0.8.0** and the
-engine ready. Any `0.2.x` install with the in-app updater can jump straight to `0.6.0`; `0.1.0` has no
+The Windows NSIS path has now been verified end-to-end eight times: `0.2.0 → 0.2.1`, `0.2.1 → 0.2.2`,
+`0.2.2 → 0.2.3`, `0.2.3 → 0.3.0`, `0.3.0 → 0.4.0`, `0.4.0 → 0.5.0`, `0.5.0 → 0.6.0` and `0.6.0 → 0.7.0`.
+For the eighth run, an installed `0.6.0` build updated through the Rust updater, downloaded and
+verified the signed package, installed it, relaunched, and reported **Desktop 0.7.0** with
+**Engine 0.9.0** and the engine ready; the Integrations screen shows the Bing indexing panel.
+Any `0.2.x` install with the in-app updater can jump straight to `0.7.0`; `0.1.0` has no
 updater and needs one manual install.
 
 The `0.2.1 → 0.2.2` update runs the old `0.2.1` updater, which does not include the new tracked-PID
@@ -616,12 +694,12 @@ approves the `desktop-release` environment; a non-owner run is skipped.
 
 | Input | Default | Meaning |
 |---|---|---|
-| `engine_version` | `0.8.0` | Exact engine bundled in the sidecar |
+| `engine_version` | `0.9.0` | Exact engine bundled in the sidecar |
 | `signed` | `false` | Request OS signing/notarization; not configured in this zero-spend repository |
 | `publish` | `false` | Create a GitHub release after every matrix build passes |
 | `tag` | Empty | `vX.Y.Z` release tag; required when `publish=true` |
 
-The default matches the `0.6.0` pin. The release gate rejects a manifest mismatch if a different version is passed.
+The default matches the `0.7.0` pin. The release gate rejects a manifest mismatch if a different version is passed.
 
 | Runner | Target | Bundles |
 |---|---|---|
@@ -636,7 +714,7 @@ days; the GitHub release is the durable distribution channel.
 ## Sidecar pin and checksums
 
 The release sidecar is a PyInstaller **onedir** tree, built on the matching host; PyInstaller does not cross-compile. The engine, Python, Pydantic, Typer and
-PyInstaller versions are pinned in `scripts/cli-checksums.json`. `0.6.0` pins engine `0.8.0` (up from `0.7.0`), Python `3.12`, Pydantic `2.14.3`, Typer `0.29.0` and PyInstaller
+PyInstaller versions are pinned in `scripts/cli-checksums.json`. `0.7.0` pins engine `0.9.0` (up from `0.8.0`), Python `3.12`, Pydantic `2.14.3`, Typer `0.29.0` and PyInstaller
 `6.22.3`.
 
 PyInstaller onedir output is not byte-reproducible. The checksum policy is therefore split:
@@ -650,9 +728,9 @@ PyInstaller onedir output is not byte-reproducible. The checksum policy is there
   shipped target: matching target name, `hashPolicy: "rebuild"`, `ok: true`, a 64-hex
   hash, a positive size and the exact engine version.
 
-For `0.8.0`, Windows x64 has a reviewed local pin; Linux and macOS were rebuilt by the release workflow
+For `0.9.0`, Windows x64 has a reviewed local pin; Linux and macOS were rebuilt by the release workflow
 with passing rebuild-aware checksum reports, and their reviewed pins remain `null` until a local build is
-reviewed on those hosts. The `0.7.0` Windows pin did not carry over because the executable changes with
+reviewed on those hosts. The `0.8.0` Windows pin did not carry over because the executable changes with
 the engine.
 The checksum reports are CI evidence, not release assets. `SHA256SUMS.txt` covers the installers,
 updater packages, signatures and `latest.json`; the sidecar executable is inside those packages and
@@ -663,7 +741,7 @@ is not listed separately. Users who install manually verify the downloaded asset
 node scripts/verify-sidecar.mjs \
   --root src-tauri/engine \
   --target x86_64-pc-windows-msvc \
-  --engine-version 0.8.0
+  --engine-version 0.9.0
 ```
 
 ## `latest.json`, signing and publishing
@@ -695,18 +773,22 @@ uploaded manifest. A rerun reuses an existing draft, clears its assets and refus
 The desktop version must agree in `package.json`, `src-tauri/tauri.conf.json`, `src-tauri/Cargo.toml`, the Git tag and the release title. The engine pin lives
 in `scripts/cli-checksums.json`; the workflow passes `engine_version` explicitly and the release gate requires it to match the manifest.
 
-`MIN_ENGINE_VERSION` in `src-tauri/src/commands.rs` is `0.8.0` in the current source. The `0.6.0` bundle ships engine `0.8.0`,
-so the minimum matches the bundled engine and a `0.7.x` engine is reported as incompatible. The shell accepts an engine at least that new and marks an older one
+`MIN_ENGINE_VERSION` in `src-tauri/src/commands.rs` is `0.9.0` in the current source. The `0.7.0` bundle ships engine `0.9.0`,
+so the minimum matches the bundled engine and a `0.8.x` engine is reported as incompatible. The shell accepts an engine at least that new and marks an older one
 offline with a notice. A newer engine passes the gate but is not the release-tested pin. A development build may use `LV24_SEO_BIN` with another version; the UI
 labels it external and still checks the minimum. A `PATH` engine is used only when `LV24_SEO_ALLOW_PATH_ENGINE=1`.
 
 ## One-time 0.1.0 upgrade
 
-`0.1.0` has no updater, endpoint or public key. It cannot discover or install `0.6.0`. Download and install `0.6.0` manually once (NSIS installer or portable
-ZIP on Windows). After that, the `0.6.0` installation can auto-update to later releases when it uses an auto-update-capable bundle.
+`0.1.0` has no updater, endpoint or public key. It cannot discover or install `0.7.0`. Download and install `0.7.0` manually once (NSIS installer or portable
+ZIP on Windows). After that, the `0.7.0` installation can auto-update to later releases when it uses an auto-update-capable bundle.
 
 ## Earlier releases
 
+- **Desktop 0.7.0** added the Bing indexing panel (sitemap plan/apply, IndexNow from the sitemap, Site Scan opener)
+  and the per-session write secret, bundled engine `0.9.0` and raised `MIN_ENGINE_VERSION` to `0.9.0`.
+- **Engine 0.9.0** made Bing sitemap submit a gated `SubmitFeed` write, added one-click IndexNow from a bounded
+  sitemap and the optional MCP `provider` input, and kept 22 CLI commands and 12 tools.
 - **Desktop 0.5.0** added the restore flow, a confirmed schedule install, the Portfolio page and the CWV card,
   bundled engine `0.7.0` and raised `MIN_ENGINE_VERSION` to `0.7.0`.
 - **Engine 0.7.0** added two-phase restore, the read-only portfolio, CWV by URL template and device, schema v4
@@ -765,4 +847,4 @@ those protections system-wide.
 
 See [Security and privacy](/security/) for updater trust and [Architecture](/architecture/) for the sidecar layout.
 
-Source: `_source/engine-releases-0.8.0.md`, `_source/engine-releases-0.7.0.md`, `_source/engine-releases-0.6.0.md`, `_source/engine-releases-0.5.3.md`, `_source/engine-releases-0.5.2.md`, `_source/desktop-releases-0.6.0.md`, `_source/desktop-releases-0.5.0.md`, `_source/desktop-releases-0.4.0.md`, `_source/desktop-releases-0.3.0.md`, `_source/desktop-releases-0.2.3.md`, `_source/desktop-releases-0.2.2.md`, `_source/desktop-releases-0.2.1.md`, `_source/desktop-releases-0.2.0.md`, `_source/desktop-release.md`, `_source/desktop-security.md`.
+Source: `_source/engine-releases-0.9.0.md`, `_source/engine-releases-0.8.0.md`, `_source/engine-releases-0.7.0.md`, `_source/engine-releases-0.6.0.md`, `_source/engine-releases-0.5.3.md`, `_source/engine-releases-0.5.2.md`, `_source/desktop-releases-0.7.0.md`, `_source/desktop-releases-0.6.0.md`, `_source/desktop-releases-0.5.0.md`, `_source/desktop-releases-0.4.0.md`, `_source/desktop-releases-0.3.0.md`, `_source/desktop-releases-0.2.3.md`, `_source/desktop-releases-0.2.2.md`, `_source/desktop-releases-0.2.1.md`, `_source/desktop-releases-0.2.0.md`, `_source/desktop-release.md`, `_source/desktop-security.md`.

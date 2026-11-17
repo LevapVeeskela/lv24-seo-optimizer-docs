@@ -1,6 +1,6 @@
 ---
 title: 发行与更新
-description: 引擎 0.8.0 与桌面 0.6.0 发行说明、0.7.0、0.6.0、0.5.3、0.3.0 及更早版本历史、签名自动更新矩阵、发布流水线、版本固定与回滚。
+description: 引擎 0.9.0 与桌面 0.7.0 发行说明、0.8.0、0.6.0、0.5.3、0.3.0 及更早版本历史、签名自动更新矩阵、发布流水线、版本固定与回滚。
 ---
 
 # 发行与更新
@@ -9,10 +9,86 @@ description: 引擎 0.8.0 与桌面 0.6.0 发行说明、0.7.0、0.6.0、0.5.3�
 
 | 产品 | 版本 | 发布日期 | 说明 |
 |---|---|---|---|
-| 引擎 | `lv24-seo 0.8.0` | 2026-11-16 | CWV 写入器、GSC 服务账号、更丰富的 Yandex 指标、非破坏性恢复、调度器生命周期、22 个 CLI 命令和 12 个 MCP 工具 |
-| 桌面 | `0.6.0` | 2026-11-16 | 可取消的后台运行、经确认的计划任务安装（带 `--allow-write`）、捆绑引擎 0.8.0 和 `MIN_ENGINE_VERSION` 0.8.0 |
+| 引擎 | `lv24-seo 0.9.0` | 2026-11-17 | Bing 站点地图提交、从站点地图运行 IndexNow、MCP 可选 `provider`、22 个 CLI 命令和 12 个 MCP 工具 |
+| 桌面 | `0.7.0` | 2026-11-17 | Bing 索引面板、Site Scan 打开器、每会话写入密钥、捆绑引擎 0.9.0 和 `MIN_ENGINE_VERSION` 0.9.0 |
 
-桌面版本与引擎版本相互独立，但桌面固定精确引擎，并拒绝低于最低版本的引擎。`0.6.0` 捆绑 `0.8.0` 并要求至少 `0.8.0`，因此已安装的 `0.7.x` 引擎会被报告为不兼容。
+桌面版本与引擎版本相互独立，但桌面固定精确引擎，并拒绝低于最低版本的引擎。`0.7.0` 捆绑 `0.9.0` 并要求至少 `0.9.0`，因此已安装的 `0.8.x` 引擎会被报告为不兼容。
+
+## 引擎 0.9.0
+
+2026-11-17 发布。它把 Bing 站点地图提交变成真正的受限写入，并让 IndexNow 从项目站点地图读取 URL
+列表、从 `seo.toml` 读取主机和密钥。CLI 仍有 22 个顶层命令；MCP 接口仍为 12 个工具，SQLite 模式
+仍为版本 4。
+
+变更内容：
+
+- **Bing 站点地图提交。** `sitemap submit --provider bing [--property SITE] [--url ABS] [--allow-write] [--confirm TOKEN]` 通过当前的 Bing Webmaster JSON 端点 `POST .../SubmitFeed` 发送站点地图，载荷为 `{"siteUrl": …, "feedUrl": …}`。站点来自 `providers.bing.site` 或 `--property`，站点地图来自 `--url` 或 `<project.base_url>/sitemap.xml`，密钥来自 `bing_api_key` 秘密；缺少站点、base URL 或密钥会在任何网络调用前失败。HTTP 401/403 映射为 `AUTH_INVALID`，404 为 `PROPERTY_NOT_FOUND`，429 为 `QUOTA_EXCEEDED`，5xx 为 `UPSTREAM_UNAVAILABLE`，其他 4xx 为 `INVALID_INPUT`，密钥绝不会出现在错误中。`--provider` 默认为 `gsc`，因此现有脚本仍保留 GSC 计划。
+- **两阶段 Bing 写入。** 计划和应用都需要 `--allow-write` 和 `LV24_SEO_WRITE_SECRET`；计划不联系提供商，也不创建数据库。应用添加 `--confirm TOKEN`，SQLite 幂等账本在所选工作区记录声明，重放返回 `status: skipped` 和 `reason: duplicate`。提供商失败会释放声明。Bing 站点地图删除仍为 `WRITE_DISABLED`。
+- **从站点地图运行 IndexNow。** `indexnow submit --from-sitemap [--sitemap-url ABS] [--url ABS …]` 在计划阶段以只读方式获取并解析站点地图，主机来自 `providers.bing.site`，密钥来自 `providers.bing.indexnow_key`，密钥位置来自 `providers.bing.indexnow_key_location` 或 `https://<host>/<key>.txt`。`<urlset>` 直接读取；`<sitemapindex>` 限制为根加五个子站点地图和 10,000 个 URL。URL 会去重，显式 `--url` 先合并，主机外的 URL 被跳过。`meta.truncated`、`meta.total` 和 `meta.limitations` 说明被截断的内容，而不是声称清单完整。
+- **计划令牌绑定站点地图。** 应用时会重新获取站点地图；如果 URL 集合发生变化，令牌以 `CONFIRM_REQUIRED` 失效，且不会提交任何内容。稳定的站点地图会提交刷新后的合并列表，上限 10,000 个 URL。缺失或不匹配的密钥文件为 `INVALID_INPUT` 并给出确切的密钥文件位置；缺少 `providers.bing.indexnow_key` 时，计划阶段返回 `AUTH_REQUIRED`。IndexNow 仍仅限 CLI 和桌面端：不增加第 13 个 MCP 工具。
+- **MCP `seo_sitemap_submit`。** 工具保留名称和 12 工具接口。输入增加可选 `provider`（`gsc|bing`，默认 `gsc`）、可选 `property` 和可选 `sitemap_url`；Bing 的 URL 默认为 `<project.base_url>/sitemap.xml`。Bing 应用走与 CLI 相同的 `SeoService.submit_sitemap` 路径。GSC 提交和 Bing 删除仍返回 `WRITE_DISABLED`。
+- **配置与接口。** `[providers.bing]` 增加公开的 `indexnow_key` 和可选 `indexnow_key_location`；Bing Webmaster API 密钥仍是秘密，绝不会从 `seo.toml` 读取。22 个顶层 CLI 命令（15 个组和 7 个命令，未增删命令）、12 个 MCP 工具（10 个读取类：7 个纯只读加 3 个本地状态写入者；2 个受限写入）、3 个资源和 3 个提示不变，模式版本 4 且无迁移。由于 `seo_sitemap_submit` 输入变化，`schemas/tools.json` 重新生成。
+
+本次发行记录的验证：
+
+| 检查 | 结果 |
+|---|---|
+| PyPI | `lv24-seo 0.9.0` 已发布 |
+| npm | `@lv24/seo 0.9.0` 已发布 |
+| MCP Registry | `io.github.LevapVeeskela/lv24-seo 0.9.0` 已发布 |
+| CI | 运行 `44038720401` 全绿 |
+| 发布 workflow | 运行 `44039013284` 全绿 |
+| 桌面 | `0.7.0` 已发布并捆绑引擎 `0.9.0`；资产名为 `0.7.0` / `-0.7.0-` |
+| Bing 站点地图，已配置工作区 | 计划 → 应用 → 通过 JSON `SubmitFeed` 返回 `submitted` |
+| IndexNow，已配置工作区 | 在密钥和托管的密钥文件存在前，计划返回 `AUTH_REQUIRED`；未提交任何 URL |
+
+0.9.0 的已知限制：
+
+- Bing 站点地图提交需要 Bing Webmaster API 密钥；没有密钥时计划在任何网络调用前返回 `AUTH_REQUIRED`。Bing 站点地图删除仍为 `WRITE_DISABLED`。
+- IndexNow 需要公开密钥和位于 `https://<host>/<key>.txt` 或所配置位置的可用密钥文件；文件缺失或不匹配时返回 `INVALID_INPUT`，不会提交任何内容。
+- 站点地图发现限制为根加五个子站点地图和 10,000 个 URL；主机外 URL 被跳过，上限通过截断和限制字段报告。
+- 计划令牌绑定站点地图 URL 集合并于五分钟后过期；站点地图变化需要新计划。
+- GSC 站点地图提交、Bing 站点地图删除和 Yandex 重新抓取仍为 `WRITE_DISABLED`；IndexNow 没有 MCP 工具。
+- Bing Webmaster 界面仍是抓取问题和站点地图状态的权威；API 结果只说明 Bing 接受了什么，不说明重新抓取的速度。
+
+## 桌面 0.7.0
+
+2026-11-17 发布。它增加 Bing 索引面板，打开官方 Bing Site Scan 页面而不声称扫描已启动，生成每会话
+写入密钥，捆绑 `lv24-seo 0.9.0`，并把 `MIN_ENGINE_VERSION` 提高到 `0.9.0`，因此已安装的 `0.8.x`
+引擎会被报告为不兼容。
+
+变更内容：
+
+- **Bing 站点地图提交。** Integrations 屏幕增加站点地图提交卡片，构造 `sitemap submit --provider bing --config <path> [--url <abs>] --allow-write [--confirm <token>] --json`。计划发送写入同意但不发送令牌，只生成计划，不调用 Bing。卡片显示动作、目标、摘要、计划哈希、TTL、载荷详情和限制，**Apply** 发送审核后的令牌。缺少密钥时显示 `AUTH_REQUIRED` 并在 Settings 中给出提示。
+- **从站点地图运行 IndexNow。** `indexnow_submit` 构造 `indexnow submit --from-sitemap --config <path> [--sitemap-url <abs>] --allow-write [--confirm <token>] --json`。卡片显示引擎状态和已提交 URL 数，以及跳过或重复行和截断标志。主机、密钥和密钥位置来自 `providers.bing.site`、`providers.bing.indexnow_key` 和 `providers.bing.indexnow_key_location`；站点地图变化会使计划令牌失效。
+- **Bing Site Scan 打开器。** Bing 没有启动 Site Scan 的公开 API，因此 `open_bing_sitescan` 只在默认浏览器中打开硬编码的官方页面 `https://www.bing.com/webmasters/sitescan?siteUrl=<percent-encoded>`。桌面端不启动、轮询或导入扫描，也绝不报告扫描已启动。
+- **每会话写入密钥。** 启动时外壳从操作系统 CSPRNG 取 32 字节，仅将 64 字符十六进制 `LV24_SEO_WRITE_SECRET` 保存在 Rust 内存中（释放时清零），并在 `env_clear()` 后设置到每个引擎子进程。它绝不会写入设置、argv、日志、诊断或 webview。同一会话的计划和应用共用该密钥，因此旧计划令牌会被拒绝，UI 会重新生成计划。
+- **引擎 0.9.0 与契约。** Sidecar 增加带幂等账本的 Bing `SubmitFeed`、从有界站点地图一键运行 IndexNow，以及新的 Bing 配置键。契约从 `lv24-seo 0.9.0` 重新生成；`seo_sitemap_submit` 输入模式增加可选 `provider`。`MIN_ENGINE_VERSION` 为 `0.9.0`，因为 `0.9.0` 之前的引擎会用 `CLI_INVALID_JSON` 回应新命令。
+
+本次发行记录的验证：
+
+| 检查 | 结果 |
+|---|---|
+| 已发布资产 | `v0.7.0` 上 18 个，覆盖 Windows x64、Linux x64 和 macOS arm64/x64，包括 Windows portable `.zip.sha256` |
+| 更新清单 | `latest.json` 报告 `0.7.0` |
+| CI | 运行 `44041103066` 全绿 |
+| 发布 workflow | 运行 `44043493145` 全绿 |
+| 应用内更新 | 在 Windows NSIS 上通过 Rust 更新器验证 `0.6.0 → 0.7.0`：**Desktop 0.7.0**、**Engine 0.9.0** 和引擎就绪 |
+| 工作区冒烟测试 | 重启后的构建加载了已配置工作区，未暴露查询数据 |
+| Bing 站点地图提交 | 从 Integrations 卡片计划和应用；应用返回 `duplicate`，因为同一站点地图已从 CLI 提交，账本阻止了第二次提供商调用 |
+| IndexNow 计划 | 在 `providers.bing.indexnow_key` 和托管的密钥文件存在前返回 `AUTH_REQUIRED`；未提交任何 URL |
+| Bing Site Scan 打开器 | 在默认浏览器中打开官方 Bing 页面；未发起 API 调用，也未报告扫描已启动 |
+| 写入密钥 | 外壳每会话生成 `LV24_SEO_WRITE_SECRET` 并传给每个引擎子进程；计划调用发送 `allowWrite: true` |
+
+0.7.0 的已知限制：
+
+- Bing Site Scan 在 Bing 页面启动；桌面端只打开页面，不启动、监控、取消或导入扫描。
+- IndexNow 仍需要托管的密钥文件；文件缺失或不匹配时不会提交任何内容。
+- 站点地图提交和 IndexNow 是提供商网络写入：它们不是可取消的后台运行，不会自动重试，也没有回滚。重试前请审核新计划。
+- 计划令牌绑定审核过的计划和应用会话；站点地图变化、新会话或 TTL 过期都需要新计划。
+- GSC 站点地图提交/删除、Bing 站点地图删除和 Yandex 重新抓取仍为 `WRITE_DISABLED`。
+- `MIN_ENGINE_VERSION` 为 `0.9.0`，因此 `0.8.x` 引擎会被拒绝。
+- Linux 和 macOS 的 sidecar 固定值仍为 `null`；发布门控依赖 rebuild-aware 报告。
 
 ## 引擎 0.8.0
 
@@ -435,10 +511,10 @@ PID**。不会按映像名称匹配，因此另一个已安装副本、便携构
 portable ZIP 没有可替换的安装器，且可能位于可移动介质上。桌面端报告已安装的包类型，并对这些
 情况禁用应用内安装器。它不会假装手动包已被更新。
 
-Windows NSIS 路径现已完成七次端到端验证：`0.2.0 → 0.2.1`、`0.2.1 → 0.2.2`、
-`0.2.2 → 0.2.3`、`0.2.3 → 0.3.0`、`0.3.0 → 0.4.0`、`0.4.0 → 0.5.0` 和 `0.5.0 → 0.6.0`。第七次运行中，已安装的
-`0.5.0` 通过 Rust 更新器升级，下载并验证已签名包，安装并重启后报告 **Desktop 0.6.0**、**Engine 0.8.0** 且引擎就绪。
-任何带应用内更新器的 `0.2.x` 安装都可直接升级到 `0.6.0`；`0.1.0` 没有更新器，需要一次手动安装。
+Windows NSIS 路径现已完成八次端到端验证：`0.2.0 → 0.2.1`、`0.2.1 → 0.2.2`、
+`0.2.2 → 0.2.3`、`0.2.3 → 0.3.0`、`0.3.0 → 0.4.0`、`0.4.0 → 0.5.0`、`0.5.0 → 0.6.0` 和 `0.6.0 → 0.7.0`。第八次运行中，已安装的
+`0.6.0` 通过 Rust 更新器升级，下载并验证已签名包，安装并重启后报告 **Desktop 0.7.0**、**Engine 0.9.0** 且引擎就绪；
+Integrations 屏幕显示 Bing 索引面板。任何带应用内更新器的 `0.2.x` 安装都可直接升级到 `0.7.0`；`0.1.0` 没有更新器，需要一次手动安装。
 
 `0.2.1 → 0.2.2` 更新由旧的 `0.2.1` 更新器执行，其中没有新的受跟踪 PID 清理。如果首次更新期间
 有 sidecar 正在运行，请在其退出后重试，或手动安装 `0.2.2`。`0.2.2 → 0.2.3` 及后续更新使用受跟踪 PID
@@ -451,12 +527,12 @@ Windows NSIS 路径现已完成七次端到端验证：`0.2.0 → 0.2.1`、`0.2.
 
 | 输入 | 默认值 | 含义 |
 |---|---|---|
-| `engine_version` | `0.8.0` | sidecar 中捆绑的精确引擎版本 |
+| `engine_version` | `0.9.0` | sidecar 中捆绑的精确引擎版本 |
 | `signed` | `false` | 请求操作系统签名/公证；此零支出仓库未配置 |
 | `publish` | `false` | 所有矩阵构建通过后创建 GitHub release |
 | `tag` | 空 | `vX.Y.Z` 发布标签；`publish=true` 时必填 |
 
-默认值与 `0.6.0` 固定版本一致。如果传入不同版本，发布门控会拒绝清单不匹配。
+默认值与 `0.7.0` 固定版本一致。如果传入不同版本，发布门控会拒绝清单不匹配。
 
 | Runner | Target | 包 |
 |---|---|---|
@@ -471,8 +547,8 @@ Windows NSIS 路径现已完成七次端到端验证：`0.2.0 → 0.2.1`、`0.2.
 ## Sidecar 固定与校验和
 
 发布 sidecar 是 PyInstaller **onedir** 树，在匹配的主机上构建；PyInstaller 不交叉编译。引擎、
-Python、Pydantic、Typer 和 PyInstaller 版本固定在 `scripts/cli-checksums.json`。`0.6.0` 固定
-引擎 `0.8.0`（高于 `0.7.0`）、Python `3.12`、Pydantic `2.14.3`、Typer `0.29.0` 和 PyInstaller `6.22.3`。
+Python、Pydantic、Typer 和 PyInstaller 版本固定在 `scripts/cli-checksums.json`。`0.7.0` 固定
+引擎 `0.9.0`（高于 `0.8.0`）、Python `3.12`、Pydantic `2.14.3`、Typer `0.29.0` 和 PyInstaller `6.22.3`。
 
 PyInstaller onedir 输出不是字节可复现的。因此校验和政策分为三部分：
 
@@ -483,8 +559,8 @@ PyInstaller onedir 输出不是字节可复现的。因此校验和政策分为�
 - **发布门控 — 基于报告。** 发布 job 要求每个交付 target 都有有效报告：target 名称匹配、
   `hashPolicy: "rebuild"`、`ok: true`、64 位十六进制哈希、正大小和精确引擎版本。
 
-对于 `0.8.0`，Windows x64 有已审查的本地固定值；Linux 和 macOS sidecar 由发布 workflow 重新构建并通过
-rebuild-aware 报告，其已审查固定值仍为 `null`，直到在这些主机上审查本地构建。`0.7.0` 的 Windows 固定值没有沿用，因为可执行文件随引擎变化。校验和报告是 CI 证据，不是发布产物。
+对于 `0.9.0`，Windows x64 有已审查的本地固定值；Linux 和 macOS sidecar 由发布 workflow 重新构建并通过
+rebuild-aware 报告，其已审查固定值仍为 `null`，直到在这些主机上审查本地构建。`0.8.0` 的 Windows 固定值没有沿用，因为可执行文件随引擎变化。校验和报告是 CI 证据，不是发布产物。
 `SHA256SUMS.txt` 覆盖安装器、更新包、签名和 `latest.json`；sidecar 可执行文件位于这些包内，
 不单独列出。手动安装的用户应使用 `SHA256SUMS.txt` 校验下载的产物。
 
@@ -492,7 +568,7 @@ rebuild-aware 报告，其已审查固定值仍为 `null`，直到在这些主�
 node scripts/verify-sidecar.mjs \
   --root src-tauri/engine \
   --target x86_64-pc-windows-msvc \
-  --engine-version 0.8.0
+  --engine-version 0.9.0
 ```
 
 ## `latest.json`、签名与发布
@@ -524,20 +600,22 @@ node scripts/verify-sidecar.mjs \
 和发布标题中一致。引擎固定值位于 `scripts/cli-checksums.json`；workflow 显式传入
 `engine_version`，发布门控要求它与清单一致。
 
-当前源码中 `src-tauri/src/commands.rs` 的 `MIN_ENGINE_VERSION` 为 `0.8.0`。`0.6.0` 捆绑引擎
-`0.8.0`，因此最低版本与捆绑引擎一致，`0.7.x` 引擎会被视为不兼容。外壳接受不低于该
+当前源码中 `src-tauri/src/commands.rs` 的 `MIN_ENGINE_VERSION` 为 `0.9.0`。`0.7.0` 捆绑引擎
+`0.9.0`，因此最低版本与捆绑引擎一致，`0.8.x` 引擎会被视为不兼容。外壳接受不低于该
 版本的引擎，并把更旧版本标记为离线并显示通知。更新的引擎会通过门控，但不是发布测试过的固定
 版本。开发构建可通过 `LV24_SEO_BIN` 使用其他版本；UI 会将其标记为外部并仍检查最低版本。只有
 设置 `LV24_SEO_ALLOW_PATH_ENGINE=1` 时才使用 `PATH` 中的引擎。
 
 ## 从 0.1.0 一次性升级
 
-`0.1.0` 没有更新器、端点和公钥。它无法发现或安装 `0.6.0`。请手动下载并安装一次 `0.6.0`
-（Windows 上的 NSIS 安装器或便携 ZIP）。之后，`0.6.0` 安装在使用支持自动更新的包类型时，
+`0.1.0` 没有更新器、端点和公钥。它无法发现或安装 `0.7.0`。请手动下载并安装一次 `0.7.0`
+（Windows 上的 NSIS 安装器或便携 ZIP）。之后，`0.7.0` 安装在使用支持自动更新的包类型时，
 可以自动更新到后续版本。
 
 ## 更早的版本
 
+- **桌面 0.7.0** 增加了 Bing 索引面板（站点地图计划/应用、从站点地图运行 IndexNow、Site Scan 打开器）和每会话写入密钥，捆绑引擎 `0.9.0`，并把 `MIN_ENGINE_VERSION` 提高到 `0.9.0`。
+- **引擎 0.9.0** 把 Bing 站点地图提交变成受限的 `SubmitFeed` 写入，增加从有界站点地图一键运行 IndexNow 和 MCP 可选 `provider` 输入，同时保留 22 个 CLI 命令和 12 个工具。
 - **桌面 0.5.0** 增加了恢复流程、经确认的计划任务安装、Portfolio 页面和 CWV 卡片，捆绑引擎 `0.7.0`，并把 `MIN_ENGINE_VERSION` 提高到 `0.7.0`。
 - **引擎 0.7.0** 增加了两阶段恢复、只读组合、按 URL 模板和设备的 CWV、带 `indexing_events` 的模式 v4 和 21 个 CLI 命令。
 - **桌面 0.4.0** 增加了 Logs、Tasks 和 Backup 页面及报告摘要卡片，捆绑引擎 `0.6.0`，并把 `MIN_ENGINE_VERSION` 提高到 `0.6.0`。
@@ -589,4 +667,4 @@ sha256sum -c SHA256SUMS.txt --ignore-missing
 
 更新信任见[安全与隐私](/zh/security/)，sidecar 布局见[架构](/zh/architecture/)。
 
-Source: `_source/engine-releases-0.8.0.md`, `_source/engine-releases-0.7.0.md`, `_source/engine-releases-0.6.0.md`, `_source/engine-releases-0.5.3.md`, `_source/engine-releases-0.5.2.md`, `_source/desktop-releases-0.6.0.md`, `_source/desktop-releases-0.5.0.md`, `_source/desktop-releases-0.4.0.md`, `_source/desktop-releases-0.3.0.md`, `_source/desktop-releases-0.2.3.md`, `_source/desktop-releases-0.2.2.md`, `_source/desktop-releases-0.2.1.md`, `_source/desktop-releases-0.2.0.md`, `_source/desktop-release.md`, `_source/desktop-security.md`.
+Source: `_source/engine-releases-0.9.0.md`, `_source/engine-releases-0.8.0.md`, `_source/engine-releases-0.7.0.md`, `_source/engine-releases-0.6.0.md`, `_source/engine-releases-0.5.3.md`, `_source/engine-releases-0.5.2.md`, `_source/desktop-releases-0.7.0.md`, `_source/desktop-releases-0.6.0.md`, `_source/desktop-releases-0.5.0.md`, `_source/desktop-releases-0.4.0.md`, `_source/desktop-releases-0.3.0.md`, `_source/desktop-releases-0.2.3.md`, `_source/desktop-releases-0.2.2.md`, `_source/desktop-releases-0.2.1.md`, `_source/desktop-releases-0.2.0.md`, `_source/desktop-release.md`, `_source/desktop-security.md`.

@@ -85,6 +85,8 @@ JSON-строка на запись, когда stderr не терминал (pi
 | Ключ | Тип | Умолчание | Примечания |
 |---|---|---|---|
 | `site` | string | `""` | URL сайта, зарегистрированный в Bing Webmaster Tools. |
+| `indexnow_key` | string | `""` | Публичный ключ IndexNow и имя файла ключа; его безопасно хранить в `seo.toml`. |
+| `indexnow_key_location` | string | `""` | Необязательный абсолютный URL размещённого файла ключа; по умолчанию `https://<host>/<key>.txt`. |
 
 ### `[providers.crux]`
 
@@ -268,6 +270,8 @@ goals = [1, 2]
 
 [providers.bing]
 site = "https://example.com"
+indexnow_key = "abc12345"
+indexnow_key_location = "https://example.com/abc12345.txt"
 
 [providers.crux]
 origin = "https://example.com"

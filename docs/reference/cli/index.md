@@ -26,13 +26,13 @@ version.
 With `--json`, a command prints exactly one JSON document and nothing else:
 
 ```json
-{ "ok": true, "data": {}, "meta": { "version": "0.8.0", "duration_ms": 812 }, "warnings": [] }
+{ "ok": true, "data": {}, "meta": { "version": "0.9.0", "duration_ms": 812 }, "warnings": [] }
 ```
 
 A failed command uses the same shape with `ok: false` and an `error` object instead of `data`:
 
 ```json
-{ "ok": false, "error": { "code": "AUTH_REQUIRED", "message": "Google Search Console token is missing", "retryable": false, "next_action": "lv24-seo auth login --provider gsc" }, "meta": { "version": "0.8.0" }, "warnings": ["gsc: token missing"] }
+{ "ok": false, "error": { "code": "AUTH_REQUIRED", "message": "Google Search Console token is missing", "retryable": false, "next_action": "lv24-seo auth login --provider gsc" }, "meta": { "version": "0.9.0" }, "warnings": ["gsc: token missing"] }
 ```
 
 - `data` is command-specific. `meta` always carries `version` and often adds `duration_ms`,
@@ -110,21 +110,21 @@ The full key list, defaults and secret handling live in the [configuration refer
 Only `sitemap submit`, `yandex recrawl` and `indexnow submit` can change provider state. They use a
 two-step flow:
 
-1. Run the command without `--confirm`. It returns a dry run with `data.plan`, `data.plan_hash`,
-   `data.confirm_token` and `meta.dry_run: true`.
-2. Set a long random `LV24_SEO_WRITE_SECRET` in the same shell, then re-run with
-   `--allow-write --confirm TOKEN` within five minutes.
+1. Set a long random `LV24_SEO_WRITE_SECRET`, then run the command with `--allow-write` and no
+   `--confirm`. It returns the plan with `data.plan`, `data.plan_hash`, `data.confirm_token` and
+   `meta.dry_run: true`, and it contacts no provider.
+2. Re-run with `--allow-write --confirm TOKEN` within five minutes.
 
 The token is an HMAC over the action, target, full plan hash and expiry, so changing any input
 invalidates it. With an initialised workspace the CLI attaches the SQLite idempotency ledger, so a
 replayed token returns `status: skipped` with `reason: duplicate` and the provider is called once. The
 ledger is opened from the selected workspace data directory: `--config /srv/site/seo.toml` records the
 claim under `/srv/site/data` even when the shell is elsewhere. Without a data directory the apply still
-runs, but the envelope warns that replay protection is off for the token's five-minute lifetime; a dry
-run opens no ledger and creates no database.
+runs, but the envelope warns that replay protection is off for the token's five-minute lifetime; the
+plan opens no ledger and creates no database.
 
-IndexNow actually submits URLs. GSC sitemap submit and Yandex recrawl currently return
-`WRITE_DISABLED` instead of pretending the provider call happened.
+Bing sitemap submit and IndexNow actually write. GSC sitemap submit, Bing sitemap delete and Yandex
+recrawl return `WRITE_DISABLED` instead of pretending the provider call happened.
 
 ### Logging
 
@@ -151,9 +151,10 @@ envelope remains the stable diagnostic interface.
 | Start | `version`, `doctor`, `init`, `properties`, `stats` | Local files and the environment; `stats` reads provider KPIs without writing. |
 | Authentication | `auth status`, `auth set`, `auth login`, `auth logout` | The local secret store; `login` only prints instructions. |
 | Configuration | `config show` | The effective config, with credentials redacted. |
-| Google Search Console | `gsc query`, `sitemap submit` | Read-only queries; sitemap submit is a gated write. |
+| Google Search Console | `gsc query` | Read-only search analytics. |
+| Sitemap | `sitemap submit` | Gated write; Bing `SubmitFeed` is wired, GSC submit still returns `WRITE_DISABLED`. |
 | Yandex Webmaster | `yandex queries`, `yandex indexing`, `yandex recrawl` | Read-only queries; recrawl is a gated write. `queries` keeps `avg_click_position`, `query_id` and `extra_indicators`; `indexing` merges the history series and reports `site_problems`. |
-| IndexNow | `indexnow submit` | A gated write that actually submits URLs. |
+| IndexNow | `indexnow submit` | A gated write that submits explicit URLs or URLs read from the project sitemap. |
 | Crawl and audit | `crawl` | Provider-independent; stores local pages and issues when a store is configured. |
 | CWV | `cwv collect` | Queries CrUX per URL and device and persists field p75 rows; PSI lab rows are returned but never stored. |
 | Reports | `report weekly`, `report diff` | `weekly` stores a local snapshot; `diff` is read-only. |
@@ -201,6 +202,27 @@ preserves an unmapped indicator under `extra_indicators` instead of dropping the
 reports indexing history, in-search counts, diagnostics, `site_problems` and search-URL events for the
 configured `host_id`, and merges the `indexing/history` series (`http_2xx` … `other`) into one row per
 date.
+
+### Bing and IndexNow
+
+```bash
+lv24-seo sitemap submit --provider bing --allow-write --json
+lv24-seo sitemap submit --provider bing --allow-write --confirm TOKEN --json
+lv24-seo indexnow submit --from-sitemap --allow-write --json
+lv24-seo indexnow submit --from-sitemap --allow-write --confirm TOKEN --json
+```
+
+`--provider` on `sitemap submit` defaults to `gsc`; `bing` takes the site from `providers.bing.site`
+or `--property`, the sitemap from `--url` or `<project.base_url>/sitemap.xml`, and the key from the
+`bing_api_key` secret. The plan needs `--allow-write` and `LV24_SEO_WRITE_SECRET` and mints the token
+without calling Bing; the apply sends the reviewed token and records the claim in the idempotency
+ledger. `indexnow submit --from-sitemap` reads the sitemap during the plan and resolves host, key and
+key location from `providers.bing.site`, `providers.bing.indexnow_key` and
+`providers.bing.indexnow_key_location`. A `<sitemapindex>` is bounded to the root plus five child
+sitemaps and 10,000 URLs; explicit `--url` values are merged first and off-host URLs are skipped. The
+apply re-fetches the sitemap and invalidates the token with `CONFIRM_REQUIRED` if the URL set changed.
+A missing key is `AUTH_REQUIRED` at plan time, and a missing or mismatched key file is `INVALID_INPUT`
+on apply.
 
 ### Core Web Vitals
 
@@ -334,4 +356,4 @@ packaged `SKILL.md` files and their manifest. Both write local files only.
 - [MCP and agent skills](/mcp/)
 - [Troubleshooting](/troubleshooting/)
 
-Source: `_source/engine-cli.md`, `_source/engine-mcp.md`, `_source/engine-releases-0.5.2.md`, `_source/engine-releases-0.5.3.md`, `_source/engine-releases-0.6.0.md`, `_source/engine-releases-0.7.0.md`, `_source/engine-releases-0.8.0.md`; 0.8.0 `--help` output in the engine repository.
+Source: `_source/engine-cli.md`, `_source/engine-mcp.md`, `_source/engine-releases-0.5.2.md`, `_source/engine-releases-0.5.3.md`, `_source/engine-releases-0.6.0.md`, `_source/engine-releases-0.7.0.md`, `_source/engine-releases-0.8.0.md`, `_source/engine-releases-0.9.0.md`; 0.9.0 `--help` output in the engine repository.

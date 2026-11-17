@@ -54,7 +54,7 @@ GSC 接受手动提供的 OAuth 访问令牌或服务账号（`providers.gsc.ser
 
 默认情况下，工具不会更改提供商状态。`stats`、`doctor`、`config show`、`properties`、`gsc query`、`yandex queries`、`yandex indexing` 和 `report diff` 完全不写入。`report weekly` 不带 `--send` 时只构建并保存本地快照；`crawl` 只写入本地 SQLite 存储；`init` 写入 `seo.toml` 并创建 `<config dir>/data`。
 
-提供商写操作受门控。试运行返回计划和 `confirm_token`；应用它需要 `--allow-write` 和五分钟内的新 `--confirm <token>`，以及环境中的 `LV24_SEO_WRITE_SECRET`。工作区初始化后，应用会使用 SQLite 幂等账本：重放同一令牌返回 `skipped` / `duplicate`，提供商只被调用一次。没有数据目录时仍会应用，但信封会警告：在令牌五分钟有效期内没有重放保护。IndexNow 会真正提交 URL。GSC sitemap 提交和 Yandex 重新抓取目前返回 `WRITE_DISABLED`，而不是假装提供商路径已接通。
+提供商写操作受门控。计划需要 `--allow-write` 和 `LV24_SEO_WRITE_SECRET`，返回计划与 `confirm_token`，且不联系提供商；应用需要五分钟内的新 `--confirm <token>`。工作区初始化后，应用会使用 SQLite 幂等账本：重放同一令牌返回 `skipped` / `duplicate`，提供商只被调用一次。没有数据目录时仍会应用，但信封会警告：在令牌五分钟有效期内没有重放保护。Bing 站点地图提交和 IndexNow 会真正写入；GSC sitemap 提交、Bing 站点地图删除和 Yandex 重新抓取返回 `WRITE_DISABLED`，而不是假装提供商路径已接通。
 
 MCP 服务器默认只读；其写工具带注解并受门控，部分提供商路径仍返回 `WRITE_DISABLED`。桌面端在发送报告、安装计划任务、安装 MCP 客户端条目或执行提供商写操作前，会要求一个指明确切目标的确认对话框。
 
@@ -71,16 +71,17 @@ CLI 信封为 `{ok, data, meta, warnings}`。当输入缺失、被截断或采�
 
 ## 可选桌面端
 
-桌面端是 `0.6.0`，内置 `lv24-seo 0.8.0`；它要求引擎 `0.8.0` 或更新。当你不想记参数时它很有用：在应用内创建或选择 `seo.toml`，查看仪表板，通过带校验的表单编辑配置，运行有边界的抓取，分析 nginx 日志，分诊任务，创建或恢复可移植备份，扫描组合文件夹，比较并导出带归因摘要和 CWV 卡片的周报，并把有边界的建议复制为给智能体的 Markdown 提示词。长时间引擎任务在后台运行，带窗口级横幅和 **Cancel** 按钮。Windows NSIS、macOS `.app` 和 Linux AppImage 可以自动更新；便携 ZIP、deb 和 rpm 仅手动更新。更新器只停止它启动的 sidecar，如果无法停止会以 `UPDATE_ENGINE_BUSY` 阻止安装。
+桌面端是 `0.7.0`，内置 `lv24-seo 0.9.0`；它要求引擎 `0.9.0` 或更新。当你不想记参数时它很有用：在应用内创建或选择 `seo.toml`，查看仪表板，通过带校验的表单编辑配置，运行有边界的抓取，分析 nginx 日志，分诊任务，创建或恢复可移植备份，扫描组合文件夹，比较并导出带归因摘要和 CWV 卡片的周报，计划并应用 Bing 站点地图提交或 IndexNow 运行，打开官方 Bing Site Scan 页面，并把有边界的建议复制为给智能体的 Markdown 提示词。长时间引擎任务在后台运行，带窗口级横幅和 **Cancel** 按钮；提供商写入不可取消。Windows NSIS、macOS `.app` 和 Linux AppImage 可以自动更新；便携 ZIP、deb 和 rpm 仅手动更新。更新器只停止它启动的 sidecar，如果无法停止会以 `UPDATE_ENGINE_BUSY` 阻止安装。
 
 ## 状态与限制
 
-引擎为 `0.8.0`；桌面端为 `0.6.0`。1.0 之前的已知缺口：
+引擎为 `0.9.0`；桌面端为 `0.7.0`。1.0 之前的已知缺口：
 
 - GSC 支持手动提供的 OAuth 访问令牌或服务账号；普通令牌不会刷新。
-- GSC sitemap 提交和 Yandex 重新抓取返回 `WRITE_DISABLED`；IndexNow 会真正提交。
+- GSC sitemap 提交、Bing 站点地图删除和 Yandex 重新抓取返回 `WRITE_DISABLED`；Bing 站点地图提交和 IndexNow 会真正写入，并需要各自的提供商密钥。
+- 桌面端会打开官方 Bing Site Scan 页面，但不启动、监控或导入扫描。
 - `storage.raw_retention_days` 已保留；目前不会写入原始归档。
-- 桌面端 `0.6.0` 有抓取、日志、任务、备份、恢复、计划任务安装和组合屏幕。长时间引擎调用在后台运行，带窗口级横幅和 **Cancel** 按钮，但取消不是回滚，也没有任务队列。
+- 桌面端 `0.7.0` 有抓取、日志、任务、备份、恢复、计划任务安装、组合和 Bing 索引屏幕。长时间引擎调用在后台运行，带窗口级横幅和 **Cancel** 按钮，但取消不是回滚，也没有任务队列；提供商写入不可取消。
 - `cwv collect`、`backup restore --to` 和 `schedule status`/`uninstall` 仅限 CLI；桌面端渲染已存储的 CWV 行、规划就地恢复并在确认后安装调度器任务。
 - `report indexing`、`report opportunities` 和 `report history` 已计划，尚未发布。
 - 日志是可选项：设置 `LV24_SEO_LOG_LEVEL` 才会在 CLI 和 `mcp serve` 中安装脱敏处理器。稳定的诊断接口仍是 `--json` 信封。

@@ -21,7 +21,7 @@ Three tools persist local state and are not advertised as read-only:
 | `seo_crawl_site` | read | `true` | `false` | `false` | `false` |
 | `seo_weekly_report` | read | `true` | `false` | `false` | `false` |
 
-They save indexing events, crawl snapshots or weekly snapshots but never mutate provider state and need no confirm token. MCP clients that branch on `readOnlyHint` may ask for confirmation before calling them; that is intentional. The twelve tools break down as 10 read-class tools (7 pure read-only plus these 3 local-state writers) and the 2 gated writes that still return `WRITE_DISABLED` in this build.
+They save indexing events, crawl snapshots or weekly snapshots but never mutate provider state and need no confirm token. MCP clients that branch on `readOnlyHint` may ask for confirmation before calling them; that is intentional. The twelve tools break down as 10 read-class tools (7 pure read-only plus these 3 local-state writers) and the 2 gated writes. Both gated writes require `allow_write`, a plan and a confirm token, and the server's `LV24_SEO_WRITE_SECRET`; Bing sitemap submit is wired, while GSC sitemap submit, Bing sitemap delete and Yandex recrawl still return `WRITE_DISABLED`.
 
 The two write tools carry `destructiveHint: true` and are opt-in: `allow_write` defaults to `false` and every call without it returns `WRITE_DISABLED` before a plan is built. They follow the same two-phase contract as the CLI, described below.
 
@@ -48,7 +48,7 @@ The token is an HMAC over the action, target, full plan hash and expiry, and liv
 
 The server passes its workspace store to the write gate, so a replayed token returns `status: skipped` with `reason: duplicate` and the provider is called once. Without a store the apply still runs, but the response warns that replay protection is off for the token's lifetime. A provider failure releases the claim, so a genuine retry is allowed and a failed write is never recorded as sent.
 
-The contract is implemented in the server, but the shipped `SeoService` has no Yandex recrawl or GSC sitemap write adapter yet: both tools return `WRITE_DISABLED` even with `allow_write=true` and a secret. The CLI IndexNow path is the only write that reaches a provider. Nothing is simulated.
+The contract is implemented in the server. `seo_sitemap_submit` with `provider: "bing"` calls the same Bing `SubmitFeed` path as the CLI; GSC sitemap submit, Bing sitemap delete and Yandex recrawl still return `WRITE_DISABLED` even with `allow_write=true` and a secret. IndexNow remains CLI/desktop-only and has no MCP tool. Nothing is simulated.
 
 ## Tools
 
@@ -65,7 +65,7 @@ The contract is implemented in the server, but the shipped `SeoService` has no Y
 | `seo_opportunities` | `days` 1–90 (default 28), `limit` 1–500, `min_impressions` | Ranked opportunities with evidence and `expected_gain` |
 | `seo_log_analysis` | `file` (absolute path), `bot` (`googlebot`, `yandexbot`, `bingbot`, `other` or empty) | Bot rollup and crawl-waste summary for one local nginx JSON access log |
 | `seo_recrawl_request` | `host_id` (default: configured host), `urls`, `allow_write` (default `false`), `plan_hash`, `confirm_token` | Two-phase gated write; `WRITE_DISABLED` while no provider adapter is wired |
-| `seo_sitemap_submit` | `property`, `sitemap_url`, `action`, `allow_write` (default `false`), `plan_hash`, `confirm_token` | Two-phase gated write; `WRITE_DISABLED` while no provider adapter is wired |
+| `seo_sitemap_submit` | `provider` (`gsc` or `bing`, default `gsc`), `property`, `sitemap_url`, `action`, `allow_write` (default `false`), `plan_hash`, `confirm_token` | Two-phase gated write; Bing submit is wired, GSC submit and Bing delete return `WRITE_DISABLED` |
 
 `gsc_search_analytics` defaults to the last seven full days in `report.timezone`. `seo_weekly_report` takes no property argument: the property, timezone and lag defaults come from config. `seo_opportunities` returns `expected_gain`, a prioritisation estimate, never a traffic promise.
 
@@ -76,6 +76,8 @@ The MCP weekly tool caps `days` at 90 and `lag_days` at 14 with a warning; value
 `seo_log_analysis` is the twelfth tool and the only one that needs no service, store or workspace. It reads one local nginx JSON access log of at most 100 MiB, returns the same `data`, `meta` and `warnings` as `lv24-seo logs analyze`, and is read-only: the file is opened once and nothing is uploaded or stored. Bot classes are User-Agent only, so the result is triage, not proof of crawl identity.
 
 `yandex_indexing_state` persists provider-reported per-URL events in the `indexing_events` table when a store exists. A replay updates `last_seen` without duplicating, `first_seen` is immutable, `meta.indexing_events` reports `new`, `existing`, `skipped` and `truncated`, and at most 500 provider rows are considered per call. Storage failures become warnings, never a failed provider read. The weekly report reads these events as digest evidence. The same call merges the documented `indexing/history` series (`http_2xx` … `other`) into one row per date, keeps an unknown series under `extra_indicators`, and reports `summary.site_problems`; an omitted counter stays absent rather than becoming `0`.
+
+`seo_sitemap_submit` gained an optional `provider` (`gsc|bing`, default `gsc`) in 0.9.0; the tool name, the 12-tool surface and the rest of its inputs are unchanged. For Bing, `property` defaults to `providers.bing.site` and `sitemap_url` to `<project.base_url>/sitemap.xml`. The plan checks the `bing_api_key` secret and returns `AUTH_REQUIRED` when it is missing, so a token that cannot be applied is never handed out. A replay returns `status: skipped` with `reason: duplicate`, and a provider failure releases the claim. Bing delete and every GSC sitemap write remain `WRITE_DISABLED`. IndexNow from a sitemap is CLI and desktop only.
 
 `cwv collect` is a CLI writer, not a thirteenth tool: the MCP surface stays at 12. `seo_weekly_report` reads whatever field rows the CLI has persisted and adds the `cwv` section grouped by URL template and device, with at most five templates. PSI lab rows are never stored, so `--source psi` alone cannot populate that section.
 
@@ -191,4 +193,4 @@ Codes: `AUTH_REQUIRED`, `AUTH_INVALID`, `PROPERTY_NOT_FOUND`, `QUOTA_EXCEEDED`, 
 - **Technical audit.** Crawl up to 500 URLs with `seo_crawl_site` and summarise critical and high issues by rule id. Do not describe an unvisited URL as broken.
 - **Write request.** Prepare a recrawl plan for these URLs and show the quota first. Do not write anything until I approve the plan.
 
-Source: `_source/engine-mcp.md`, `_source/engine-skills.md`, `_source/engine-cli.md`, `_source/engine-releases-0.5.2.md`, `_source/engine-releases-0.5.3.md`, `_source/engine-releases-0.6.0.md`, `_source/engine-releases-0.7.0.md`, `_source/engine-releases-0.8.0.md`.
+Source: `_source/engine-mcp.md`, `_source/engine-skills.md`, `_source/engine-cli.md`, `_source/engine-releases-0.5.2.md`, `_source/engine-releases-0.5.3.md`, `_source/engine-releases-0.6.0.md`, `_source/engine-releases-0.7.0.md`, `_source/engine-releases-0.8.0.md`, `_source/engine-releases-0.9.0.md`.

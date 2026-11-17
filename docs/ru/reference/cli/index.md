@@ -25,13 +25,13 @@ description: Команды, глобальные флаги, JSON-конвер�
 С флагом `--json` команда печатает ровно один JSON-документ и ничего больше:
 
 ```json
-{ "ok": true, "data": {}, "meta": { "version": "0.8.0", "duration_ms": 812 }, "warnings": [] }
+{ "ok": true, "data": {}, "meta": { "version": "0.9.0", "duration_ms": 812 }, "warnings": [] }
 ```
 
 Неудачная команда использует ту же форму с `ok: false` и объектом `error` вместо `data`:
 
 ```json
-{ "ok": false, "error": { "code": "AUTH_REQUIRED", "message": "Google Search Console token is missing", "retryable": false, "next_action": "lv24-seo auth login --provider gsc" }, "meta": { "version": "0.8.0" }, "warnings": ["gsc: token missing"] }
+{ "ok": false, "error": { "code": "AUTH_REQUIRED", "message": "Google Search Console token is missing", "retryable": false, "next_action": "lv24-seo auth login --provider gsc" }, "meta": { "version": "0.9.0" }, "warnings": ["gsc: token missing"] }
 ```
 
 - `data` зависит от команды. В `meta` всегда есть `version`, часто добавляются `duration_ms`,
@@ -117,10 +117,10 @@ lv24-seo report weekly --days 7 --strict --json
 Менять состояние провайдера могут только `sitemap submit`, `yandex recrawl` и `indexnow submit`.
 Они работают в два шага:
 
-1. Запустите команду без `--confirm`. Она вернёт пробный прогон с `data.plan`, `data.plan_hash`,
-   `data.confirm_token` и `meta.dry_run: true`.
-2. Задайте длинный случайный `LV24_SEO_WRITE_SECRET` в той же оболочке и повторите запуск с
-   `--allow-write --confirm TOKEN` в течение пяти минут.
+1. Задайте длинный случайный `LV24_SEO_WRITE_SECRET`, затем запустите команду с `--allow-write` и без
+   `--confirm`. Она вернёт план с `data.plan`, `data.plan_hash`, `data.confirm_token` и
+   `meta.dry_run: true` и не обратится к провайдеру.
+2. Повторите запуск с `--allow-write --confirm TOKEN` в течение пяти минут.
 
 Токен — это HMAC от действия, цели, полного хеша плана и срока действия, поэтому изменение любого
 входа его аннулирует. При инициализированной рабочей области CLI подключает SQLite-журнал
@@ -131,8 +131,8 @@ lv24-seo report weekly --days 7 --strict --json
 защита от повтора отключена на пять минут жизни токена; dry run не открывает журнал и не создаёт
 базу.
 
-IndexNow действительно отправляет URL. GSC sitemap submit и Yandex
-recrawl сейчас возвращают `WRITE_DISABLED`, а не делают вид, что вызов провайдера состоялся.
+IndexNow и отправка sitemap в Bing действительно пишут. Отправка sitemap в GSC, удаление sitemap в Bing
+и переобход в Яндексе возвращают `WRITE_DISABLED`, а не делают вид, что вызов провайдера состоялся.
 
 ### Логирование
 
@@ -159,9 +159,10 @@ redacting-handler в CLI и `lv24-seo mcp serve`; если переменная 
 | Start | `version`, `doctor`, `init`, `properties`, `stats` | Локальные файлы и окружение; `stats` читает KPI провайдеров без записи. |
 | Authentication | `auth status`, `auth set`, `auth login`, `auth logout` | Локальное хранилище секретов; `login` только печатает инструкции. |
 | Configuration | `config show` | Действующая конфигурация с замаскированными учётными данными. |
-| Google Search Console | `gsc query`, `sitemap submit` | Запросы только на чтение; sitemap submit — защищённая запись. |
+| Google Search Console | `gsc query` | Аналитика поиска только для чтения. |
+| Sitemap | `sitemap submit` | Защищённая запись; Bing `SubmitFeed` подключён, отправка GSC всё ещё возвращает `WRITE_DISABLED`. |
 | Yandex Webmaster | `yandex queries`, `yandex indexing`, `yandex recrawl` | Запросы только на чтение; recrawl — защищённая запись. `queries` сохраняет `avg_click_position`, `query_id` и `extra_indicators`; `indexing` объединяет серию истории и сообщает `site_problems`. |
-| IndexNow | `indexnow submit` | Защищённая запись, которая действительно отправляет URL. |
+| IndexNow | `indexnow submit` | Защищённая запись, которая отправляет явные URL или URL, прочитанные из sitemap проекта. |
 | Crawl and audit | `crawl` | Не зависит от провайдеров; сохраняет локальные страницы и проблемы, если настроено хранилище. |
 | CWV | `cwv collect` | Опрашивает CrUX по URL и устройству и сохраняет полевые строки p75; лабораторные строки PSI возвращаются, но не сохраняются. |
 | Reports | `report weekly`, `report diff` | `weekly` сохраняет локальный снимок; `diff` только читает. |
@@ -210,6 +211,26 @@ lv24-seo yandex indexing --json
 строки. `yandex indexing` показывает историю индексирования, число страниц в поиске, диагностику,
 `site_problems` и события поисковых URL для настроенного `host_id`, а также объединяет серию
 `indexing/history` (`http_2xx` … `other`) в одну строку на дату.
+
+### Bing и IndexNow
+
+```bash
+lv24-seo sitemap submit --provider bing --allow-write --json
+lv24-seo sitemap submit --provider bing --allow-write --confirm TOKEN --json
+lv24-seo indexnow submit --from-sitemap --allow-write --json
+lv24-seo indexnow submit --from-sitemap --allow-write --confirm TOKEN --json
+```
+
+`--provider` у `sitemap submit` по умолчанию `gsc`; `bing` берёт сайт из `providers.bing.site` или
+`--property`, sitemap — из `--url` или `<project.base_url>/sitemap.xml`, а ключ — из секрета
+`bing_api_key`. Плану нужны `--allow-write` и `LV24_SEO_WRITE_SECRET`; он выпускает токен, не вызывая Bing.
+Применение отправляет проверенный токен и фиксирует заявку в журнале идемпотентности.
+`indexnow submit --from-sitemap` читает sitemap во время плана и берёт хост, ключ и расположение ключа из
+`providers.bing.site`, `providers.bing.indexnow_key` и `providers.bing.indexnow_key_location`.
+`<sitemapindex>` ограничен корнем плюс пятью дочерними sitemap и 10 000 URL; явные `--url` объединяются
+первыми, URL вне хоста пропускаются. Применение заново загружает sitemap и аннулирует токен с
+`CONFIRM_REQUIRED`, если набор URL изменился. Отсутствующий ключ — `AUTH_REQUIRED` на этапе плана, а
+отсутствующий или несовпавший файл ключа — `INVALID_INPUT` при применении.
 
 ### Core Web Vitals
 
@@ -346,4 +367,4 @@ lv24-seo export skills --out skills/
 - [MCP и навыки агентов](/ru/mcp/)
 - [Устранение неполадок](/ru/troubleshooting/)
 
-Source: `_source/engine-cli.md`, `_source/engine-mcp.md`, `_source/engine-releases-0.5.2.md`, `_source/engine-releases-0.5.3.md`, `_source/engine-releases-0.6.0.md`, `_source/engine-releases-0.7.0.md`, `_source/engine-releases-0.8.0.md`; вывод `--help` версии 0.8.0 в репозитории движка.
+Source: `_source/engine-cli.md`, `_source/engine-mcp.md`, `_source/engine-releases-0.5.2.md`, `_source/engine-releases-0.5.3.md`, `_source/engine-releases-0.6.0.md`, `_source/engine-releases-0.7.0.md`, `_source/engine-releases-0.8.0.md`, `_source/engine-releases-0.9.0.md`; вывод `--help` версии 0.9.0 в репозитории движка.

@@ -21,7 +21,7 @@ MCP 服务器提供一个小而明确的能力面：12 个工具、3 个资源�
 | `seo_crawl_site` | read | `true` | `false` | `false` | `false` |
 | `seo_weekly_report` | read | `true` | `false` | `false` | `false` |
 
-它们保存索引事件、抓取或周报快照，但从不改变提供商状态，也不需要确认令牌。依据 `readOnlyHint` 分支的 MCP 客户端可能会在调用前请求确认；这是有意为之。十二个工具分为 10 个读取类（7 个纯只读加这 3 个本地状态写入者）和 2 个受限写入，后者在此构建中仍返回 `WRITE_DISABLED`。
+它们保存索引事件、抓取或周报快照，但从不改变提供商状态，也不需要确认令牌。依据 `readOnlyHint` 分支的 MCP 客户端可能会在调用前请求确认；这是有意为之。十二个工具分为 10 个读取类（7 个纯只读加这 3 个本地状态写入者）和 2 个受限写入。两个写入都需要 `allow_write`、计划和确认令牌，以及服务器的 `LV24_SEO_WRITE_SECRET`；Bing 站点地图提交已接通，而 GSC 站点地图提交、Bing 站点地图删除和 Yandex 重新抓取仍返回 `WRITE_DISABLED`。
 
 两个写入工具带有 `destructiveHint: true`，并且需要显式开启：`allow_write` 默认为 `false`，任何不带它的调用都会在构建计划之前返回 `WRITE_DISABLED`。它们遵循与 CLI 相同的两阶段契约，见下文。
 
@@ -48,7 +48,7 @@ dry run 的 `data` 对象：
 
 服务器把工作区存储交给写入闸门，因此重放的令牌返回 `status: skipped` 和 `reason: duplicate`，提供商只被调用一次。没有存储时应用仍会运行，但响应会警告：在令牌有效期内没有重放保护。提供商失败会释放声明，因此真正的重试被允许，失败的写入绝不会被记录为已发送。
 
-契约已在服务器中实现，但随附的 `SeoService` 还没有 Yandex 重新抓取或 GSC 站点地图写入适配器：即使 `allow_write=true` 且有密钥，两个工具仍返回 `WRITE_DISABLED`。CLI 的 IndexNow 路径是唯一到达提供商的写入。不会模拟任何结果。
+契约已在服务器中实现。`seo_sitemap_submit` 使用 `provider: "bing"` 时调用与 CLI 相同的 Bing `SubmitFeed` 路径；GSC 站点地图提交、Bing 站点地图删除和 Yandex 重新抓取即使带 `allow_write=true` 和密钥也仍返回 `WRITE_DISABLED`。IndexNow 仍仅限 CLI 和桌面端，没有 MCP 工具。不会模拟任何结果。
 
 ## 工具
 
@@ -65,7 +65,7 @@ dry run 的 `data` 对象：
 | `seo_opportunities` | `days` 1–90（默认 28）、`limit` 1–500、`min_impressions` | 带证据和 `expected_gain` 的排序机会 |
 | `seo_log_analysis` | `file`（绝对路径）、`bot`（`googlebot`、`yandexbot`、`bingbot`、`other` 或空） | 一个本地 nginx JSON 访问日志的机器人汇总和抓取浪费摘要 |
 | `seo_recrawl_request` | `host_id`（默认：已配置主机）、`urls`、`allow_write`（默认 `false`）、`plan_hash`、`confirm_token` | 两阶段受限写入；未接通提供商适配器时返回 `WRITE_DISABLED` |
-| `seo_sitemap_submit` | `property`、`sitemap_url`、`action`、`allow_write`（默认 `false`）、`plan_hash`、`confirm_token` | 两阶段受限写入；未接通提供商适配器时返回 `WRITE_DISABLED` |
+| `seo_sitemap_submit` | `provider`（`gsc` 或 `bing`，默认 `gsc`）、`property`、`sitemap_url`、`action`、`allow_write`（默认 `false`）、`plan_hash`、`confirm_token` | 两阶段受限写入；Bing 提交已接通，GSC 提交和 Bing 删除返回 `WRITE_DISABLED` |
 
 `gsc_search_analytics` 默认使用 `report.timezone` 中最近七个完整天。`seo_weekly_report` 不接受属性参数：属性、时区和默认延迟来自配置。`seo_opportunities` 返回 `expected_gain`，这是优先级估计，不是流量承诺。
 
@@ -76,6 +76,8 @@ MCP 周报工具会把 `days` 上限设为 90、`lag_days` 上限设为 14，并
 `seo_log_analysis` 是第十二个工具，也是唯一不需要服务、存储或工作区的工具。它读取一个不超过 100 MiB 的本地 nginx JSON 访问日志，返回与 `lv24-seo logs analyze` 相同的 `data`、`meta` 和 `warnings`，并且只读：文件只打开一次，不会上传或存储。机器人分类仅基于 User-Agent，因此结果是分诊，不是抓取身份的证明。
 
 `yandex_indexing_state` 在存在存储时把提供商报告的按 URL 事件保存到 `indexing_events` 表。重放会更新 `last_seen` 而不重复，`first_seen` 不可变，`meta.indexing_events` 报告 `new`、`existing`、`skipped` 和 `truncated`，每次调用最多考虑 500 行提供商数据。存储失败变成警告，而不是提供商读取失败。周报会把这些事件作为摘要证据读取。同一调用把文档化的 `indexing/history` 系列（`http_2xx` … `other`）合并为每个日期一行，把未知系列保留在 `extra_indicators` 中，并报告 `summary.site_problems`；省略的计数器保持缺失而不是变成 `0`。
+
+`seo_sitemap_submit` 在 0.9.0 中增加了可选 `provider`（`gsc|bing`，默认 `gsc`）；工具名、12 工具接口和其余输入不变。对 Bing，`property` 默认为 `providers.bing.site`，`sitemap_url` 默认为 `<project.base_url>/sitemap.xml`。计划会检查 `bing_api_key` 秘密，缺少时返回 `AUTH_REQUIRED`，因此不会发放无法应用的令牌。重放返回 `status: skipped` 和 `reason: duplicate`，提供商失败会释放声明。Bing 删除和任何 GSC 站点地图写入仍为 `WRITE_DISABLED`。从站点地图运行 IndexNow 仅限 CLI 和桌面端。
 
 `cwv collect` 是 CLI 写入器，不是第 13 个工具：MCP 接口仍为 12。`seo_weekly_report` 读取 CLI 已持久化的字段行，并增加按 URL 模板和设备分组的 `cwv` 分区，最多五个模板。PSI 实验室行绝不存储，因此单独的 `--source psi` 无法填充该分区。
 
@@ -191,4 +193,4 @@ lv24-seo export skills --out .opencode/skills
 - **技术审计。** 用 `seo_crawl_site` 抓取最多 500 个 URL，按规则 id 汇总 critical 和 high 问题。不要把未抓取的 URL 说成失效。
 - **写入请求。** 为这些 URL 准备重新抓取计划，先显示配额。在我批准计划前不要写入任何内容。
 
-Source: `_source/engine-mcp.md`, `_source/engine-skills.md`, `_source/engine-cli.md`, `_source/engine-releases-0.5.2.md`, `_source/engine-releases-0.5.3.md`, `_source/engine-releases-0.6.0.md`, `_source/engine-releases-0.7.0.md`, `_source/engine-releases-0.8.0.md`.
+Source: `_source/engine-mcp.md`, `_source/engine-skills.md`, `_source/engine-cli.md`, `_source/engine-releases-0.5.2.md`, `_source/engine-releases-0.5.3.md`, `_source/engine-releases-0.6.0.md`, `_source/engine-releases-0.7.0.md`, `_source/engine-releases-0.8.0.md`, `_source/engine-releases-0.9.0.md`.

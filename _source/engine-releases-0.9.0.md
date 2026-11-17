@@ -1,0 +1,158 @@
+# 0.9.0 - Bing sitemap submit and one-click IndexNow
+
+Status: **released** (2026-11-17). `0.9.0` is published on PyPI, npm and the MCP Registry.
+Desktop `0.7.0` is the current desktop release, bundles engine `0.9.0` and requires engine
+`>= 0.9.0`; its asset names use `0.7.0` / `-0.7.0-`.
+
+Minor release: Bing sitemap submission becomes a real gated write, and IndexNow can read its
+URL list from the project sitemap and its host/key from `seo.toml`. The CLI still has **22
+top-level commands**, the MCP surface stays at **12 tools**, and the SQLite schema stays at
+version 4.
+
+## Added
+
+### Bing sitemap submission
+
+`lv24-seo sitemap submit --provider bing [--property SITE] [--url ABS] [--allow-write]
+[--confirm TOKEN] [--config ABS] [--json]`:
+
+* `--provider` is `gsc|bing` and defaults to `gsc`, so existing scripts keep the GSC plan.
+  GSC still requires `--property` and `--url` and its apply still returns `WRITE_DISABLED`;
+  no GSC write adapter is claimed.
+* For Bing, the site comes from `providers.bing.site` or `--property`; the sitemap URL comes
+  from `--url` or defaults to `<project.base_url>/sitemap.xml`. A missing site or base URL is
+  `CONFIG_INVALID` before any network call.
+* The API key is the `bing_api_key` secret (environment, OS keychain or the opt-in file).
+  A missing key is `AUTH_REQUIRED` with a next action; the plan also checks it, so a token
+  that cannot be applied is never handed out.
+* The write uses the current **JSON** endpoint `POST .../SubmitFeed` with
+  `{"siteUrl": ..., "feedUrl": ...}` and `?apikey=...`; the retired SOAP/POX APIs are not
+  used. Success (`{"d": null}`) returns `{provider: "bing", status: "submitted", site_url,
+  sitemap_url}`. HTTP 401/403 map to `AUTH_INVALID`, 404 to `PROPERTY_NOT_FOUND`, 429 to
+  `QUOTA_EXCEEDED`, 5xx to `UPSTREAM_UNAVAILABLE` and other 4xx to `INVALID_INPUT`; the key
+  never appears in an error message.
+* Plan/apply uses the existing `WriteGate` two-phase contract and the SQLite idempotency
+  ledger: `--allow-write` is required for the plan as well as the apply, the plan contacts no
+  provider and creates no database, a replay returns `status: skipped` / `reason: duplicate`,
+  and a provider failure releases the claim.
+* Bing `action=delete` stays `WRITE_DISABLED` with an explicit next action.
+
+### One-click IndexNow
+
+`lv24-seo indexnow submit --from-sitemap [--sitemap-url ABS] [--url ABS ...] [--allow-write]
+[--confirm TOKEN] [--config ABS] [--json]`:
+
+* `--host`, `--key` and the key location resolve from config: the host comes from
+  `providers.bing.site`, the key from `providers.bing.indexnow_key`, and the location from
+  `providers.bing.indexnow_key_location` or `https://<host>/<key>.txt`. Explicit flags still
+  win. A missing key is `AUTH_REQUIRED` with the key-file next action.
+* The sitemap is fetched and parsed read-only during the plan. A `<urlset>` is read directly;
+  a `<sitemapindex>` is bounded to the root plus **five child sitemaps** and **10,000 URLs**.
+  URLs are deduplicated, explicit `--url` values are merged first, and URLs outside the
+  IndexNow host are skipped. `meta.truncated`, `meta.total` and `meta.limitations` say what
+  was lost or skipped instead of presenting a capped inventory as complete.
+* `--sitemap-url` implies `--from-sitemap`, so a custom sitemap is one flag. Neither an
+  explicit URL nor a sitemap is `INVALID_INPUT`.
+* The apply re-fetches the sitemap. If its URL set changed since the plan, the plan token
+  is invalidated with `CONFIRM_REQUIRED` and nothing is submitted; a stable sitemap submits
+  the refreshed merged list, capped at the IndexNow 10,000-URL limit.
+* The existing 422 mapping is kept: a missing or mismatched key file is `INVALID_INPUT` with
+  the exact `https://<host>/<key>.txt` location in the next action. The result row reports
+  `submitted`, `status_code` and the envelope reports `truncated`.
+* IndexNow remains CLI/desktop-only; no 13th MCP tool is added.
+
+### MCP `seo_sitemap_submit`
+
+The tool keeps its name and the 12-tool surface. Inputs now include an optional `provider`
+(`gsc|bing`, default `gsc`), optional `property` and optional `sitemap_url`; for Bing the URL
+defaults to `<project.base_url>/sitemap.xml`. Bing apply calls the same
+`SeoService.submit_sitemap` path as the CLI. GSC submit and Bing delete remain
+`WRITE_DISABLED` instead of pretending a write happened.
+
+### Configuration
+
+`[providers.bing]` gains two **public** identifiers, safe to keep in `seo.toml` because the
+key file is served openly:
+
+```toml
+[providers.bing]
+site = "https://example.com"
+indexnow_key = "abc12345"
+indexnow_key_location = "https://example.com/abc12345.txt"  # optional
+```
+
+The Bing Webmaster API key is still a secret and is never read from this file.
+
+## Changed
+
+* The CLI still has 22 top-level commands (15 groups and 7 commands). `sitemap submit` and
+  `indexnow submit` gained options; no command was added or removed.
+* `sitemap submit --property` and `--url` are optional at the parser level so Bing can use
+  config defaults. GSC still requires both and now reports `INVALID_INPUT` in the envelope
+  instead of a Typer missing-option usage line.
+* The MCP surface stays at 12 tools, 3 resources and 3 prompts; only `seo_sitemap_submit`
+  inputs changed. `schemas/tools.json` is regenerated.
+* Apply envelopes for service-backed writes flatten the service envelope under
+  `data.result`, so `provider`, `status`, `site_url` and `sitemap_url` are one level deep.
+* The IndexNow plan payload adds `key_location` and, in sitemap mode, `sitemap_url`. The key
+  is already a public identifier.
+
+## Verification
+
+Release artifacts, runs and installed-app checks:
+
+| Check | Result |
+|---|---|
+| PyPI `lv24-seo` | `0.9.0` published |
+| npm `@lv24/seo` | `0.9.0` published |
+| MCP Registry `io.github.LevapVeeskela/lv24-seo` | `0.9.0` published |
+| CI | run `44038720401` green |
+| Release workflow | run `44039013284` green |
+| Desktop `0.7.0` | published, bundles engine `0.9.0`, requires `MIN_ENGINE_VERSION=0.9.0`; assets named `0.7.0` / `-0.7.0-` |
+| Windows in-app update `0.6.0` → `0.7.0` | verified: UI Desktop 0.7.0 / Engine 0.9.0, engine ready; Integrations shows the Bing indexing panel |
+| Bing sitemap, configured workspace | `plan` → `apply` → `submitted` through the JSON `SubmitFeed` endpoint |
+| IndexNow, configured workspace | `plan` returns `AUTH_REQUIRED` until `providers.bing.indexnow_key` and a hosted `https://<host>/<key>.txt` exist |
+
+Offline gate on the released SHA (no provider credentials, no network):
+
+```bash
+uv run ruff check .
+uv run ruff format --check .
+uv run mypy src
+uv run python -m lv24_seo.mcp.registry --check
+uv run python -m pytest -q
+```
+
+Focused checks:
+
+```bash
+uv run pytest -q tests/unit/test_provider_bing.py
+uv run pytest -q tests/unit/test_service_sitemap.py
+uv run pytest -q tests/unit/test_cli_bing_sitemap.py
+uv run pytest -q tests/unit/test_cli_indexnow.py
+uv run pytest -q tests/unit/test_mcp.py
+```
+
+The tests cover the `SubmitFeed` request shape and error mapping, the Bing CLI plan/apply
+and ledger replay, the MCP Bing plan/apply, IndexNow config defaults, urlset and bounded
+sitemapindex parsing, the URL cap, explicit-URL merging, missing keys, 422 propagation and
+the changed-sitemap token invalidation. The suite makes no live Bing or IndexNow request;
+the live rows above come from a configured workspace, not a fixture.
+
+## Known limitations
+
+* Bing sitemap submit needs a Bing Webmaster API key; without one the plan is `AUTH_REQUIRED`
+  before any network call. Bing sitemap delete stays `WRITE_DISABLED` with an explicit next action.
+* IndexNow needs the public key from `providers.bing.indexnow_key` and a live key file at
+  `providers.bing.indexnow_key_location` (default `https://<host>/<key>.txt`). A missing key is
+  `AUTH_REQUIRED` at plan time; a missing or mismatched key file is `INVALID_INPUT` (HTTP 422) on
+  apply, and nothing is submitted.
+* Sitemap discovery is bounded: the root plus five child sitemaps and 10,000 URLs. URLs outside the
+  IndexNow host are skipped, and `meta.truncated`, `meta.total` and `meta.limitations` report what
+  was capped instead of presenting the inventory as complete.
+* A plan token is bound to the sitemap URL set. A sitemap that changes between plan and apply needs
+  a fresh plan (`CONFIRM_REQUIRED`); the token also expires after five minutes.
+* IndexNow is CLI/desktop-only. `seo_sitemap_submit` covers Bing submit only; GSC submit, Bing
+  delete and Yandex recrawl remain `WRITE_DISABLED`. The MCP surface stays at 12 tools.
+* The Bing Webmaster UI remains the authority for crawl issues and sitemap status; this release
+  reports what the API accepted, not how fast Bing recrawls.

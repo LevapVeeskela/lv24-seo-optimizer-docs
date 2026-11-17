@@ -79,6 +79,8 @@ description: seo.toml 的位置与优先级、所有键及默认值，以及密�
 | 键 | 类型 | 默认值 | 说明 |
 |---|---|---|---|
 | `site` | string | `""` | 在 Bing Webmaster Tools 中注册的站点 URL。 |
+| `indexnow_key` | string | `""` | 公开的 IndexNow 密钥兼密钥文件名；可以安全地保存在 `seo.toml` 中。 |
+| `indexnow_key_location` | string | `""` | 托管的密钥文件的绝对 URL（可选）；默认为 `https://<host>/<key>.txt`。 |
 
 ### `[providers.crux]`
 
@@ -254,6 +256,8 @@ goals = [1, 2]
 
 [providers.bing]
 site = "https://example.com"
+indexnow_key = "abc12345"
+indexnow_key_location = "https://example.com/abc12345.txt"
 
 [providers.crux]
 origin = "https://example.com"
