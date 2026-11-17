@@ -59,9 +59,3 @@ to site routes.
 - The desktop updater stops only sidecar PIDs it registered. A sidecar started
   elsewhere is not killed; if it keeps the installed file locked, the update is
   blocked with `UPDATE_ENGINE_BUSY` and can be retried after it exits.
-- The engine README snapshot still describes desktop `0.8.0` bundling engine
-  `0.10.0`, because it was tagged before the desktop `0.9.0` release. The site
-  pages describe the current desktop `0.9.0` with engine `0.11.0`.
-- The desktop README provider table still marks Yandex recrawl as disabled in
-  the engine. Engine `0.11.0` wires `yandex recrawl` as a gated write; the
-  release notes and the CLI reference are the authority for that path.

@@ -363,7 +363,7 @@ settings, health status and presentation; it does not add provider adapters.
 | Provider | Free tier | Used for | Write actions |
 |---|---|---|---|
 | Google Search Console | yes (OAuth token or service-account file) | queries, pages, countries, devices, URL inspection | sitemap submit is disabled in the engine |
-| Yandex Webmaster | yes (OAuth) | queries, indexing history, diagnostics, richer indicators | recrawl is disabled in the engine |
+| Yandex Webmaster | yes (OAuth) | queries, indexing history, diagnostics, richer indicators | recrawl (quota-capped, one URL per request) |
 | Yandex Metrika | yes | sessions and users | none |
 | Bing Webmaster + IndexNow | yes | queries, crawl issues, sitemap submit, IndexNow URL ping | Bing sitemap submit and IndexNow from sitemap, both two-phase and explicitly gated. Site Scan has no public API; the desktop only opens the official Bing page |
 | Chrome UX Report | yes (API key) | URL + device field Core Web Vitals (`cwv collect`) | none |
