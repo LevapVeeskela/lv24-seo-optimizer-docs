@@ -42,6 +42,8 @@ Verification recorded for this release:
 | PyPI | `lv24-seo 0.11.0` published |
 | npm | `@lv24/seo 0.11.0` published |
 | MCP Registry | `io.github.LevapVeeskela/lv24-seo 0.11.0` published |
+| Release workflow | run `44126291380` green (build, verify, PyPI, npm, MCP Registry) |
+| Desktop | `0.9.0` published with engine `0.11.0` |
 | `gsc inspect` `/` | `PASS`, "Submitted and indexed", canonical match, `crawledAs: MOBILE` |
 | `gsc sitemaps` | 3 sitemaps; 3179 and 1551 submitted; one index |
 | `gsc query --filter country:equals:BLR --data-state all` | filtered rows; `metadata.firstIncompleteDate` present |
@@ -89,7 +91,7 @@ Verification recorded for this release:
 | Tests | 742 Vitest tests and 163 Rust tests passed |
 | Contracts | up to date at engine `0.11.0` |
 | Sidecar pin | Windows x64 verified against the pinned SHA-256 (`db02d1b3…`, 14,478,498 bytes); Linux and macOS covered by rebuild-aware reports |
-| Release workflow | manual `Desktop build` with `engine_version=0.11.0`; requires a sidecar checksum report per shipped target |
+| Release workflow | run `44138417407` green; 18 assets on `v0.9.0`; `latest.json` reports `0.9.0`; a sidecar checksum report is required per shipped target |
 
 Known limits in 0.9.0:
 

@@ -42,6 +42,8 @@ description: Релизы движка 0.11.0 и приложения 0.9.0, и�
 | PyPI | `lv24-seo 0.11.0` опубликован |
 | npm | `@lv24/seo 0.11.0` опубликован |
 | MCP Registry | `io.github.LevapVeeskela/lv24-seo 0.11.0` опубликован |
+| Релизный workflow | запуск `44126291380` зелёный (build, verify, PyPI, npm, MCP Registry) |
+| Десктоп | `0.9.0` опубликован с движком `0.11.0` |
 | `gsc inspect` `/` | `PASS`, «Submitted and indexed», канонический URL совпадает, `crawledAs: MOBILE` |
 | `gsc sitemaps` | 3 карты; 3179 и 1551 отправлено; одна — индекс |
 | `gsc query --filter country:equals:BLR --data-state all` | отфильтрованные строки; `metadata.firstIncompleteDate` присутствует |
@@ -91,7 +93,7 @@ description: Релизы движка 0.11.0 и приложения 0.9.0, и�
 | Тесты | 742 теста Vitest и 163 теста Rust прошли |
 | Контракты | актуальны для движка `0.11.0` |
 | Пин sidecar | Windows x64 проверен по закреплённому SHA-256 (`db02d1b3…`, 14 478 498 байт); Linux и macOS покрыты rebuild-aware отчётами |
-| Релизный workflow | ручной `Desktop build` с `engine_version=0.11.0`; требует отчёт контрольных сумм sidecar для каждой цели |
+| Релизный workflow | запуск `44138417407` зелёный; 18 артефактов на `v0.9.0`; `latest.json` указывает `0.9.0`; для каждой цели требуется отчёт контрольных сумм sidecar |
 
 Известные ограничения 0.9.0:
 

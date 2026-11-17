@@ -41,6 +41,8 @@ CLI 现在有 24 个顶层命令；MCP 接口仍为 12 个工具，SQLite 模式
 | PyPI | `lv24-seo 0.11.0` 已发布 |
 | npm | `@lv24/seo 0.11.0` 已发布 |
 | MCP Registry | `io.github.LevapVeeskela/lv24-seo 0.11.0` 已发布 |
+| 发布 workflow | 运行 `44126291380` 通过（build、verify、PyPI、npm、MCP Registry） |
+| 桌面版 | `0.9.0` 已发布，内置引擎 `0.11.0` |
 | `gsc inspect` `/` | `PASS`，“Submitted and indexed”，规范 URL 匹配，`crawledAs: MOBILE` |
 | `gsc sitemaps` | 3 个站点地图；3179 和 1551 已提交；一个是索引 |
 | `gsc query --filter country:equals:BLR --data-state all` | 返回过滤行；存在 `metadata.firstIncompleteDate` |
@@ -89,7 +91,7 @@ CLI 现在有 24 个顶层命令；MCP 接口仍为 12 个工具，SQLite 模式
 | 测试 | 742 个 Vitest 测试和 163 个 Rust 测试通过 |
 | 契约 | 与引擎 `0.11.0` 一致 |
 | Sidecar 固定 | Windows x64 通过固定 SHA-256 验证（`db02d1b3…`，14,478,498 字节）；Linux 和 macOS 由 rebuild-aware 报告覆盖 |
-| 发布 workflow | 手动 `Desktop build`，`engine_version=0.11.0`；要求每个目标都有 sidecar 校验和报告 |
+| 发布 workflow | 运行 `44138417407` 通过；`v0.9.0` 共 18 个资产；`latest.json` 为 `0.9.0`；每个目标都需要 sidecar 校验和报告 |
 
 0.9.0 的已知限制：
 
