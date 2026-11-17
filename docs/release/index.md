@@ -90,7 +90,6 @@ Known limits in 0.7.0:
 - `MIN_ENGINE_VERSION` is `0.9.0`, so an `0.8.x` engine is rejected.
 - Linux and macOS sidecar pins remain `null`; the release gate relies on rebuild-aware reports.
 
-
 ## Engine 0.8.0
 
 Released on 2026-11-16. It adds the Core Web Vitals writer, Google Search Console service-account
