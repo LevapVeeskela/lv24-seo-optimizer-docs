@@ -24,6 +24,7 @@ to site routes.
 | `engine-releases-0.8.0.md` | `/release/` | Engine 0.8.0 notes: `cwv collect` writer, GSC service-account auth, richer Yandex indicators, `backup restore --to`, scheduler lifecycle, Metrika and Windows JSON fixes, 22 CLI commands. |
 | `engine-releases-0.9.0.md` | `/release/`, `/reference/cli/`, `/mcp/` | Engine 0.9.0 notes: Bing `sitemap submit` via `SubmitFeed`, IndexNow `--from-sitemap` with config defaults and a 10,000-URL cap, optional MCP `provider`, 22 CLI commands and 12 tools. |
 | `engine-releases-0.10.0.md` | `/release/`, `/reference/cli/`, `/mcp/` | Engine 0.10.0 notes: Bing `bing submit` via `SubmitUrlbatch` in 500-URL batches, quota pre-check, accepted-not-indexed, read-only `bing quota`/`sitemaps`/`issues`, 23 CLI commands and 12 tools. |
+| `engine-releases-0.11.0.md` | `/release/`, `/reference/cli/`, `/providers/`, `/mcp/` | Engine 0.11.0 notes: GSC URL Inspection, sitemap reads and filtered search analytics; Yandex events/sitemaps/history/queue reads and gated recrawl; Bing page/traffic/crawl/URL/joins reads with `no_rows_for_window`; organic Metrika pages/goals/dimensions; CrUX history/collection period and PSI audits; IndexNow key and status rules; 24 CLI commands and 12 tools. |
 | `desktop-README.md` | `/desktop/`, `/install/` | Desktop install matrix, update, troubleshooting. |
 | `desktop-release.md` | `/release/` | Release pipeline, signing, assets, rollback. |
 | `desktop-security.md` | `/security/`, `/desktop/` | Shell boundary, secrets, updater trust. |
@@ -35,6 +36,7 @@ to site routes.
 | `desktop-releases-0.6.0.md` | `/release/` | Desktop 0.6.0 notes: cancellable background runs, schedule install `--allow-write`, bundled engine 0.8.0 and `MIN_ENGINE_VERSION` 0.8.0. |
 | `desktop-releases-0.7.0.md` | `/release/`, `/desktop/` | Desktop 0.7.0 notes: Bing sitemap plan/apply, IndexNow from sitemap, Bing Site Scan opener, per-session write secret, bundled engine 0.9.0 and `MIN_ENGINE_VERSION` 0.9.0. |
 | `desktop-releases-0.8.0.md` | `/release/`, `/desktop/`, `/install/` | Desktop 0.8.0 notes: Bing URL submission, read-only sitemap, crawl-issue and quota cards, bundled engine 0.10.0 and `MIN_ENGINE_VERSION` 0.10.0. |
+| `desktop-releases-0.9.0.md` | `/release/`, `/desktop/`, `/install/` | Desktop 0.9.0 notes: read-only Diagnostics screen with five tabs and 18 allow-listed commands, bundled engine 0.11.0 and `MIN_ENGINE_VERSION` 0.11.0. |
 | `desktop-releases-0.2.3.md` | `/release/` | Desktop 0.2.3 notes: Rust updater and cancel, dialog-approved config path, path rejection, redaction, UI state, release CI. |
 | `desktop-releases-0.2.1.md` | `/release/` | Desktop 0.2.1 patch notes: Metrika token and shared CLI keychain. |
 | `desktop-releases-0.2.0.md` | `/release/` | Desktop 0.2.0 release notes, kept for the first multi-platform release. |
@@ -57,3 +59,9 @@ to site routes.
 - The desktop updater stops only sidecar PIDs it registered. A sidecar started
   elsewhere is not killed; if it keeps the installed file locked, the update is
   blocked with `UPDATE_ENGINE_BUSY` and can be retried after it exits.
+- The engine README snapshot still describes desktop `0.8.0` bundling engine
+  `0.10.0`, because it was tagged before the desktop `0.9.0` release. The site
+  pages describe the current desktop `0.9.0` with engine `0.11.0`.
+- The desktop README provider table still marks Yandex recrawl as disabled in
+  the engine. Engine `0.11.0` wires `yandex recrawl` as a gated write; the
+  release notes and the CLI reference are the authority for that path.

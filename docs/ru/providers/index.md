@@ -13,17 +13,17 @@ description: Матрица возможностей провайдеров, а�
 
 | Источник | Чтение | Запись (с подтверждением) | Аутентификация | Бесплатная квота | Задержка данных |
 |---|---|---|---|---|---|
-| Google Search Console | Аналитика поиска, сайты, карты сайта, URL Inspection | Отправка карты сайта; в 0.5.3 возвращает `WRITE_DISABLED` | Bearer-токен доступа (`webmasters.readonly` для чтения, `webmasters` для карт сайта) | 1 200 запросов/мин на сайт и на пользователя; 50 000 строк/день/сайт/тип; URL Inspection 2 000/день, 600/мин | 2–3 дня; `data_age_days` не меньше 3 |
-| Yandex Webmaster | Сводка, история SQI, индексирование, URL в поиске и события, запросы, диагностика, битые ссылки, карты сайта | Очередь переобхода; в 0.5.3 возвращает `WRITE_DISABLED` | OAuth-токен, scope `webmaster:hostinfo` | Бесплатно; глобальные RPD/RPS не опубликованы; аналитика запросов нестабильна примерно выше 10 тыс. запросов/час | Около 4 дней |
-| Yandex Metrika | Визиты, источники трафика, поисковые фразы, страницы входа, цели | Нет | OAuth-токен, scope `metrika:read` | 5 000 запросов/день/пользователь; 30 rps/IP; 3 параллельно; `/stat/v1/data` 200 запросов за 5 минут; до 100 тыс. строк, 20 метрик и 10 измерений на запрос | Reporting API; сэмплирование сообщается |
-| Bing Webmaster | Статистика запросов, позиции и трафик, ошибки обхода | Отправка IndexNow (работает); путь отправки карты сайта не подключён | Один API-ключ на пользователя | Бесплатно; около 10 тыс. отправок URL/день/домен, 500 за пакет | В API нет статистики по окнам; возраст берётся из даты самой новой строки |
-| Chrome UX Report (CrUX) | Полевые p75 LCP, INP и CLS | Нет | API-ключ | 150 запросов/мин на проект, увеличить нельзя | Скользящее окно 28 дней |
-| PageSpeed Insights (PSI) | Лабораторная диагностика Lighthouse, устаревший блок полевых данных | Нет | API-ключ необязателен; без ключа работает с меньшей квотой | Около 25 тыс. запросов/день | Живой лабораторный запуск |
+| Google Search Console | Аналитика поиска с фильтрами/типом/data-state, сайты, карты сайта, URL Inspection | Отправка карты сайта; отключена (`WRITE_DISABLED`, нужен полный scope `webmasters`) | Bearer-токен доступа (`webmasters.readonly` для чтения) или JSON-ключ сервисного аккаунта | 1 200 запросов/мин на сайт и на пользователя; 50 000 строк/день/сайт/тип; URL Inspection 2 000/день, 600/мин | 2–3 дня; `data_age_days` не меньше 3 |
+| Yandex Webmaster | Сводка, история SQI, индексирование, URL в поиске и события, примеры, карты сайта, история запросов, очередь переобхода, запросы, диагностика, битые ссылки | Очередь переобхода (с воротами; один POST на URL, с ограничением по остатку дневной квоты) | OAuth-токен, scope `webmaster:hostinfo` | Бесплатно; глобальные RPD/RPS не опубликованы; аналитика запросов нестабильна примерно выше 10 тыс. запросов/час | Около 4 дней |
+| Yandex Metrika | Органические и все визиты/пользователи; органические страницы, поисковые фразы, устройства, страны, вовлечённость, цели и bytime | Нет | OAuth-токен, scope `metrika:read` | 5 000 запросов/день/пользователь; 30 rps/IP; 3 параллельно; `/stat/v1/data` 200 запросов за 5 минут; до 100 тыс. строк, 20 метрик и 10 измерений на запрос | Reporting API; сэмплирование сообщается |
+| Bing Webmaster | Статистика запросов/страниц, дневной трафик, шестимесячный обход, связки запрос/страница, данные URL и дочерних URL, роли сайта, сайты аккаунта, проблемы обхода, квота, фиды sitemap | Отправка карты сайта, отправка URL и IndexNow (все с воротами) | Один API-ключ на пользователя | Бесплатно; остаток дневной/месячной квоты сообщает `GetUrlSubmissionQuota`; 500 URL на пакет | Возраст по самой новой датированной строке; пустая статистика — `no_rows_for_window` |
+| Chrome UX Report (CrUX) | Полевые p75 LCP, INP, CLS и другие метрики; недельная история p75; период сбора | Нет | API-ключ | 150 запросов/мин на проект, увеличить нельзя | Скользящее окно 28 дней; `data_age_days` из `collectionPeriod.lastDate` |
+| PageSpeed Insights (PSI) | Лабораторные оценки Lighthouse и до 100 ограниченных аудитов на URL | Нет | API-ключ необязателен; без ключа работает с меньшей квотой | Около 25 тыс. запросов/день | Живой лабораторный запуск |
 | GA4 (опционально) | Органические страницы входа, сессии, ключевые события | Нет | Учётные данные Google Analytics Data API | Действует квота провайдера | Ориентировочно; порогование может скрывать строки |
 | Собственный обход | Страницы, проблемы, граф ссылок, покрытие карты сайта | Нет | Нет | Локально | Текущий запуск |
 | Логи | Триаж ботов по User-Agent для JSON access-логов nginx; не доказательство проверенного краулера | Нет | Локальный файл | Локально | Окно лога |
 
-GA4 — необязательная точка интеграции, а не часть пути по умолчанию. Поставляемые провайдеры: GSC, Yandex Webmaster, Yandex Metrika, Bing, CrUX и PSI. Платные адаптеры для SERP и ссылок (DataForSEO, SerpApi и другие) запланированы или только описаны; в 0.5.3 ни один не поставляется.
+GA4 — необязательная точка интеграции, а не часть пути по умолчанию. Поставляемые провайдеры: GSC, Yandex Webmaster, Yandex Metrika, Bing, CrUX и PSI. Платные адаптеры для SERP и ссылок (DataForSEO, SerpApi и другие) запланированы или только описаны; в 0.11.0 ни один не поставляется.
 
 ## Аутентификация
 
@@ -74,7 +74,7 @@ pip install "lv24-seo[secrets]"
 - `limit` в Metrika — это размер страницы, а не размер результата. Клиент обходит `stat/v1/data` через `offset` до `total_rows`, неполной страницы или лимита; один вызов ограничен 10 000 строк и 100 страницами, что укладывается в квоту 200 запросов за 5 минут даже при крошечном размере страницы. Полная страница без `total_rows` помечается `truncated`, а не выглядит полной; агрегатный вызов без измерений — одна строка, которая никогда не листается.
 - CrUX возвращает 404, если у URL слишком мало трафика; это становится `low_traffic`, а не нулевой оценкой.
 - PSI — лабораторные данные. Не усредняйте лабораторные запуски и не смешивайте их с полевыми данными CrUX.
-- У статистики Bing нет окна дат в API, поэтому отчёт не показывает сравнение с предыдущим периодом для Bing. Вместо этого `data_age_days` берётся из даты самой новой строки — `Date` для статистики запросов, `DateDetected` для ошибок обхода — и разбирается из WCF `/Date(ms)/`, ISO или epoch. Пустая лента даёт 0.
+- У статистики Bing нет окна дат в API, поэтому отчёт не показывает сравнение с предыдущим периодом для Bing. `data_age_days` берётся из самой новой датированной строки: `Date` для статистики запросов/страниц/трафика/обхода/связок, `LastCrawled` (с запасным `Submitted`) для фидов sitemap и `LastCrawledDate` для данных URL. У `GetCrawlIssues` и `GetUserSites` нет даты, они сообщают `0`, что не доказывает свежесть. Ответ статистики или связок с 0 строк несёт `no_rows_for_window`; поиск или список без строк — `provider_returned_no_rows`. Ни то, ни другое не является «нулём показов».
 
 Каждый ограниченный ответ несёт одни и те же поля честности: `truncated`, `total`, возраст данных в днях (`data_age_days`) и `limitations[]`. `rows` — число возвращённых строк, а не итог. `total` присутствует, только когда провайдер или хранилище могут его сообщить.
 
@@ -90,10 +90,38 @@ pip install "lv24-seo[secrets]"
 | `degraded_host` | Yandex сообщает, что хост загружен не полностью |
 | `empty_history` | У загруженного хоста Yandex нет истории индексирования или событий поиска за окно |
 | `one_url_per_call` | URL Inspection обрабатывает один URL за вызов, без пакета |
-| `no_per_url_sitemap_errors` | Yandex не раскрывает детали ошибок карты сайта по URL |
+| `inspection_reflects_last_crawl` | URL Inspection описывает последний обход Google, а не живой тест |
+| `no_per_url_sitemap_errors` | Yandex или Bing не раскрывает детали ошибок карты сайта по URL |
+| `sitemap_index_children_not_exposed` | GSC не раскрывает дочерние URL карты сайта в индексе |
+| `sitemap_indexed_count_deprecated` | Счётчик `indexed` в GSC устарел |
+| `no_rows_for_window` | Bing не вернул строки статистики за окно; это отсутствие данных, а не ноль показов |
+| `provider_returned_no_rows` | Поиск или список не вернул объект или строки |
+| `crawl_stats_six_month_window` | Статистика обхода Bing всегда покрывает шестимесячное дневное окно |
+| `never_crawled` | Сентинел Bing `Date(-62135596800000)` означает, что URL никогда не обходился |
+| `client_side_date_filter` | Yandex сбросил оконный запрос событий; полный ряд отфильтрован локально |
+| `crux_period_missing` | CrUX не вернул `collectionPeriod`; использована двухдневная эвристика |
+| `crux_history_gaps` | CrUX вернул периоды без подходящих значений p75 |
+| `crux_url_normalized` | CrUX нормализовал запрошенный URL |
+| `psi_audits_cap` | Список аудитов Lighthouse ограничен 100 строками |
+| `indexnow_accepted_pending` | IndexNow вернул `202`; движок ещё должен проверить ключ |
+| `recrawl_quota_exceeded` | Переобход Yandex получил `429`; остаток URL в `not_attempted` |
 | `token_expiring` | Срок действия учётных данных близок к концу |
 | `paid_provider` | Строка пришла из платного адаптера |
 | `partial_response` | Провайдер вернул неполный ответ |
+
+## Глубина чтения в 0.11.0
+
+**GSC.** `gsc inspect --url ABS [--language en-US]` отображает полный `indexStatusResult` (`verdict`, `coverageState`, `robotsTxtState`, `indexingState`, `lastCrawlTime`, `pageFetchState`, `googleCanonical`, `userCanonical`, `crawledAs`, `sitemap[]`, `referringUrls[]`), `richResultsResult` и `inspectionResultLink`. Это отчёт о последнем обходе, а не живой тест: один URL за вызов, 2 000/день на сайт, 600/мин. `gsc sitemaps` и `gsc sitemap --path` отображают тип, признак индекса, ошибки, предупреждения и `contents[]`; устаревший `indexed` помечается, дочерние URL индекса не раскрываются, отправка/удаление остаются `WRITE_DISABLED`. `gsc query` принимает `--type`, повторяемые `--filter`/`--filter-list`, `--data-state`, `--aggregation`, `--search-appearance` и `--branded`; ответы добавляют `responseAggregationType` и `metadata` о неполных данных. Пределы 25 тыс. строк на страницу и 50 тыс. строк/день/сайт/тип не изменились.
+
+**Yandex.** `yandex indexing --date-from/--date-to` объединяет appeared/removed события с HTTP-рядами индексации; сброс соединения на окне дат повторяется без окна с `client_side_date_filter`. `yandex samples --kind indexing|events` листает примеры по 100 строк с честными `total`/`truncated`. `yandex sitemaps` читает id, URL, ошибки, детей и источники; добавление/удаление не реализовано. `yandex history --kind sqi|in-search|queries|query` читает SQI, страницы в поиске, все запросы и ряды одного запроса. `yandex queue` читает задачи переобхода. `yandex recrawl` планирует и применяет один POST на URL, с ограничением по остатку квоты; `202` даёт `task_id`/`quota_remainder`, `409` — `already_queued`, `429` оставляет остаток в `not_attempted`.
+
+**Bing.** `bing pages`, `bing traffic`, `bing crawl` и `bing joins` — только чтение; пустое окно даёт `no_rows_for_window`, а `bing crawl` всегда несёт `crawl_stats_six_month_window`. `bing urlinfo` читает `GetUrlInfo`; сентинел `Date(-62135596800000)` отображается в `null` и `never_crawled`. `bing children` листает не более 10 страниц и помечает полную последнюю страницу `truncated` с `children_page_cap`. `bing users` читает роли без вывода делегированных кодов; `bing sites` читает сайты аккаунта. `bing joins --query|--page` выбирает одну из трёх связок и возвращает компактную строку.
+
+**Metrika.** Группа `metrika` (`pages`, `goals`, `queries`, `devices`, `countries`, `engagement`, `bytime`) только для чтения и всегда органическая (`ym:s:lastTrafficSource=='organic'`, `meta.organic_only: true`). `stats` и `report weekly` показывают `organic_visits`/`organic_users` и `all_visits`/`all_users` раздельно. `metrika goals` читает id из `providers.yandex_metrika.goals`, при желании по `page` или `source`; пустой список предупреждает без вызова, больше пяти целей обрезаются по лимиту 20 метрик. Поля сэмплирования (`sample_share`, `sample_size`, `sample_space`, `data_lag`, `contains_sensitive_data`, `total_rows_rounded`) переносятся в meta и limitations; точным считается только `sampled=false`. `data_age_days` относится к текущему окну.
+
+**CrUX и PSI.** `cwv history (--url | --origin) [--device] [--weeks 1..40]` читает недельные p75-периоды с `first_date`/`last_date`; пропуски — `crux_history_gaps`, короткая история — `crux_history_short`. `cwv audits` возвращает до 100 аудитов Lighthouse с оценкой, отображаемым значением, описанием без HTML и экономией; `runtimeError`, CAPTCHA и другой `finalUrl` — предупреждения/ограничения, а не чистый запуск. `collectionPeriod` определяет `data_age_days`; двухдневная эвристика — только запасной вариант с `crux_period_missing`, нормализация URL даёт `crux_url_normalized`.
+
+**IndexNow.** Ключ `[A-Za-z0-9-]{8,128}` проверяется до планирования; `keyLocation` на том же хосте ограничивает каталог. `200` — accepted, `202` — accepted-pending, `400` — формат, `403` — отсутствующий/несовпадающий файл ключа с точным URL, `422` — несоответствие хоста/ключа, `429` — квота/спам. Ключ никогда не выводится.
 
 ## Область карты сайта
 
@@ -116,4 +144,4 @@ pip install "lv24-seo[secrets]"
 
 Генераторы расписаний применяют ту же зону там, где бэкенд это поддерживает. Cron зависит от `CRON_TZ`, systemd записывает зону в `OnCalendar`, а XML Task Scheduler несёт фиксированное смещение с предупреждением о DST. См. [Автоматизация и доставка](/ru/automation/).
 
-Source: `_source/engine-data-sources.md`, `_source/engine-cli.md`, `_source/engine-config.md`, `_source/engine-releases-0.5.2.md`, `_source/engine-releases-0.5.3.md`.
+Source: `_source/engine-data-sources.md`, `_source/engine-cli.md`, `_source/engine-config.md`, `_source/engine-releases-0.11.0.md`, `_source/engine-releases-0.10.0.md`, `_source/engine-releases-0.5.3.md`.

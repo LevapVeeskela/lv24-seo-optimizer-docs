@@ -1,26 +1,27 @@
 ---
 title: Desktop app
-description: What the LV24 SEO Optimizer desktop shell adds, how signed updates work, and the 0.8.0 Bing URL submission with read-only sitemap, issue and quota cards plus the 0.7.0 and older history.
+description: What the LV24 SEO Optimizer desktop shell adds, how signed updates work, and the 0.9.0 read-only Diagnostics screen plus the 0.8.0 and older history.
 ---
 
 # Desktop app
 
 LV24 SEO Optimizer Desktop is a local, offline-first Tauri v2 shell around the `lv24-seo` engine. The Python CLI remains the engine of record: it owns provider clients, crawl rules, analysis, report builders and delivery. The desktop adds a React UI and a Rust process bridge, not a second SEO implementation.
 
-The `0.8.0` release bundles `lv24-seo 0.10.0` as a PyInstaller onedir sidecar and adds Bing URL submission plus read-only sitemap, crawl-issue and quota cards to Integrations. It keeps the sitemap submit, IndexNow and Site Scan cards and the per-session write secret. It requires engine `0.10.0` or newer (`MIN_ENGINE_VERSION`). There is no cloud account, no telemetry, no local HTTP API and no SERP scraping. The desktop talks to the engine through a fixed, allow-listed child-process bridge.
+The `0.9.0` release bundles `lv24-seo 0.11.0` as a PyInstaller onedir sidecar and adds a read-only Diagnostics screen with five tabs over Google, Yandex, Bing, Metrika and Core Web Vitals. It keeps the Bing indexing cards, the sitemap, IndexNow and Site Scan actions and the per-session write secret. It requires engine `0.11.0` or newer (`MIN_ENGINE_VERSION`). There is no cloud account, no telemetry, no local HTTP API and no SERP scraping. The desktop talks to the engine through a fixed, allow-listed child-process bridge.
 
 ## What it adds
 
 - **Workspace picker and onboarding.** Choose the `seo.toml` the engine should use through a native file dialog in Settings, or create a project with the three-step wizard that runs `lv24-seo init` and shows the exact config and data paths first. The selected config path is the workspace identity; a header site chip opens up to 8 recent workspaces, and a moved or deleted config is reported as missing and can be re-selected instead of blocking startup.
 - **Stats dashboard.** Renders the bounded `stats` envelope: one card per configured provider, current values, previous-window comparison, coverage, data age, truncation and limitations. CTR changes are shown in percentage points. There is no zero-fill and no cross-engine total; unknown stays unknown. A properties panel renders `lv24-seo properties` with token presence per provider.
-- **Settings form and configuration outputs.** The Settings screen is the editable form. The Configuration screen is read-only and has Overview, Effective, Source TOML, Diff, Validation, Doctor and Environment tabs. Source TOML is redacted and read-only; there is no raw TOML editor. Saves use field-level patches, keep comments and key order, validate with the engine, create a timestamped backup (last five kept) and replace the file atomically. In `0.8.0` the temp file and backup are mode `0600` on POSIX and carry an owner-only DACL on Windows, both are fsynced, and the parent directory is fsynced after the rename. Reads are bounded at 8 MiB; settings load per field; Windows reserved device names and trailing dots/spaces are rejected in every path component. GSC service accounts are configured outside the form: set `providers.gsc.service_account_file` or `LV24_SEO_GSC_SERVICE_ACCOUNT_FILE`, and the Configuration screen shows the effective redacted config.
+- **Settings form and configuration outputs.** The Settings screen is the editable form. The Configuration screen is read-only and has Overview, Effective, Source TOML, Diff, Validation, Doctor and Environment tabs. Source TOML is redacted and read-only; there is no raw TOML editor. Saves use field-level patches, keep comments and key order, validate with the engine, create a timestamped backup (last five kept) and replace the file atomically. In `0.9.0` the temp file and backup are mode `0600` on POSIX and carry an owner-only DACL on Windows, both are fsynced, and the parent directory is fsynced after the rename. Reads are bounded at 8 MiB; settings load per field; Windows reserved device names and trailing dots/spaces are rejected in every path component. GSC service accounts are configured outside the form: set `providers.gsc.service_account_file` or `LV24_SEO_GSC_SERVICE_ACCOUNT_FILE`, and the Configuration screen shows the effective redacted config.
 - **Reports.** Runs the weekly report locally, writes `report.json` and `report.html` under the app data directory, and opens the HTML in your default browser. The report HTML is never embedded in the app webview. It compares the two newest stored snapshots, exports JSON (`lv24-seo.report/v1`) or CSV, renders the engine's attributed change digest with cause, confidence, evidence rows and next action, and shows the Core Web Vitals card per URL template and device.
 - **Recommendations and an agent queue.** Turns report and stats findings into bounded Markdown prompts. Search and sort them, copy one, export it as `.md`, or queue or export all visible tasks. The queue is stored in the webview's local storage; nothing is submitted automatically.
 - **Secrets over stdin.** Token input is a password field sent once over IPC. The Rust layer pipes it to `lv24-seo auth set --provider <p> --stdin`, zeroizes its buffer and never writes the value to a log, MobX store, localStorage, clipboard or diagnostics bundle. After saving, the UI shows only presence and source.
-- **Yandex Metrika token.** `0.8.0` keeps the separate `metrika` provider (`yandex_metrika_token`) in the TypeScript and Rust allow-lists, the Settings badge, the secret modal and the en/ru/zh labels. The Metrika counter never borrows the Webmaster token. Engine `0.10.0` retains the Metrika `stat/v1/data` offset fix, so the card is no longer configured but empty.
+- **Yandex Metrika token.** `0.9.0` keeps the separate `metrika` provider (`yandex_metrika_token`) in the TypeScript and Rust allow-lists, the Settings badge, the secret modal and the en/ru/zh labels. The Metrika counter never borrows the Webmaster token. Engine `0.11.0` adds the read-only `metrika` command group and makes every Metrika read organic-only, so the Diagnostics tab shows organic pages, goals and dimensions with the sampling fields.
 - **One secret store with the CLI.** The desktop runs the same engine under the same OS user, so a token stored by `lv24-seo auth set` in a terminal is visible in the desktop and a token stored in the desktop is visible to the CLI. The OS keychain entry uses service `lv24-seo` and the same secret name. `LV24_SEO_*` environment variables are inherited but shown as read-only in the UI: the desktop cannot remove an environment variable, and it says so instead of offering a delete button that does nothing. The opt-in `<data-dir>/secrets.json` fallback is shared only when both surfaces open the same workspace/data directory.
 - **Crawl screen.** A bounded `lv24-seo crawl --json` run with summary counters, a truncated badge, engine warnings and limitations; issue filters for severity, rule and free-text search; a table capped at 500 rendered rows while the JSON and CSV export contains every returned row. Switching workspace resets the screen.
 - **Integrations and run status.** MCP snippets for Claude Desktop, OpenCode, VS Code and Cursor in JSON, plus a TOML form for hosts such as Codex CLI; snippets contain no tokens. The Bing indexing panel plans and applies a Bing sitemap submission, submits URLs through `bing submit`, reads the remaining quota, sitemap feeds and crawl issues, sends the sitemap's URLs to IndexNow and opens the official Bing Site Scan page; all writes are two-phase and review the engine plan first. Scheduled runs can be previewed as a `lv24-seo schedule print` artifact or installed on this host after a confirmation dialog that names the config and job kind; the install appends `--allow-write` only after that confirmation. Runs show live elapsed time, the last duration and timestamp, and truncation or limitation badges.
+- **Read-only Diagnostics.** A sidebar screen with five tabs — Google (URL Inspection and sitemap reads), Yandex (indexing events, sitemaps and recrawl queue), Bing (pages, daily traffic, six-month crawl buckets, URL details and query/page joins), Metrika (organic pages, goals, devices, countries, engagement and bytime) and Core Web Vitals (Lighthouse audits and weekly CrUX history). All 18 commands are read-only and allow-listed; every answer renders `total`, truncation, data age and limitations, and a provider-empty answer is an explicit `no_rows_for_window`, `provider_returned_no_rows` or `low_traffic` state instead of a zero row.
 - **Per-session write secret.** At startup the shell draws 32 bytes from the OS CSPRNG and keeps the 64-character hex `LV24_SEO_WRITE_SECRET` only in Rust memory, zeroized on drop. It is set on every engine child after `env_clear()` and never written to settings, argv, logs, diagnostics or the webview. Plan and apply in one app session use the same secret, so a plan token from an earlier session is rejected and the UI re-plans.
 - **Cancellable background runs.** Crawl, weekly report, log analysis, backup create/restore and schedule install run as background child processes with a stable run id. A window-wide banner shows the kind, elapsed time, status and a **Cancel** button; leaving the route does not clear it. Cancel signals only the exact child PID this app registered for that run (and its process group on Unix), after checking it is still an engine image or a tracked child; it never matches by name. An unknown or finished run returns `false`, and the UI does not claim a cancellation then. A cancelled run returns `RUN_CANCELLED`, shown separately from succeeded and failed runs. Cancellation is not rollback and there is no job queue.
 - **Logs page.** A native `pick_log_file` dialog selects one nginx JSON access log (at most 100 MiB); any other path is `PATH_NOT_APPROVED`. The page shows a bot filter, parse summary, crawl waste with the by-bot split, a bot rollup table and JSON/CSV export. Bots are User-Agent only and the page labels the result as triage.
@@ -42,12 +43,12 @@ Download desktop assets from the project's Releases page. The desktop is separat
 
 | Bundle | How it is installed | In-app update |
 |---|---|---|
-| Windows NSIS | `LV24.SEO.Optimizer_0.8.0_x64-setup.exe` | Yes |
-| Windows portable ZIP | `LV24-SEO-Optimizer_0.8.0_x64-portable.zip`; extract the whole folder and run `lv24-seo-desktop.exe` | No |
-| Linux AppImage | `LV24.SEO.Optimizer_0.8.0_amd64.AppImage`; `chmod +x` and run | Yes |
-| Linux deb | `LV24.SEO.Optimizer_0.8.0_amd64.deb`; `sudo apt install ./*_amd64.deb` | No |
-| Linux rpm | `LV24.SEO.Optimizer-0.8.0-1.x86_64.rpm`; `sudo dnf install ./*_amd64.rpm` | No |
-| macOS `.app` from DMG | `LV24.SEO.Optimizer_0.8.0_aarch64.dmg` or `LV24.SEO.Optimizer_0.8.0_x64.dmg`; drag to Applications | Yes |
+| Windows NSIS | `LV24.SEO.Optimizer_0.9.0_x64-setup.exe` | Yes |
+| Windows portable ZIP | `LV24-SEO-Optimizer_0.9.0_x64-portable.zip`; extract the whole folder and run `lv24-seo-desktop.exe` | No |
+| Linux AppImage | `LV24.SEO.Optimizer_0.9.0_amd64.AppImage`; `chmod +x` and run | Yes |
+| Linux deb | `LV24.SEO.Optimizer_0.9.0_amd64.deb`; `sudo apt install ./*_amd64.deb` | No |
+| Linux rpm | `LV24.SEO.Optimizer-0.9.0-1.x86_64.rpm`; `sudo dnf install ./*_amd64.rpm` | No |
+| macOS `.app` from DMG | `LV24.SEO.Optimizer_0.9.0_aarch64.dmg` or `LV24.SEO.Optimizer_0.9.0_x64.dmg`; drag to Applications | Yes |
 | MSI | Not produced by this project | No |
 
 Windows requires Windows 10/11 x64 and WebView2. Linux is x64 only and built on Ubuntu 22.04 with a glibc 2.35 baseline. macOS requires 13 or newer; use the arm64 DMG on Apple silicon and the x64 DMG on Intel. The OS packages are unsigned or ad-hoc signed, so SmartScreen and Gatekeeper warnings are expected. Verify `SHA256SUMS.txt` before running an installer.
@@ -94,7 +95,8 @@ same updater: an installed `0.6.0` build reported **Desktop 0.7.0** with **Engin
 engine ready, and the Integrations screen shows the Bing indexing panel. The `0.7.0 → 0.8.0` update was
 verified through the same updater: an installed `0.7.0` build reported **Desktop 0.8.0** with
 **Engine 0.10.0** and the engine ready, and the new Bing URL submission, sitemap, crawl-issue and quota
-cards loaded. Any `0.2.x` install can jump straight to `0.8.0`.
+cards loaded. `0.8.0 → 0.9.0` is the next in-app update source. Any `0.2.x` install can jump straight
+to `0.9.0`.
 
 For `0.2.2`, installs were also checked on macOS and Linux: the arm64 DMG on macOS 27.2 passed
 `codesign --verify --deep --strict`, launched with engine `0.5.2` ready and fetched the `0.2.2`
@@ -106,6 +108,64 @@ The `0.2.1 → 0.2.2` update runs the old `0.2.1` updater, which does not includ
 cleanup. If a sidecar is active during that first update, retry after it exits or install `0.2.2`
 manually. `0.2.2 → 0.2.3` uses the tracked-PID cleanup and blocks with `UPDATE_ENGINE_BUSY` if a
 tracked sidecar cannot be stopped.
+
+## 0.9.0 read-only Diagnostics
+
+Released on 2026-11-17. It bundles `lv24-seo 0.11.0` and requires `MIN_ENGINE_VERSION` `0.11.0`, so a `0.10.x`
+engine is reported as incompatible. It adds no provider write.
+
+- **Diagnostics screen.** The sidebar gains **Diagnostics** (`/diagnostics`) with five tabs over the active
+  workspace. Every command is read-only and runs through the fixed `cli_run` allow-list; the screen has no
+  write buttons, no confirm tokens and no `--allow-write` path.
+- **Google.** `gsc_inspect` inspects exactly one absolute URL and shows verdict, coverage state,
+  robots/indexing state, last crawl, fetch state, Google/user canonical, `crawledAs`, referring URLs,
+  rich-result issues and the inspection link. `gsc_sitemaps` lists submitted sitemaps with type, index flag,
+  errors, warnings and per-content submitted counts. GSC's deprecated `indexed` count is labelled as such;
+  child sitemap URLs of an index are not exposed.
+- **Yandex.** `yandex_indexing` shows appeared/removed events and indexing HTTP buckets for a date window.
+  `yandex_sitemaps` lists sitemap ids, URL/error counts and last access. `yandex_queue` lists recrawl tasks
+  with the provider total. A provider reset or an empty answer is shown as `client_side_date_filter` /
+  `provider_returned_no_rows`, not as zero data.
+- **Bing.** `bing_pages`, `bing_traffic`, `bing_crawl`, `bing_urlinfo` and `bing_joins` expose page stats,
+  daily clicks/impressions, six-month crawl buckets, URL index/crawl details and the query/page joins.
+  Empty stats render `no_rows_for_window`; lookups render `provider_returned_no_rows`. The
+  `Date(-62135596800000)` sentinel is shown as “never”, not 0001.
+- **Metrika.** `metrika_pages`, `metrika_goals`, `metrika_devices`, `metrika_countries`,
+  `metrika_engagement` and `metrika_bytime` are organic-only (`ym:s:lastTrafficSource=='organic'`). The tab
+  shows `meta.organic_only`, the sampling fields (`sample_share`, `sample_size`, `sample_space`, `data_lag`,
+  `contains_sensitive_data`, `total_rows_rounded`) and every limitation.
+- **Core Web Vitals.** `cwv_audits` lists bounded Lighthouse audits with score, display value and savings;
+  `cwv_history` lists weekly CrUX p75 rows with collection periods. A low-traffic URL shows the explicit
+  `low_traffic` empty state instead of a blank table.
+- **Honest report chrome.** Every tab renders the engine's `total`, `truncated`, `data_age_days` and
+  `limitations` (or states that no limitations were reported). Provider empties are explicit states, never
+  zeros. The panels do not auto-retry reads.
+- **Bridge hardening.** The Rust bridge adds 18 allow-listed command ids and rejects, before spawning the
+  engine: write flags (`allowWrite`, `confirm`) and tokens on every diagnostics command; unknown `group`,
+  `strategy`, `device` or `category` values; arguments that belong to a different command; and a `--site`
+  override for Bing reads (the target stays `providers.bing.site`). The webview cannot pass an executable,
+  a shell string or an arbitrary flag. Diagnostics commands are config-required and non-cancellable.
+- **Engine 0.11.0 and contracts.** `MIN_ENGINE_VERSION` is `0.11.0`; an installed `0.10.x` sidecar is
+  reported as incompatible instead of failing with `CLI_INVALID_JSON`. The bundled onedir sidecar is
+  `lv24-seo 0.11.0`. Contracts (`config.schema.json`, CLI fixtures including `stats`) are regenerated from
+  engine `0.11.0`. Bing URL submission, Bing sitemap submit and IndexNow keep their existing two-phase
+  gates; GSC sitemap submit and Bing sitemap delete remain `WRITE_DISABLED`.
+
+Verification recorded for this release: 742 Vitest tests and 163 Rust tests passed, contracts are up to date
+at engine `0.11.0`, and the Windows x64 sidecar was verified against the pinned SHA-256 (`db02d1b3…`,
+14,478,498 bytes). Linux and macOS are covered by rebuild-aware checksum reports.
+
+Known limits in 0.9.0:
+
+- Metrika goals are shown as totals only; the desktop does not expose the engine's optional
+  `--dimension page|source` selector.
+- CWV history “all devices” omits the device filter instead of inventing a combined row.
+- Bing reads use `providers.bing.site`; the desktop has no `--site` override.
+- Bing Site Scan still has no public API: the Integrations card only opens the official page and cannot
+  import a scan report.
+- An engine older than `0.11.0` is reported as incompatible. Update the engine or install the bundled sidecar.
+- The Diagnostics panels do not auto-retry; a failed read shows the engine error and a manual retry.
+- The screen is read-only by design: it adds no recrawl, sitemap or URL submission action.
 
 ## 0.8.0 Bing URL submission
 
@@ -378,7 +438,7 @@ The desktop has a dedicated Crawl screen: start URL and URL budget, summary coun
 | Symptom | Likely cause | What to do |
 |---|---|---|
 | No workspace configuration | No `seo.toml` selected, or the saved path was moved/deleted | Run `lv24-seo init`, then choose the file in Settings |
-| Engine marked offline | Engine missing or below the shell's minimum version (`0.10.0`) | Use the bundled engine, or point `LV24_SEO_BIN` at a compatible engine |
+| Engine marked offline | Engine missing or below the shell's minimum version (`0.11.0`) | Use the bundled engine, or point `LV24_SEO_BIN` at a compatible engine |
 | SmartScreen or Gatekeeper warning | The OS build is unsigned or ad-hoc signed | Verify `SHA256SUMS.txt`, then use the documented **Run anyway** or **Open Anyway** flow |
 | AppImage will not start | FUSE 2 is missing | Install `libfuse2` or use deb/rpm |
 | Update check fails | GitHub endpoint is blocked or offline | Stay on the current version; the silent startup check stays quiet |
@@ -403,7 +463,7 @@ The desktop has a dedicated Crawl screen: start URL and URL budget, summary coun
 - The updater needs access to the GitHub Releases endpoint. A blocked or offline endpoint leaves the app on its current version.
 - The updater can stop only sidecars it started itself. An engine launched from a terminal or another app copy is not killed; if it holds the installed sidecar open, the install is blocked with `UPDATE_ENGINE_BUSY`.
 - The `0.2.1 → 0.2.2` update runs the old `0.2.1` updater, which does not include the tracked-PID cleanup. If a sidecar is active during that first update, retry after it exits or install `0.2.2` manually. `0.2.2 → 0.2.3` and later updates use the cleanup.
-- Cancel is not rollback and there is no job queue in `0.8.0`: a cancelled crawl, report, log analysis, backup or schedule install may leave a partial artefact, and a cancelled in-place restore keeps the `.pre-restore-<utc>` copy but may have replaced one file, so build a fresh plan before retrying. Closing the window does not move a run into a queue.
+- Cancel is not rollback and there is no job queue in `0.9.0`: a cancelled crawl, report, log analysis, backup or schedule install may leave a partial artefact, and a cancelled in-place restore keeps the `.pre-restore-<utc>` copy but may have replaced one file, so build a fresh plan before retrying. Closing the window does not move a run into a queue.
 - Restore replaces the database and config and never merges; the `.pre-restore-<utc>` copies are the only rollback, and a database held open by another process cannot be replaced on Windows. Tokens are excluded, so re-authenticate afterwards. `backup restore --to` is a CLI-only extraction.
 - Schedule install mutates the host: it writes a cron entry, systemd user timer or Windows task only after confirmation, and only on this computer. The desktop does not manage, repair or uninstall the job; use `schedule status`/`schedule uninstall` in the CLI.
 - GSC service accounts are configured outside the form: set `providers.gsc.service_account_file` in `seo.toml` or `LV24_SEO_GSC_SERVICE_ACCOUNT_FILE` in the environment. The desktop has no field for it.
@@ -411,7 +471,9 @@ The desktop has a dedicated Crawl screen: start URL and URL budget, summary coun
 - Portfolio reports local history only, inspects at most 50 sites per scan and never calls a provider.
 - Bot triage is User-Agent only: a spoofed UA is not detected and non-search crawlers are reported as `other`.
 - One log file at a time, at most 100 MiB; there is no rotation, glob, remote fetch or persisted log history.
-- `MIN_ENGINE_VERSION` is `0.10.0`, so a `0.9.x` engine is rejected; the desktop does not silently downgrade commands to an older engine.
+- `MIN_ENGINE_VERSION` is `0.11.0`, so a `0.10.x` engine is rejected; the desktop does not silently downgrade commands to an older engine.
+- The Diagnostics screen is read-only and covers 18 allow-listed commands; it has no recrawl, sitemap or URL submission action, and the panels do not poll or auto-retry.
+- Metrika goals are shown as totals only, and CWV history “all devices” omits the device filter instead of inventing a combined row.
 - Bing sitemap submit needs a Bing Webmaster API key, and IndexNow needs `providers.bing.indexnow_key` plus a hosted key file. A missing key is reported as `AUTH_REQUIRED`, not as a generic failure.
 - Bing URL submission uses `providers.bing.site`; the desktop has no per-run `--site` override. Accepted means Bing received the batch, not that a URL was indexed, and a duplicate URL may consume quota.
 - Quota cards show remaining daily and monthly submissions, not used or total values; the monthly window can bind first and the reset schedule is undocumented.
@@ -429,4 +491,4 @@ The desktop has a dedicated Crawl screen: start URL and URL budget, summary coun
 - Recommendation copy is localised in en/ru/zh; tasks queued before `0.2.3` keep the stored English text.
 - This is a `0.x` preview: configuration output, updater behavior and UI details may change before 1.0.
 
-Source: `_source/desktop-README.md`, `_source/desktop-releases-0.8.0.md`, `_source/desktop-releases-0.7.0.md`, `_source/desktop-releases-0.6.0.md`, `_source/desktop-releases-0.5.0.md`, `_source/desktop-releases-0.4.0.md`, `_source/desktop-releases-0.3.0.md`, `_source/desktop-releases-0.2.3.md`, `_source/desktop-releases-0.2.2.md`, `_source/desktop-releases-0.2.1.md`, `_source/desktop-releases-0.2.0.md`, `_source/desktop-security.md`, `_source/desktop-architecture.md`.
+Source: `_source/desktop-README.md`, `_source/desktop-releases-0.9.0.md`, `_source/desktop-releases-0.8.0.md`, `_source/desktop-releases-0.7.0.md`, `_source/desktop-releases-0.6.0.md`, `_source/desktop-releases-0.5.0.md`, `_source/desktop-releases-0.4.0.md`, `_source/desktop-releases-0.3.0.md`, `_source/desktop-releases-0.2.3.md`, `_source/desktop-releases-0.2.2.md`, `_source/desktop-releases-0.2.1.md`, `_source/desktop-releases-0.2.0.md`, `_source/desktop-security.md`, `_source/desktop-architecture.md`.

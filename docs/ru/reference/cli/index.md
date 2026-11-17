@@ -25,13 +25,13 @@ description: Команды, глобальные флаги, JSON-конвер�
 С флагом `--json` команда печатает ровно один JSON-документ и ничего больше:
 
 ```json
-{ "ok": true, "data": {}, "meta": { "version": "0.10.0", "duration_ms": 812 }, "warnings": [] }
+{ "ok": true, "data": {}, "meta": { "version": "0.11.0", "duration_ms": 812 }, "warnings": [] }
 ```
 
 Неудачная команда использует ту же форму с `ok: false` и объектом `error` вместо `data`:
 
 ```json
-{ "ok": false, "error": { "code": "AUTH_REQUIRED", "message": "Google Search Console token is missing", "retryable": false, "next_action": "lv24-seo auth login --provider gsc" }, "meta": { "version": "0.10.0" }, "warnings": ["gsc: token missing"] }
+{ "ok": false, "error": { "code": "AUTH_REQUIRED", "message": "Google Search Console token is missing", "retryable": false, "next_action": "lv24-seo auth login --provider gsc" }, "meta": { "version": "0.11.0" }, "warnings": ["gsc: token missing"] }
 ```
 
 - `data` зависит от команды. В `meta` всегда есть `version`, часто добавляются `duration_ms`,
@@ -60,7 +60,10 @@ description: Команды, глобальные флаги, JSON-конвер�
 ### `--strict` и код выхода 5
 
 `--strict` превращает усечение в ворота CI. Флаг доступен в `stats`, `gsc query`, `yandex queries`,
-`yandex indexing`, `crawl`, `report weekly` и `report diff`:
+`yandex indexing`, `yandex samples`, `yandex sitemaps`, `yandex history`, `yandex queue`, семи
+чтениях `metrika`, `bing pages`, `bing traffic`, `bing crawl`, `bing urlinfo`, `bing children`,
+`bing users`, `bing sites`, `bing joins`, `bing quota`, `bing sitemaps`, `bing issues`, `crawl`,
+`report weekly` и `report diff`:
 
 ```bash
 lv24-seo gsc query --start 2026-11-01 --end 2026-11-07 --strict --json
@@ -161,13 +164,14 @@ redacting-handler в CLI и `lv24-seo mcp serve`; если переменная 
 | Start | `version`, `doctor`, `init`, `properties`, `stats` | Локальные файлы и окружение; `stats` читает KPI провайдеров без записи. |
 | Authentication | `auth status`, `auth set`, `auth login`, `auth logout` | Локальное хранилище секретов; `login` только печатает инструкции. |
 | Configuration | `config show` | Действующая конфигурация с замаскированными учётными данными. |
-| Google Search Console | `gsc query` | Аналитика поиска только для чтения. |
+| Google Search Console | `gsc query`, `gsc inspect`, `gsc sitemaps`, `gsc sitemap` | Аналитика поиска с фильтрами, URL Inspection и чтение карт сайта только для чтения. |
 | Sitemap | `sitemap submit` | Защищённая запись; Bing `SubmitFeed` подключён, отправка GSC всё ещё возвращает `WRITE_DISABLED`. |
-| Yandex Webmaster | `yandex queries`, `yandex indexing`, `yandex recrawl` | Запросы только на чтение; recrawl — защищённая запись. `queries` сохраняет `avg_click_position`, `query_id` и `extra_indicators`; `indexing` объединяет серию истории и сообщает `site_problems`. |
+| Yandex Webmaster | `yandex queries`, `yandex indexing`, `yandex samples`, `yandex sitemaps`, `yandex history`, `yandex queue`, `yandex recrawl` | Запросы, события, примеры, карты, история и очередь только для чтения; recrawl — защищённая запись с ограничением по остатку квоты. |
+| Yandex Metrika | `metrika pages`, `metrika goals`, `metrika queries`, `metrika devices`, `metrika countries`, `metrika engagement`, `metrika bytime` | Органические представления только для чтения; каждый вызов применяет `ym:s:lastTrafficSource=='organic'`. |
 | IndexNow | `indexnow submit` | Защищённая запись, которая отправляет явные URL или URL, прочитанные из sitemap проекта. |
-| Bing | `bing submit`, `bing sitemaps`, `bing issues`, `bing quota` | `submit` — защищённая запись `SubmitUrlbatch`; остальные три читают квоту, фиды sitemap и проблемы обхода. |
+| Bing | `bing submit`, `bing pages`, `bing traffic`, `bing crawl`, `bing urlinfo`, `bing children`, `bing users`, `bing sites`, `bing joins`, `bing sitemaps`, `bing issues`, `bing quota` | `submit` — защищённая запись `SubmitUrlbatch`; остальные читают страницы, трафик, обход, URL, связки, карты, проблемы и квоту. |
 | Crawl and audit | `crawl` | Не зависит от провайдеров; сохраняет локальные страницы и проблемы, если настроено хранилище. |
-| CWV | `cwv collect` | Опрашивает CrUX по URL и устройству и сохраняет полевые строки p75; лабораторные строки PSI возвращаются, но не сохраняются. |
+| CWV | `cwv collect`, `cwv audits`, `cwv history` | `collect` сохраняет полевые строки p75 CrUX; `audits` и `history` — чтение PSI/CrUX. |
 | Reports | `report weekly`, `report diff` | `weekly` сохраняет локальный снимок; `diff` только читает. |
 | Scheduling | `schedule print`, `schedule install`, `schedule status`, `schedule uninstall` | `print` только рендерит; `install` и `uninstall` по умолчанию планируют и пишут только с `--allow-write`; `status` только читает. |
 | Logs | `logs analyze` | Читает один локальный JSON access-лог nginx; не сохраняет и не отправляет его. |
@@ -176,7 +180,7 @@ redacting-handler в CLI и `lv24-seo mcp serve`; если переменная 
 | Portfolio | `portfolio list` | Сводка локальных проектов ниже одного каталога только для чтения; без вызова провайдера, чтения токена и записи. |
 | Agents and MCP | `mcp serve`, `install`, `export tools`, `export skills` | Конфиг хоста, сгенерированные файлы или локальный сервер. |
 
-В CLI 23 команды верхнего уровня: 16 групп и 7 команд (`version`, `doctor`, `init`, `properties`, `stats`, `crawl`, `install`).
+В CLI 24 команды верхнего уровня: 17 групп и 7 команд (`version`, `doctor`, `init`, `properties`, `stats`, `crawl`, `install`).
 
 ## Примеры
 
@@ -195,17 +199,39 @@ lv24-seo stats --days 7 --lag-days 2 --json
 
 ```bash
 lv24-seo gsc query --start 2026-11-01 --end 2026-11-07 --dimensions query,page --limit 100 --json
+lv24-seo gsc query --start 2026-11-01 --end 2026-11-07 --type image --data-state all --filter country:equals:BLR --json
+lv24-seo gsc inspect --url https://example.com/ --language en-US --json
+lv24-seo gsc sitemaps --sitemap-index https://example.com/sitemap-seo.xml --json
+lv24-seo gsc sitemap --path https://example.com/sitemap.xml --json
 ```
 
 `--start` и `--end` обязательны. Сокращения `--days` и переопределения `--property` нет: ресурс
 берётся из `[providers.gsc]` в `seo.toml`. Измерения перечисляются через запятую и ограничены
 `query`, `page`, `country`, `device` и `date`.
 
+`--type` принимает `web`, `image`, `video`, `news`, `discover`, `googleNews` и `webMultimodal`.
+`--filter` принимает `dimension:operator:expression` и может повторяться (одна группа AND);
+`--filter-list` принимает `dimension:expr1,expr2` и может повторяться. `--data-state` принимает
+`all`, `final` и `hourly_all`; `--aggregation` — `auto`, `byPage`, `byProperty` и
+`byNewsShowcasePanel`; `--search-appearance` добавляет фильтр `searchAppearance equals`;
+`--branded` принимает `branded` или `non_branded` и отклоняется вместе с фильтром `query`.
+
+`gsc inspect` обрабатывает ровно один абсолютный URL. Он отображает полный `indexStatusResult`,
+расширенные результаты и `inspectionResultLink`, а также сообщает `one_url_per_call`,
+`url_inspection_quota_2000_per_day` и `inspection_reflects_last_crawl`: это описание последнего
+обхода Google, а не живой тест. `gsc sitemaps` и `gsc sitemap --path` отображают тип, признак
+индекса, ошибки, предупреждения и `contents[]`; устаревший счётчик `indexed` помечается, а
+дочерние URL индекса не раскрываются. Отправка/удаление карты остаются `WRITE_DISABLED`.
+
 ### Яндекс
 
 ```bash
 lv24-seo yandex queries --limit 100 --json
-lv24-seo yandex indexing --json
+lv24-seo yandex indexing --date-from 2026-10-01 --date-to 2026-10-31 --json
+lv24-seo yandex samples --kind events --limit 100 --json
+lv24-seo yandex sitemaps --json
+lv24-seo yandex history --kind sqi --json
+lv24-seo yandex queue --json
 ```
 
 `yandex queries` возвращает верхние строки, а не полную связку запрос-страница: Яндекс отдаёт не
@@ -213,7 +239,18 @@ lv24-seo yandex indexing --json
 провайдер его присылает, и сохраняет неизвестный индикатор в `extra_indicators` вместо отбрасывания
 строки. `yandex indexing` показывает историю индексирования, число страниц в поиске, диагностику,
 `site_problems` и события поисковых URL для настроенного `host_id`, а также объединяет серию
-`indexing/history` (`http_2xx` … `other`) в одну строку на дату.
+`indexing/history` (`http_2xx` … `other`) и серию appeared/removed в одну строку на дату. Окно дат,
+которое провайдер сбрасывает, повторяется без фильтра и сообщается как `client_side_date_filter`.
+
+`yandex samples` листает endpoint примеров по 100 строк с честными итогами. `yandex sitemaps`
+перечисляет id, URL, число ошибок/URL, детей и источники; добавление/удаление не реализовано.
+`yandex history --kind sqi|in-search|queries|query` читает SQI, страницы в поиске, все запросы и
+ряды одного запроса. `yandex queue` читает задачи переобхода и общее число провайдера.
+
+`yandex recrawl --url https://example.com/page --allow-write` планирует запись; `--confirm TOKEN`
+применяет один POST на URL с ограничением по остатку дневной квоты. Строка `202` несёт `task_id` и
+`quota_remainder`, `409` — `already_queued`, а `429` останавливает цикл и оставляет остаток в
+`not_attempted`.
 
 ### Bing и IndexNow
 
@@ -222,6 +259,14 @@ lv24-seo sitemap submit --provider bing --allow-write --json
 lv24-seo sitemap submit --provider bing --allow-write --confirm TOKEN --json
 lv24-seo bing submit --url https://example.com/page --allow-write --json
 lv24-seo bing submit --url https://example.com/page --allow-write --confirm TOKEN --json
+lv24-seo bing pages --json
+lv24-seo bing traffic --json
+lv24-seo bing crawl --json
+lv24-seo bing urlinfo --url domain:example.com --json
+lv24-seo bing children --url domain:example.com --page 0 --pages 2 --json
+lv24-seo bing users --json
+lv24-seo bing sites --json
+lv24-seo bing joins --query "seo tools" --json
 lv24-seo bing quota --json
 lv24-seo bing sitemaps --json
 lv24-seo bing issues --json
@@ -240,18 +285,33 @@ URL, число пакетов по 500 URL и остаток квоты, а п�
 `daily_remaining` и `monthly_remaining`, а не всего; месячное окно может закончиться раньше, а расписание
 сброса не документировано. `bing sitemaps` показывает URL фида, статус провайдера, последний обход и
 число URL, но не ошибки по отдельным URL, а `bing issues` декодирует битовую маску проблем и не имеет
-серьёзности или даты. `indexnow submit --from-sitemap` читает sitemap во время плана и берёт хост, ключ и
+серьёзности или даты.
+
+`bing pages`, `bing traffic`, `bing crawl` и `bing joins` — представления статистики только для чтения.
+Пустой ответ статистики несёт `no_rows_for_window` и не является нулём показов; `bing crawl` всегда
+несёт `crawl_stats_six_month_window`. `bing urlinfo --url URL|domain:HOST` читает данные индексации и
+обхода URL; сентинел WCF `Date(-62135596800000)` отображается в `null`, а строка никогда не обходившегося
+URL несёт `never_crawled`. `bing children` листает не более 10 страниц и помечает полную последнюю
+страницу `truncated` с `children_page_cap`. `bing users` читает роли сайта без вывода делегированных
+кодов; `bing sites` читает подтверждённые сайты аккаунта. `bing joins --query|--page` выбирает одну из
+трёх связок запрос/страница и возвращает одинаковую компактную строку.
+
+`indexnow submit --from-sitemap` читает sitemap во время плана и берёт хост, ключ и
 расположение ключа из `providers.bing.site`, `providers.bing.indexnow_key` и
-`providers.bing.indexnow_key_location`. `<sitemapindex>` ограничен корнем плюс пятью дочерними sitemap и
-10 000 URL; явные `--url` объединяются первыми, URL вне хоста пропускаются. Применение заново загружает
-sitemap и аннулирует токен с `CONFIRM_REQUIRED`, если набор URL изменился. Отсутствующий ключ —
-`AUTH_REQUIRED` на этапе плана, а отсутствующий или несовпавший файл ключа — `INVALID_INPUT` при
-применении.
+`providers.bing.indexnow_key_location`. Ключ должен состоять из 8–128 символов `A-Z`, `a-z`, `0-9` и
+`-`; каталог `keyLocation` на том же хосте обязателен. `<sitemapindex>` ограничен корнем плюс пятью
+дочерними sitemap и 10 000 URL; явные `--url` объединяются первыми, URL вне хоста пропускаются.
+Применение заново загружает sitemap и аннулирует токен с `CONFIRM_REQUIRED`, если набор URL изменился.
+Отсутствующий ключ — `AUTH_REQUIRED` на этапе плана. Статусы провайдера: `200` accepted, `202`
+accepted-pending, `400` формат, `403` отсутствующий/несовпадающий файл ключа, `422` несоответствие
+хоста/ключа и `429` квота/спам; ключ никогда не выводится.
 
 ### Core Web Vitals
 
 ```bash
-lv24-seo cwv collect --url https://example.com/ --url https://example.com/blog/post --device phone --source crux --json
+lv24-seo cwv collect --url https://example.com/ --url https://example.com/blog/post --device phone --source crux --category performance --json
+lv24-seo cwv audits --url https://example.com/ --strategy mobile --category performance --json
+lv24-seo cwv history --origin https://example.com --device phone --weeks 12 --json
 ```
 
 `cwv collect` — писатель, стоящий за недельным разделом `cwv`. CrUX опрашивается по каждому URL и
@@ -260,8 +320,44 @@ lv24-seo cwv collect --url https://example.com/ --url https://example.com/blog/p
 `report.timezone`. Строки PSI остаются в `data.lab` и никогда не сохраняются, а у PSI нет `tablet`,
 поэтому `tablet` пропускается как `psi_tablet_unsupported`. `--limit` ограничивает URL 50 (по
 умолчанию 10); URL с низким трафиком не пишет строку, а не ноль, а усечённый запуск ставит
-`meta.truncated: true` с `cwv_url_cap`. Команде нужен ключ CrUX (`AUTH_REQUIRED` до любого вызова) и
-инициализированное хранилище (`CONFIG_INVALID`).
+`meta.truncated: true` с `cwv_url_cap`. `--category` повторяем и выбирает категории Lighthouse для
+пути PSI. `data_age_days` берётся из `collectionPeriod.lastDate`; двухдневная эвристика — только
+запасной вариант с `crux_period_missing`, а нормализованный URL добавляет `crux_url_normalized`.
+Команде нужен ключ CrUX (`AUTH_REQUIRED` до любого вызова) и инициализированное хранилище
+(`CONFIG_INVALID`).
+
+`cwv audits` возвращает не более 100 строк аудитов Lighthouse (`psi_audits_cap`) с оценкой,
+отображаемым значением, описанием без HTML и экономией; массивы элементов никогда не включаются.
+`runtimeError`, CAPTCHA или другой `finalUrl` становятся предупреждением/ограничением, а не чистым
+запуском. Ничего не сохраняется.
+
+`cwv history` читает недельные периоды p75 CrUX, новые последними, с `first_date`/`last_date`,
+необязательным каноническим устройством и доступными метриками. `--weeks` — 1..40. Пропущенные
+ячейки p75 становятся `crux_history_gaps` и никогда не заполняются; меньше периодов, чем запрошено,
+добавляет `crux_history_short`. История только для чтения и не сохраняется.
+
+### Yandex Metrika
+
+```bash
+lv24-seo metrika pages --days 7 --lag-days 2 --limit 100 --json
+lv24-seo metrika goals --days 7 --dimension page --json
+lv24-seo metrika queries --days 7 --json
+lv24-seo metrika devices --days 7 --json
+lv24-seo metrika countries --days 7 --json
+lv24-seo metrika engagement --days 7 --json
+lv24-seo metrika bytime --days 7 --group day --json
+```
+
+Все семь команд только для чтения и используют `providers.yandex_metrika.counter`. Каждый вызов
+применяет `filters=ym:s:lastTrafficSource=='organic'`; `meta.organic_only` равен `true`, а
+`meta.filters` повторяет выражение. `pages` возвращает органические страницы входа с визитами и
+пользователями, отказами, средней длительностью, глубиной и просмотрами. `goals` читает id целей из
+`providers.yandex_metrika.goals` и запрашивает достижения, визиты, пользователей и конверсию, при
+желании по `page` или `source`; пустой список предупреждает без вызова провайдера, а больше пяти
+целей обрезаются по лимиту Метрики в 20 метрик. `queries` всегда сообщает, что Google скрывает
+поисковые фразы, а Метрика скрывает фразы с менее чем 10 пользователями. Поля сэмплирования
+(`sampled`, `sample_share`, `sample_size`, `sample_space`, `data_lag`, `contains_sensitive_data`,
+`total_rows_rounded`) переносятся в meta и limitations; точным считается только `sampled=false`.
 
 ### Обход
 
@@ -383,4 +479,4 @@ lv24-seo export skills --out skills/
 - [MCP и навыки агентов](/ru/mcp/)
 - [Устранение неполадок](/ru/troubleshooting/)
 
-Source: `_source/engine-cli.md`, `_source/engine-mcp.md`, `_source/engine-releases-0.5.2.md`, `_source/engine-releases-0.5.3.md`, `_source/engine-releases-0.6.0.md`, `_source/engine-releases-0.7.0.md`, `_source/engine-releases-0.8.0.md`, `_source/engine-releases-0.9.0.md`, `_source/engine-releases-0.10.0.md`; вывод `--help` версии 0.10.0 в репозитории движка.
+Source: `_source/engine-cli.md`, `_source/engine-mcp.md`, `_source/engine-releases-0.11.0.md`, `_source/engine-releases-0.10.0.md`, `_source/engine-releases-0.9.0.md`, `_source/engine-releases-0.8.0.md`, `_source/engine-releases-0.7.0.md`, `_source/engine-releases-0.6.0.md`, `_source/engine-releases-0.5.3.md`; вывод `--help` версии 0.11.0 в репозитории движка.

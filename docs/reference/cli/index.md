@@ -26,13 +26,13 @@ version.
 With `--json`, a command prints exactly one JSON document and nothing else:
 
 ```json
-{ "ok": true, "data": {}, "meta": { "version": "0.10.0", "duration_ms": 812 }, "warnings": [] }
+{ "ok": true, "data": {}, "meta": { "version": "0.11.0", "duration_ms": 812 }, "warnings": [] }
 ```
 
 A failed command uses the same shape with `ok: false` and an `error` object instead of `data`:
 
 ```json
-{ "ok": false, "error": { "code": "AUTH_REQUIRED", "message": "Google Search Console token is missing", "retryable": false, "next_action": "lv24-seo auth login --provider gsc" }, "meta": { "version": "0.10.0" }, "warnings": ["gsc: token missing"] }
+{ "ok": false, "error": { "code": "AUTH_REQUIRED", "message": "Google Search Console token is missing", "retryable": false, "next_action": "lv24-seo auth login --provider gsc" }, "meta": { "version": "0.11.0" }, "warnings": ["gsc: token missing"] }
 ```
 
 - `data` is command-specific. `meta` always carries `version` and often adds `duration_ms`,
@@ -58,7 +58,7 @@ A failed command uses the same shape with `ok: false` and an `error` object inst
 
 ### `--strict` and exit 5
 
-`--strict` turns truncation into a CI gate. It is available on `stats`, `gsc query`, `yandex queries`, `yandex indexing`, `crawl`, `report weekly` and `report diff`:
+`--strict` turns truncation into a CI gate. It is available on `stats`, `gsc query`, `yandex queries`, `yandex indexing`, `yandex samples`, `yandex sitemaps`, `yandex history`, `yandex queue`, the seven `metrika` reads, `bing pages`, `bing traffic`, `bing crawl`, `bing urlinfo`, `bing children`, `bing users`, `bing sites`, `bing joins`, `bing quota`, `bing sitemaps`, `bing issues`, `crawl`, `report weekly` and `report diff`:
 
 ```bash
 lv24-seo gsc query --start 2026-11-01 --end 2026-11-07 --strict --json
@@ -123,9 +123,9 @@ claim under `/srv/site/data` even when the shell is elsewhere. Without a data di
 runs, but the envelope warns that replay protection is off for the token's five-minute lifetime; the
 plan opens no ledger and creates no database.
 
-Bing sitemap submit, Bing URL submission and IndexNow actually write. Bing URL submission reports
-`accepted`, never indexed, because `SubmitUrlbatch` has no per-URL status. GSC sitemap submit, Bing
-sitemap delete and Yandex recrawl return `WRITE_DISABLED` instead of pretending the provider call happened.
+Bing sitemap submit, Bing URL submission, IndexNow and Yandex recrawl actually write. Bing URL submission reports
+`accepted`, never indexed, because `SubmitUrlbatch` has no per-URL status. GSC sitemap submit and Bing
+sitemap delete return `WRITE_DISABLED` instead of pretending the provider call happened.
 
 ### Logging
 
@@ -152,13 +152,14 @@ envelope remains the stable diagnostic interface.
 | Start | `version`, `doctor`, `init`, `properties`, `stats` | Local files and the environment; `stats` reads provider KPIs without writing. |
 | Authentication | `auth status`, `auth set`, `auth login`, `auth logout` | The local secret store; `login` only prints instructions. |
 | Configuration | `config show` | The effective config, with credentials redacted. |
-| Google Search Console | `gsc query` | Read-only search analytics. |
+| Google Search Console | `gsc query`, `gsc inspect`, `gsc sitemaps`, `gsc sitemap` | Read-only search analytics with filters, URL Inspection and sitemap reads. |
 | Sitemap | `sitemap submit` | Gated write; Bing `SubmitFeed` is wired, GSC submit still returns `WRITE_DISABLED`. |
-| Yandex Webmaster | `yandex queries`, `yandex indexing`, `yandex recrawl` | Read-only queries; recrawl is a gated write. `queries` keeps `avg_click_position`, `query_id` and `extra_indicators`; `indexing` merges the history series and reports `site_problems`. |
+| Yandex Webmaster | `yandex queries`, `yandex indexing`, `yandex samples`, `yandex sitemaps`, `yandex history`, `yandex queue`, `yandex recrawl` | Read-only queries, events, samples, sitemaps, history and queue; recrawl is a gated write capped to the remaining quota. |
+| Yandex Metrika | `metrika pages`, `metrika goals`, `metrika queries`, `metrika devices`, `metrika countries`, `metrika engagement`, `metrika bytime` | Read-only organic traffic views; every call applies `ym:s:lastTrafficSource=='organic'`. |
 | IndexNow | `indexnow submit` | A gated write that submits explicit URLs or URLs read from the project sitemap. |
-| Bing | `bing submit`, `bing sitemaps`, `bing issues`, `bing quota` | `submit` is a gated `SubmitUrlbatch` write; the other three read quota, sitemap feeds and crawl issues. |
+| Bing | `bing submit`, `bing pages`, `bing traffic`, `bing crawl`, `bing urlinfo`, `bing children`, `bing users`, `bing sites`, `bing joins`, `bing sitemaps`, `bing issues`, `bing quota` | `submit` is a gated `SubmitUrlbatch` write; the rest read page, traffic, crawl, URL, join, sitemap, issue and quota data. |
 | Crawl and audit | `crawl` | Provider-independent; stores local pages and issues when a store is configured. |
-| CWV | `cwv collect` | Queries CrUX per URL and device and persists field p75 rows; PSI lab rows are returned but never stored. |
+| CWV | `cwv collect`, `cwv audits`, `cwv history` | `collect` persists CrUX field p75 rows; `audits` and `history` are read-only PSI/CrUX reads. |
 | Reports | `report weekly`, `report diff` | `weekly` stores a local snapshot; `diff` is read-only. |
 | Scheduling | `schedule print`, `schedule install`, `schedule status`, `schedule uninstall` | `print` renders only; `install` and `uninstall` plan by default and write only with `--allow-write`; `status` is read-only. |
 | Logs | `logs analyze` | Reads one local nginx JSON access log; never stores or uploads it. |
@@ -167,7 +168,7 @@ envelope remains the stable diagnostic interface.
 | Portfolio | `portfolio list` | Read-only rollup of local projects below one folder; no provider call, no token read, no write. |
 | Agents and MCP | `mcp serve`, `install`, `export tools`, `export skills` | Host config, generated files or a local server. |
 
-The CLI has 23 top-level commands: 16 groups and 7 commands (`version`, `doctor`, `init`, `properties`, `stats`, `crawl`, `install`).
+The CLI has 24 top-level commands: 17 groups and 7 commands (`version`, `doctor`, `init`, `properties`, `stats`, `crawl`, `install`).
 
 ## Examples
 
@@ -185,25 +186,58 @@ and no cross-engine totals. A provider failure is isolated and increments `cover
 
 ```bash
 lv24-seo gsc query --start 2026-11-01 --end 2026-11-07 --dimensions query,page --limit 100 --json
+lv24-seo gsc query --start 2026-11-01 --end 2026-11-07 --type image --data-state all --filter country:equals:BLR --json
+lv24-seo gsc inspect --url https://example.com/ --language en-US --json
+lv24-seo gsc sitemaps --sitemap-index https://example.com/sitemap-seo.xml --json
+lv24-seo gsc sitemap --path https://example.com/sitemap.xml --json
 ```
 
 `--start` and `--end` are required. There is no `--days` shorthand and no `--property` override: the
 property comes from `[providers.gsc]` in `seo.toml`. Dimensions are comma-separated and limited to
 `query`, `page`, `country`, `device` and `date`.
 
+`--type` accepts `web`, `image`, `video`, `news`, `discover`, `googleNews` and `webMultimodal`.
+`--filter` takes `dimension:operator:expression` and may be repeated (one AND group); `--filter-list`
+takes `dimension:expr1,expr2` and may be repeated. `--data-state` accepts `all`, `final` and
+`hourly_all`; `--aggregation` accepts `auto`, `byPage`, `byProperty` and `byNewsShowcasePanel`;
+`--search-appearance` adds a `searchAppearance equals` filter; `--branded` accepts `branded` or
+`non_branded` and is rejected together with a `query` filter.
+
+`gsc inspect` handles exactly one absolute URL. It maps the full `indexStatusResult`, rich results and
+`inspectionResultLink`, and reports `one_url_per_call`, `url_inspection_quota_2000_per_day` and
+`inspection_reflects_last_crawl`: it describes Google's last crawl, not a live test. `gsc sitemaps` and
+`gsc sitemap --path` map type, index flag, errors, warnings and `contents[]`; the deprecated `indexed`
+count is labelled, and child sitemap URLs of an index are not exposed. Sitemap submit/delete remain
+`WRITE_DISABLED`.
+
 ### Yandex
 
 ```bash
 lv24-seo yandex queries --limit 100 --json
-lv24-seo yandex indexing --json
+lv24-seo yandex indexing --date-from 2026-10-01 --date-to 2026-10-31 --json
+lv24-seo yandex samples --kind events --limit 100 --json
+lv24-seo yandex sitemaps --json
+lv24-seo yandex history --kind sqi --json
+lv24-seo yandex queue --json
 ```
 
 `yandex queries` returns top rows, not a full query-by-page join: Yandex exposes at most 3,000
 queries per period. It keeps `avg_click_position`, returns `query_id` when the provider sends it and
 preserves an unmapped indicator under `extra_indicators` instead of dropping the row. `yandex indexing`
 reports indexing history, in-search counts, diagnostics, `site_problems` and search-URL events for the
-configured `host_id`, and merges the `indexing/history` series (`http_2xx` … `other`) into one row per
-date.
+configured `host_id`, and merges the `indexing/history` series (`http_2xx` … `other`) and the
+appeared/removed event series into one row per date. A date window that the provider resets is retried
+unfiltered and reported as `client_side_date_filter`.
+
+`yandex samples` pages the provider sample endpoints at 100 rows per page with honest totals.
+`yandex sitemaps` lists ids, URLs, error/URL counts, children and sources; add/delete is not
+implemented. `yandex history --kind sqi|in-search|queries|query` reads the SQI, pages-in-search,
+all-query and per-query series. `yandex queue` reads recrawl tasks and their provider total.
+
+`yandex recrawl --url https://example.com/page --allow-write` plans the write; `--confirm TOKEN`
+applies one POST per URL, capped to the remaining daily quota. A `202` row carries `task_id` and
+`quota_remainder`, `409` is `already_queued`, and a `429` stops the loop with the rest in
+`not_attempted`.
 
 ### Bing and IndexNow
 
@@ -212,6 +246,14 @@ lv24-seo sitemap submit --provider bing --allow-write --json
 lv24-seo sitemap submit --provider bing --allow-write --confirm TOKEN --json
 lv24-seo bing submit --url https://example.com/page --allow-write --json
 lv24-seo bing submit --url https://example.com/page --allow-write --confirm TOKEN --json
+lv24-seo bing pages --json
+lv24-seo bing traffic --json
+lv24-seo bing crawl --json
+lv24-seo bing urlinfo --url domain:example.com --json
+lv24-seo bing children --url domain:example.com --page 0 --pages 2 --json
+lv24-seo bing users --json
+lv24-seo bing sites --json
+lv24-seo bing joins --query "seo tools" --json
 lv24-seo bing quota --json
 lv24-seo bing sitemaps --json
 lv24-seo bing issues --json
@@ -230,18 +272,33 @@ per-URL status, so the result says `accepted`, never indexed, and a duplicate UR
 `bing quota` reports `daily_remaining` and `monthly_remaining`, not totals; the monthly window can bind
 first and the reset schedule is undocumented. `bing sitemaps` lists feed URL, provider status, last
 crawl and URL count but no per-URL errors, while `bing issues` decodes the crawl-issue bitmask and has
-no severity or date. `indexnow submit --from-sitemap` reads the sitemap during the plan and resolves
-host, key and key location from `providers.bing.site`, `providers.bing.indexnow_key` and
-`providers.bing.indexnow_key_location`. A `<sitemapindex>` is bounded to the root plus five child
-sitemaps and 10,000 URLs; explicit `--url` values are merged first and off-host URLs are skipped. The
-apply re-fetches the sitemap and invalidates the token with `CONFIRM_REQUIRED` if the URL set changed.
-A missing key is `AUTH_REQUIRED` at plan time, and a missing or mismatched key file is `INVALID_INPUT`
-on apply.
+no severity or date.
+
+`bing pages`, `bing traffic`, `bing crawl` and `bing joins` are read-only stats views. An empty stats
+response carries `no_rows_for_window` and is not zero impressions; `bing crawl` always carries
+`crawl_stats_six_month_window`. `bing urlinfo --url URL|domain:HOST` reads URL index/crawl details; the
+WCF `Date(-62135596800000)` sentinel maps to `null` and a never-crawled row carries `never_crawled`.
+`bing children` walks at most 10 pages and marks a full final page `truncated` with
+`children_page_cap`. `bing users` reads site roles without echoing delegated codes; `bing sites` reads
+the account's verified sites. `bing joins --query|--page` selects one of the three query/page joins and
+returns the same compact row shape.
+
+`indexnow submit --from-sitemap` reads the sitemap during the plan and resolves host, key and key
+location from `providers.bing.site`, `providers.bing.indexnow_key` and
+`providers.bing.indexnow_key_location`. The key must be 8–128 characters from `A-Z`, `a-z`, `0-9` and
+`-`; a same-host `keyLocation` directory prefix is enforced. A `<sitemapindex>` is bounded to the root
+plus five child sitemaps and 10,000 URLs; explicit `--url` values are merged first and off-host URLs are
+skipped. The apply re-fetches the sitemap and invalidates the token with `CONFIRM_REQUIRED` if the URL
+set changed. A missing key is `AUTH_REQUIRED` at plan time. Provider statuses map `200` accepted, `202`
+accepted-pending, `400` invalid format, `403` a missing/mismatched key file, `422` a host/key mismatch
+and `429` quota/spam; the key is never echoed.
 
 ### Core Web Vitals
 
 ```bash
-lv24-seo cwv collect --url https://example.com/ --url https://example.com/blog/post --device phone --source crux --json
+lv24-seo cwv collect --url https://example.com/ --url https://example.com/blog/post --device phone --source crux --category performance --json
+lv24-seo cwv audits --url https://example.com/ --strategy mobile --category performance --json
+lv24-seo cwv history --origin https://example.com --device phone --weeks 12 --json
 ```
 
 `cwv collect` is the writer behind the weekly `cwv` section. CrUX is queried per URL and device
@@ -249,8 +306,43 @@ lv24-seo cwv collect --url https://example.com/ --url https://example.com/blog/p
 `source=crux`, `scope`, the absolute URL, the metric and the fetch date in `report.timezone`. PSI rows
 stay in `data.lab` and are never persisted, and PSI has no `tablet`, so `tablet` is skipped as
 `psi_tablet_unsupported`. `--limit` caps URLs at 50 (default 10); a low-traffic URL writes no row, never
-a zero, and a capped run sets `meta.truncated: true` with `cwv_url_cap`. The command needs a CrUX key
-(`AUTH_REQUIRED` before any call) and an initialised store (`CONFIG_INVALID`).
+a zero, and a capped run sets `meta.truncated: true` with `cwv_url_cap`. `--category` is repeatable and
+selects Lighthouse categories for the PSI path. `data_age_days` comes from
+`collectionPeriod.lastDate`; the two-day heuristic is only a fallback with `crux_period_missing`, and a
+normalized URL adds `crux_url_normalized`. The command needs a CrUX key (`AUTH_REQUIRED` before any
+call) and an initialised store (`CONFIG_INVALID`).
+
+`cwv audits` returns at most 100 Lighthouse audit rows (`psi_audits_cap`) with score, display value, a
+plain-text description and savings; item arrays are never included. A `runtimeError`, CAPTCHA or a
+different `finalUrl` becomes a warning/limitation instead of a clean run. Nothing is persisted.
+
+`cwv history` reads weekly CrUX p75 periods, newest last, with `first_date`/`last_date`, an optional
+canonical device and the available metrics. `--weeks` is 1..40. Missing p75 cells become
+`crux_history_gaps` and are never filled; fewer periods than requested adds `crux_history_short`.
+History is read-only and not persisted.
+
+### Yandex Metrika
+
+```bash
+lv24-seo metrika pages --days 7 --lag-days 2 --limit 100 --json
+lv24-seo metrika goals --days 7 --dimension page --json
+lv24-seo metrika queries --days 7 --json
+lv24-seo metrika devices --days 7 --json
+lv24-seo metrika countries --days 7 --json
+lv24-seo metrika engagement --days 7 --json
+lv24-seo metrika bytime --days 7 --group day --json
+```
+
+All seven commands are read-only and use `providers.yandex_metrika.counter`. Every call applies
+`filters=ym:s:lastTrafficSource=='organic'`; `meta.organic_only` is `true` and `meta.filters` repeats
+the expression. `pages` returns organic landing pages with visits/users, bounce rate, average visit
+duration, page depth and pageviews. `goals` reads goal ids from `providers.yandex_metrika.goals` and
+queries reaches, visits, users and conversion rate, optionally by `page` or `source`; an empty list
+warns without a provider call, and more than five goals are truncated at Metrika's 20-metric cap.
+`queries` always states that Google withholds search phrases and Metrika hides phrases with fewer than
+10 users. Sampling fields (`sampled`, `sample_share`, `sample_size`, `sample_space`, `data_lag`,
+`contains_sensitive_data`, `total_rows_rounded`) are carried into meta and limitations; only
+`sampled=false` is exact.
 
 ### Crawl
 
@@ -370,4 +462,4 @@ packaged `SKILL.md` files and their manifest. Both write local files only.
 - [MCP and agent skills](/mcp/)
 - [Troubleshooting](/troubleshooting/)
 
-Source: `_source/engine-cli.md`, `_source/engine-mcp.md`, `_source/engine-releases-0.5.2.md`, `_source/engine-releases-0.5.3.md`, `_source/engine-releases-0.6.0.md`, `_source/engine-releases-0.7.0.md`, `_source/engine-releases-0.8.0.md`, `_source/engine-releases-0.9.0.md`, `_source/engine-releases-0.10.0.md`; 0.10.0 `--help` output in the engine repository.
+Source: `_source/engine-cli.md`, `_source/engine-mcp.md`, `_source/engine-releases-0.11.0.md`, `_source/engine-releases-0.10.0.md`, `_source/engine-releases-0.9.0.md`, `_source/engine-releases-0.8.0.md`, `_source/engine-releases-0.7.0.md`, `_source/engine-releases-0.6.0.md`, `_source/engine-releases-0.5.3.md`; 0.11.0 `--help` output in the engine repository.

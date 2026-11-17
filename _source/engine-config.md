@@ -17,6 +17,9 @@ default_property = "sc-domain:example.com"
 
 [providers.gsc]
 property = "sc-domain:example.com"
+# Optional: absolute path to a service-account JSON key added to the property as Full/Owner.
+# The path is configuration, not a secret; the JSON itself never belongs in the repository.
+# service_account_file = "/etc/lv24-seo/gsc-service-account.json"
 # Reserved auth label; credentials resolve from env, optional keyring, then opt-in file fallback.
 auth = "keychain"
 
@@ -29,6 +32,10 @@ goals = [1, 2]
 
 [providers.bing]
 site = "https://example.com"
+# Public IndexNow identifiers, safe in this file: the key is served openly at
+# key_location (default https://<host>/<key>.txt). The Bing API key stays a secret.
+indexnow_key = "abc12345"
+indexnow_key_location = "https://example.com/abc12345.txt"
 
 [providers.crux]
 origin = "https://example.com"
@@ -68,6 +75,17 @@ user_agent = "lv24-seo/0.1 (+https://example.com/bot)"
 data_dir = "./data"      # relative to this file; absolute values and LV24_SEO_DATA_DIR are used as-is
 raw_retention_days = 90   # reserved: no raw archives are written yet, pruning is a logged no-op
 ```
+
+`providers.bing.indexnow_key` and `providers.bing.indexnow_key_location` are **public**
+identifiers, not secrets: the key file is served openly at the location (default
+`https://<host>/<key>.txt`), and the same key is sent in every IndexNow request. They are safe in
+`seo.toml` and are not redacted by `config show`. The Bing Webmaster API key stays a secret:
+store it with `lv24-seo auth set --provider bing` or set `LV24_SEO_BING_API_KEY`.
+
+`providers.yandex_metrika.counter` selects the counter read by `stats` and every `metrika`
+command. `goals` lists numeric goal ids used by `lv24-seo metrika goals`; an empty list is valid and
+produces a warning instead of a provider call. At most five goal ids are queried per request
+(Metrika's 20-metric cap), and a longer list is reported as truncated.
 
 > Telemetry is not configurable: the tool sends nothing anywhere. There is no `[privacy]` section and
 > One `seo.toml` describes one project; a multi-site block is not implemented.
@@ -127,6 +145,34 @@ be a valid IANA name; an invalid zone fails config validation with `CONFIG_INVAL
 stays date-based and is not converted. Scheduler generators apply the same zone where the backend
 supports it — see [scheduling](scheduling.md).
 
+## Google Search Console authentication
+
+GSC accepts two credential forms. Resolution order for every GSC command (`properties`, `stats`,
+`gsc query`, `report weekly`, the MCP GSC tools) is:
+
+1. the service-account file: `providers.gsc.service_account_file`, or
+   `LV24_SEO_GSC_SERVICE_ACCOUNT_FILE` when set (the global environment-over-file rule applies);
+2. the `gsc_token` secret — `LV24_SEO_GSC_TOKEN`, the OS keychain entry written by
+   `lv24-seo auth set --provider gsc`, or the opt-in `0600` secrets file.
+
+A service-account file must be an **absolute** path; `~` is expanded. A relative, missing or
+unreadable file fails with `CONFIG_INVALID` and a next action instead of silently falling back to a
+token. The engine reads and validates the JSON once per process, signs an RS256 JWT (`iss`, `scope`,
+`aud`, `exp`), exchanges it at the key's `token_uri` with
+`grant_type=urn:ietf:params:oauth:grant-type:jwt-bearer`, and caches the resulting access token. The
+token is refreshed 60 seconds before expiry, so a long-lived MCP server survives token rotation. The
+JSON and private key are never printed, logged or put in an error message; only the file path is
+reported.
+
+`gsc_token` keeps the historical behaviour: a plain string is sent as
+`Authorization: Bearer <token>` and is **not** refreshed. A value that is a service-account JSON
+object (detected by `"type": "service_account"` plus `private_key`) is accepted as well, so a
+single-secret CI setup works without a file.
+
+`lv24-seo auth status` is keychain/env/file-secret only; it does not inspect
+`service_account_file`. Use `lv24-seo properties --json` or `lv24-seo doctor --json` (the `gsc_auth`
+check) for readiness; neither prints the key.
+
 ## Secrets
 
 | Source | How |
@@ -136,8 +182,10 @@ supports it — see [scheduling](scheduling.md).
 | Environment | `LV24_SEO_YANDEX_WEBMASTER_TOKEN=…` |
 | Headless fallback | `LV24_SEO_ALLOW_FILE_SECRETS=1` + `data/secrets.json` (0600, warning on every run) |
 
-Credentials currently use manually supplied access tokens/API keys. There is no built-in refresh-token
-or service-account flow. Expiry depends on the provider and grant; presence does not prove validity.
+Credentials are either manually supplied access tokens/API keys or, for GSC, a service-account JSON
+key. The service-account flow signs and refreshes its own short-lived access token; plain tokens and
+API keys have no refresh flow. Expiry depends on the provider and grant; presence does not prove
+validity.
 
 `lv24-seo auth status` reports provider, secret presence and storage source, never the token.
 It does not verify permissions or perform an API call.
@@ -146,7 +194,8 @@ It does not verify permissions or perform an API call.
 
 See [`.env.example`](../.env.example). All are prefixed `LV24_SEO_`; the mapping is
 `report.email.to` ↔ `LV24_SEO_MAIL_TO`. `LV24_SEO_REPORT_LOCALE` sets `report.locale` and accepts
-`ru`, `en` or `zh`.
+`ru`, `en` or `zh`. `LV24_SEO_INDEXNOW_KEY` and `LV24_SEO_INDEXNOW_KEY_LOCATION` override the
+public `[providers.bing]` IndexNow fields.
 
 `LV24_SEO_DATA_DIR` overrides `storage.data_dir` and is **process-scoped**: a relative value resolves
 against the working directory, not the config file. Use it for container/CI runs where the data

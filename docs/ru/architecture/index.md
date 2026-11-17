@@ -7,7 +7,7 @@ description: Структура пакетов движка, конверты п
 
 В продукте один движок-источник истины и одна оболочка:
 
-- `lv24-seo 0.5.3` владеет провайдерскими клиентами, обходом, анализом, отчётами,
+- `lv24-seo 0.11.0` владеет провайдерскими клиентами, обходом, анализом, отчётами,
   хранилищем, MCP-инструментами, CLI-командами и автоматизацией.
 - Приложение `0.3.0` — это React-webview плюс Rust-оболочка процессов. Оно рисует
   экраны, редактирует конфигурацию и запускает встроенный движок; поведение движка оно
@@ -224,7 +224,7 @@ MobX-хранилища держат корневое состояние, ста
 6. `PATH`, только если задан `LV24_SEO_ALLOW_PATH_ENGINE=1`.
 
 Ничего не скачивается автоматически. Оболочка запускает `lv24-seo version --json`,
-записывает путь, источник и версию и сравнивает с `MIN_ENGINE_VERSION` (`0.5.2` в
+записывает путь, источник и версию и сравнивает с `MIN_ENGINE_VERSION` (`0.11.0` в
 текущем исходнике). Старый движок помечается `compatible: false`; UI считает его
 offline и показывает уведомление. Новее гейта проходит, но не является
 протестированным пином релиза.
@@ -263,4 +263,4 @@ offline и показывает уведомление. Новее гейта п
 
 См. [Безопасность и приватность](/ru/security/) для контроля и [Релизы и обновление](/ru/release/) для упаковки.
 
-Source: `_source/engine-architecture.md`, `_source/desktop-architecture.md`, `_source/engine-releases-0.5.2.md`, `_source/desktop-releases-0.2.2.md`, `_source/desktop-release.md`.
+Source: `_source/engine-architecture.md`, `_source/desktop-architecture.md`, `_source/engine-releases-0.11.0.md`, `_source/engine-releases-0.5.3.md`, `_source/desktop-releases-0.9.0.md`, `_source/desktop-releases-0.2.2.md`, `_source/desktop-release.md`.

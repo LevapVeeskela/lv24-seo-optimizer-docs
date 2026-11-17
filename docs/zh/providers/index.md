@@ -13,17 +13,17 @@ description: LV24 SEO Optimizer 的提供商能力矩阵、认证、配额、数
 
 | 来源 | 读取 | 写入（需确认） | 认证 | 免费配额 | 数据延迟 |
 |---|---|---|---|---|---|
-| Google Search Console | 搜索分析、站点、站点地图、URL Inspection | 提交站点地图；0.5.3 中返回 `WRITE_DISABLED` | Bearer 访问令牌（读取用 `webmasters.readonly`，站点地图用 `webmasters`） | 每个站点和每个用户 1,200 次/分钟；每天每站点每类型 50,000 行；URL Inspection 每天 2,000 次、每分钟 600 次 | 2–3 天；`data_age_days` 下限为 3 |
-| Yandex Webmaster | 摘要、SQI 历史、索引、搜索中的 URL 与事件、查询、诊断、失效链接、站点地图 | 重新抓取队列；0.5.3 中返回 `WRITE_DISABLED` | OAuth 令牌，scope `webmaster:hostinfo` | 免费；未公布全局 RPD/RPS；查询分析在约每小时 1 万次请求以上不稳定 | 约 4 天 |
-| Yandex Metrika | 会话、流量来源、搜索词、落地页、目标 | 无 | OAuth 令牌，scope `metrika:read` | 每天每用户 5,000 次请求；30 rps/IP；3 个并发；`/stat/v1/data` 每 5 分钟 200 次；每次请求最多 10 万行、20 个指标、10 个维度 | Reporting API；会报告抽样 |
-| Bing Webmaster | 查询统计、排名与流量、抓取问题 | IndexNow 提交（可用）；站点地图提交路径未接通 | 每个用户一个 API 密钥 | 免费；每域名每天约 1 万次 URL 提交，每批 500 条 | API 中没有按时间窗口的统计；年龄取最新行的日期 |
-| Chrome UX Report (CrUX) | 字段 p75 LCP、INP 和 CLS | 无 | API 密钥 | 每个项目每分钟 150 次，无法提高 | 28 天滚动窗口 |
-| PageSpeed Insights (PSI) | Lighthouse 实验室诊断、已弃用的字段数据块 | 无 | API 密钥可选；无密钥也能用，但配额较低 | 每天约 2.5 万次请求 | 实时实验室运行 |
+| Google Search Console | 带类型/过滤/data-state 的搜索分析、站点、站点地图、URL Inspection | 提交站点地图；已禁用（`WRITE_DISABLED`，需要完整 `webmasters` scope） | Bearer 访问令牌（读取用 `webmasters.readonly`）或服务账号 JSON 密钥 | 每个站点和每个用户 1,200 次/分钟；每天每站点每类型 50,000 行；URL Inspection 每天 2,000 次、每分钟 600 次 | 2–3 天；`data_age_days` 下限为 3 |
+| Yandex Webmaster | 摘要、SQI 历史、索引、搜索中的 URL 与事件、样本、站点地图、查询历史、重新抓取队列、查询、诊断、失效链接 | 重新抓取队列（受限；每个 URL 一次 POST，受每日剩余配额限制） | OAuth 令牌，scope `webmaster:hostinfo` | 免费；未公布全局 RPD/RPS；查询分析在约每小时 1 万次请求以上不稳定 | 约 4 天 |
+| Yandex Metrika | 自然搜索与全部访问/用户；自然搜索页面、搜索词、设备、国家、互动、目标和 bytime | 无 | OAuth 令牌，scope `metrika:read` | 每天每用户 5,000 次请求；30 rps/IP；3 个并发；`/stat/v1/data` 每 5 分钟 200 次；每次请求最多 10 万行、20 个指标、10 个维度 | Reporting API；会报告抽样 |
+| Bing Webmaster | 查询/页面统计、每日流量、六个月抓取、查询/页面关联、URL 与子 URL 详情、站点角色、账户站点、抓取问题、配额、站点地图源 | 站点地图提交、URL 提交和 IndexNow（均受限） | 每个用户一个 API 密钥 | 免费；`GetUrlSubmissionQuota` 报告每日/每月剩余配额；每批 500 个 URL | 年龄取最新有日期的行；空统计为 `no_rows_for_window` |
+| Chrome UX Report (CrUX) | 字段 p75 LCP、INP、CLS 及其他指标；每周 p75 历史；收集周期 | 无 | API 密钥 | 每个项目每分钟 150 次，无法提高 | 28 天滚动窗口；`data_age_days` 来自 `collectionPeriod.lastDate` |
+| PageSpeed Insights (PSI) | Lighthouse 实验室评分和每个 URL 最多 100 条有界审计 | 无 | API 密钥可选；无密钥也能用，但配额较低 | 每天约 2.5 万次请求 | 实时实验室运行 |
 | GA4（可选） | 自然搜索落地页、会话、关键事件 | 无 | Google Analytics Data API 凭据 | 适用提供商配额 | 方向性；阈值处理可能隐藏行 |
 | 自有抓取 | 页面、问题、链接图、站点地图覆盖 | 无 | 无 | 本地 | 当前运行 |
 | 日志 | 对 nginx JSON 访问日志按 User-Agent 做机器人分诊；不能证明是已验证的爬虫 | 无 | 本地文件 | 本地 | 日志窗口 |
 
-GA4 是可选的集成点，不在默认路径中。随版本提供的提供商是 GSC、Yandex Webmaster、Yandex Metrika、Bing、CrUX 和 PSI。付费 SERP 或外链适配器（DataForSEO、SerpApi 等）仅处于计划或文档阶段；0.5.3 不随版本提供任何此类适配器。
+GA4 是可选的集成点，不在默认路径中。随版本提供的提供商是 GSC、Yandex Webmaster、Yandex Metrika、Bing、CrUX 和 PSI。付费 SERP 或外链适配器（DataForSEO、SerpApi 等）仅处于计划或文档阶段；0.11.0 不随版本提供任何此类适配器。
 
 ## 认证
 
@@ -74,7 +74,7 @@ pip install "lv24-seo[secrets]"
 - Metrika 的 `limit` 是页大小，不是结果大小。客户端用 `offset` 遍历 `stat/v1/data`，直到 `total_rows`、短页或上限；单次调用上限为 10,000 行和 100 页，即使调用方页大小很小也仍在该 5 分钟 200 次请求的配额内。没有 `total_rows` 的完整页会标记为 `truncated`，而不是看起来完整；无维度的聚合调用只有一行，绝不翻页。
 - CrUX 在 URL 流量不足时返回 404；这会变成 `low_traffic`，而不是零分。
 - PSI 是实验室数据。不要平均实验室运行结果，也不要与 CrUX 字段数据合并。
-- Bing 统计 API 没有日期窗口，因此报告不会为 Bing 显示上一周期对比。`data_age_days` 改为取最新一行的日期——查询统计用 `Date`，抓取问题用 `DateDetected`——并解析 WCF `/Date(ms)/`、ISO 或 epoch。空数据源报告 0。
+- Bing 统计 API 没有日期窗口，因此报告不会为 Bing 显示上一周期对比。`data_age_days` 取最新有日期的行：查询/页面/流量/抓取/关联统计用 `Date`，站点地图源用 `LastCrawled`（回退 `Submitted`），URL 详情用 `LastCrawledDate`。`GetCrawlIssues` 和 `GetUserSites` 没有日期，报告 `0`，这不能证明数据新鲜。0 行的统计或关联响应携带 `no_rows_for_window`；查找或列表没有行时携带 `provider_returned_no_rows`。两者都不是“零展示”。
 
 每个有界响应都带有相同的诚实性字段：`truncated`、`total`、以天为单位的数据年龄（`data_age_days`）以及 `limitations[]`。`rows` 是返回的行数，不是总数。只有提供商或存储能够报告时才会出现 `total`。
 
@@ -90,10 +90,38 @@ pip install "lv24-seo[secrets]"
 | `degraded_host` | Yandex 报告主机未完全加载 |
 | `empty_history` | 已加载的 Yandex 主机在该窗口没有索引或搜索 URL 历史 |
 | `one_url_per_call` | URL Inspection 每次调用只处理一个 URL，不能批量 |
-| `no_per_url_sitemap_errors` | Yandex 不暴露按 URL 的站点地图错误详情 |
+| `inspection_reflects_last_crawl` | URL Inspection 描述 Google 的最后一次抓取，不是实时测试 |
+| `no_per_url_sitemap_errors` | Yandex 或 Bing 不暴露按 URL 的站点地图错误详情 |
+| `sitemap_index_children_not_exposed` | GSC 不暴露索引中的子站点地图 URL |
+| `sitemap_indexed_count_deprecated` | GSC 的 `indexed` 计数已弃用 |
+| `no_rows_for_window` | Bing 在该窗口没有统计行；这是缺失数据，不是零展示 |
+| `provider_returned_no_rows` | 查找或列表没有返回对象或行 |
+| `crawl_stats_six_month_window` | Bing 抓取统计始终覆盖六个月每日窗口 |
+| `never_crawled` | Bing 的 `Date(-62135596800000)` 哨兵表示从未抓取 |
+| `client_side_date_filter` | Yandex 重置了带窗口的事件请求；完整序列在本地过滤 |
+| `crux_period_missing` | CrUX 未返回 `collectionPeriod`；使用了两天启发式 |
+| `crux_history_gaps` | CrUX 返回了没有合格 p75 值的周期 |
+| `crux_url_normalized` | CrUX 在查询前规范化了请求的 URL |
+| `psi_audits_cap` | Lighthouse 审计列表被限制为 100 行 |
+| `indexnow_accepted_pending` | IndexNow 返回 `202`；引擎仍需验证密钥 |
+| `recrawl_quota_exceeded` | Yandex 重新抓取遇到 `429`；剩余 URL 在 `not_attempted` 中 |
 | `token_expiring` | 凭据即将过期 |
 | `paid_provider` | 该行来自付费适配器 |
 | `partial_response` | 提供商返回了不完整的响应 |
+
+## 0.11.0 的读取深度
+
+**GSC。** `gsc inspect --url ABS [--language en-US]` 映射完整 `indexStatusResult`（`verdict`、`coverageState`、`robotsTxtState`、`indexingState`、`lastCrawlTime`、`pageFetchState`、`googleCanonical`、`userCanonical`、`crawledAs`、`sitemap[]`、`referringUrls[]`）、`richResultsResult` 和 `inspectionResultLink`。这是最后一次抓取的报告，不是实时测试：每次一个 URL，每天 2,000 次/站点，每分钟 600 次。`gsc sitemaps` 和 `gsc sitemap --path` 映射类型、索引标志、错误、警告和 `contents[]`；已弃用的 `indexed` 会标注，索引的子站点地图 URL 不暴露，提交/删除仍为 `WRITE_DISABLED`。`gsc query` 接受 `--type`、可重复 `--filter`/`--filter-list`、`--data-state`、`--aggregation`、`--search-appearance` 和 `--branded`；响应增加 `responseAggregationType` 和不完整数据 `metadata`。每页 25k 行和每天 50k 行的上限不变。
+
+**Yandex。** `yandex indexing --date-from/--date-to` 把 appeared/removed 事件与索引 HTTP 序列合并；日期窗口上连接重置时不带窗口重试并报告 `client_side_date_filter`。`yandex samples --kind indexing|events` 每页 100 行，诚实报告 `total`/`truncated`。`yandex sitemaps` 读取 id、URL、错误、子项和来源；添加/删除未实现。`yandex history --kind sqi|in-search|queries|query` 读取 SQI、搜索中页面、全部查询和单查询序列。`yandex queue` 读取重新抓取任务。`yandex recrawl` 每个 URL 一次 POST，受剩余配额限制；`202` 给出 `task_id`/`quota_remainder`，`409` 为 `already_queued`，`429` 把剩余放在 `not_attempted`。
+
+**Bing。** `bing pages`、`bing traffic`、`bing crawl` 和 `bing joins` 只读；空窗口为 `no_rows_for_window`，`bing crawl` 始终带 `crawl_stats_six_month_window`。`bing urlinfo` 读取 `GetUrlInfo`；`Date(-62135596800000)` 哨兵映射为 `null` 和 `never_crawled`。`bing children` 最多 10 页，完整最后一页标记 `truncated` 和 `children_page_cap`。`bing users` 读取角色且不回显委托码；`bing sites` 读取账户站点。`bing joins --query|--page` 选择三种关联之一并返回紧凑行。
+
+**Metrika。** `metrika` 组（`pages`、`goals`、`queries`、`devices`、`countries`、`engagement`、`bytime`）只读且始终为自然搜索（`ym:s:lastTrafficSource=='organic'`，`meta.organic_only: true`）。`stats` 和 `report weekly` 分别显示 `organic_visits`/`organic_users` 与 `all_visits`/`all_users`。`metrika goals` 从 `providers.yandex_metrika.goals` 读取 id，可按 `page` 或 `source` 分组；空列表只警告不调用，超过五个目标按 Metrika 20 指标上限截断。抽样字段（`sample_share`、`sample_size`、`sample_space`、`data_lag`、`contains_sensitive_data`、`total_rows_rounded`）带入 meta 和 limitations；只有 `sampled=false` 才精确。`data_age_days` 只描述当前窗口。
+
+**CrUX 与 PSI。** `cwv history (--url | --origin) [--device] [--weeks 1..40]` 读取每周 p75 周期，含 `first_date`/`last_date`；缺口为 `crux_history_gaps`，短历史为 `crux_history_short`。`cwv audits` 返回最多 100 条 Lighthouse 审计，含评分、显示值、去 HTML 描述和可节省量；`runtimeError`、CAPTCHA 和不同 `finalUrl` 是警告/限制，不是干净运行。`collectionPeriod` 决定 `data_age_days`；两天启发式仅作为 `crux_period_missing` 回退，URL 规范化产生 `crux_url_normalized`。
+
+**IndexNow。** 密钥 `[A-Za-z0-9-]{8,128}` 在规划前验证；同主机 `keyLocation` 限制目录。`200` 为 accepted，`202` 为 accepted-pending，`400` 为格式，`403` 为缺失/不匹配的密钥文件并带精确 URL，`422` 为主机/密钥不匹配，`429` 为配额/垃圾提交。密钥绝不回显。
 
 ## 站点地图范围
 
@@ -111,4 +139,4 @@ pip install "lv24-seo[secrets]"
 
 调度器生成器在后端支持时应用同一时区。Cron 依赖 `CRON_TZ`，systemd 把时区写入 `OnCalendar`，Task Scheduler XML 携带固定偏移并给出 DST 警告。参见[自动化与投递](/zh/automation/)。
 
-Source: `_source/engine-data-sources.md`, `_source/engine-cli.md`, `_source/engine-config.md`, `_source/engine-releases-0.5.2.md`, `_source/engine-releases-0.5.3.md`.
+Source: `_source/engine-data-sources.md`, `_source/engine-cli.md`, `_source/engine-config.md`, `_source/engine-releases-0.11.0.md`, `_source/engine-releases-0.10.0.md`, `_source/engine-releases-0.5.3.md`.

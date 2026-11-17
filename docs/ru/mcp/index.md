@@ -21,7 +21,7 @@ MCP-сервер предоставляет небольшую, продуман
 | `seo_crawl_site` | read | `true` | `false` | `false` | `false` |
 | `seo_weekly_report` | read | `true` | `false` | `false` | `false` |
 
-Они сохраняют события индексирования, снимки обхода или недельного отчёта, но никогда не меняют состояние провайдера и не требуют токен подтверждения. MCP-клиенты, которые смотрят на `readOnlyHint`, могут запросить подтверждение перед их вызовом; это намеренно. Двенадцать инструментов делятся на 10 класса чтения (7 чистых read-only плюс эти 3 писателя локального состояния) и 2 записи с воротами. Обе записи требуют `allow_write`, план и токен подтверждения, а также `LV24_SEO_WRITE_SECRET` сервера; отправка sitemap в Bing подключена, а отправка GSC, удаление sitemap в Bing и переобход Яндекса всё ещё возвращают `WRITE_DISABLED`.
+Они сохраняют события индексирования, снимки обхода или недельного отчёта, но никогда не меняют состояние провайдера и не требуют токен подтверждения. MCP-клиенты, которые смотрят на `readOnlyHint`, могут запросить подтверждение перед их вызовом; это намеренно. Двенадцать инструментов делятся на 10 класса чтения (7 чистых read-only плюс эти 3 писателя локального состояния) и 2 записи с воротами. Обе записи требуют `allow_write`, план и токен подтверждения, а также `LV24_SEO_WRITE_SECRET` сервера; отправка sitemap в Bing и переобход Яндекса подключены, а отправка GSC и удаление sitemap в Bing всё ещё возвращают `WRITE_DISABLED`.
 
 Два инструмента записи несут `destructiveHint: true` и включаются явно: `allow_write` по умолчанию `false`, и любой вызов без него возвращает `WRITE_DISABLED` до построения плана. Они следуют тому же двухфазному контракту, что и CLI, — он описан ниже.
 
@@ -48,7 +48,7 @@ MCP-сервер предоставляет небольшую, продуман
 
 Сервер передаёт в ворота записи хранилище рабочей области, поэтому повторный токен возвращает `status: skipped` с `reason: duplicate`, и провайдер вызывается один раз. Без хранилища применение всё равно выполняется, но ответ предупреждает, что защита от повторов выключена на время жизни токена. Ошибка провайдера освобождает заявку, поэтому честный повтор разрешён, а неудачная запись никогда не помечается отправленной.
 
-Контракт реализован в сервере. `seo_sitemap_submit` с `provider: "bing"` вызывает тот же путь Bing `SubmitFeed`, что и CLI; отправка sitemap в GSC, удаление sitemap в Bing и переобход Яндекса по-прежнему возвращают `WRITE_DISABLED` даже с `allow_write=true` и секретом. IndexNow остаётся только в CLI и приложении и не имеет инструмента MCP. Ничего не имитируется.
+Контракт реализован в сервере. `seo_sitemap_submit` с `provider: "bing"` вызывает тот же путь Bing `SubmitFeed`, что и CLI, а `seo_recrawl_request` вызывает тот же путь переобхода Яндекса с одним POST на URL и ограничением квоты. Отправка sitemap в GSC и удаление sitemap в Bing по-прежнему возвращают `WRITE_DISABLED` даже с `allow_write=true` и секретом. IndexNow остаётся только в CLI и приложении и не имеет инструмента MCP. Ничего не имитируется.
 
 ## Инструменты
 
@@ -61,10 +61,10 @@ MCP-сервер предоставляет небольшую, продуман
 | `seo_crawl_site` | `start_url`, `max_urls` 0 или 1–5000, `include_rules` | Сводка обхода, проблемы, граф ссылок и покрытие карты сайта |
 | `seo_weekly_report` | `days` 1–90, `lag_days` 0–14 | Разделы недельного отчёта, включая сохранённые строки CWV по сегодняшний день, плюс meta конверта |
 | `seo_report_diff` | `base`, `head` в формате `START..END` | Изменения заголовка, количество проблем, движение возможностей, ограничения, Markdown |
-| `seo_indexing_triage` | Нет | Корзины с причиной, количеством, примерами и `next_action` |
+| `seo_indexing_triage` | `max_examples` 0–20 (по умолчанию 5), необязательный `url` | Корзины с причиной, количеством, примерами и `next_action`; с `url` — одна инспекция GSC в `data.inspection` |
 | `seo_opportunities` | `days` 1–90 (по умолчанию 28), `limit` 1–500, `min_impressions` | Ранжированные возможности с доказательствами и `expected_gain` |
 | `seo_log_analysis` | `file` (абсолютный путь), `bot` (`googlebot`, `yandexbot`, `bingbot`, `other` или пусто) | Сводка по ботам и crawl waste для одного локального JSON-лога nginx |
-| `seo_recrawl_request` | `host_id` (по умолчанию настроенный хост), `urls`, `allow_write` (по умолчанию `false`), `plan_hash`, `confirm_token` | Двухфазная запись с воротами; `WRITE_DISABLED`, пока адаптер провайдера не подключён |
+| `seo_recrawl_request` | `host_id` (по умолчанию настроенный хост), `urls`, `allow_write` (по умолчанию `false`), `plan_hash`, `confirm_token` | Двухфазная запись с воротами; один POST Яндекса на URL, с ограничением по остатку дневной квоты; `202` несёт `task_id`, `409` — `already_queued`, `429` сообщает `not_attempted` |
 | `seo_sitemap_submit` | `provider` (`gsc` или `bing`, по умолчанию `gsc`), `property`, `sitemap_url`, `action`, `allow_write` (по умолчанию `false`), `plan_hash`, `confirm_token` | Двухфазная запись с воротами; отправка Bing подключена, отправка GSC и удаление Bing возвращают `WRITE_DISABLED` |
 
 `gsc_search_analytics` по умолчанию берёт последние семь полных дней в `report.timezone`. `seo_weekly_report` не принимает свойство: свойство, часовой пояс и задержка по умолчанию берутся из конфигурации. `seo_opportunities` возвращает `expected_gain` — оценку приоритета, а не обещание трафика.
@@ -79,7 +79,7 @@ MCP-инструмент недельного отчёта ограничива�
 
 `seo_sitemap_submit` получил необязательный `provider` (`gsc|bing`, по умолчанию `gsc`) в 0.9.0; имя инструмента, поверхность из 12 инструментов и остальные входы не изменились. Для Bing `property` по умолчанию равен `providers.bing.site`, а `sitemap_url` — `<project.base_url>/sitemap.xml`. План проверяет секрет `bing_api_key` и возвращает `AUTH_REQUIRED`, если его нет, поэтому токен, который нельзя применить, не выдаётся. Повтор возвращает `status: skipped` с `reason: duplicate`, а ошибка провайдера освобождает заявку. Удаление Bing и любая запись sitemap GSC остаются `WRITE_DISABLED`. IndexNow из sitemap доступен только в CLI и приложении.
 
-Движок 0.10.0 добавляет группу CLI `bing`: `bing submit` (нативный `SubmitUrlbatch` пакетами по 500 URL; accepted, но не indexed), `bing quota` (дневное и месячное значения — остаток, а не всего), `bing sitemaps` (статус фида и число URL, без ошибок по отдельным URL) и `bing issues` (декодированная битовая маска проблем, без серьёзности и даты). Ни одна из них не добавляет инструмент MCP: поверхность остаётся в 12, а `seo_sitemap_submit` по-прежнему отправляет sitemap, а не пакет URL.
+Движок 0.11.0 сохраняет поверхность из 12 инструментов и добавляет глубину чтения без тринадцатого инструмента. `seo_indexing_triage` принимает необязательный `url` и включает одну инспекцию GSC в `data.inspection`; без него инструмент сохраняет прежние входы и честное ограничение, что покрытие URL Google этим вызовом не раскрывается. Богатые селекторы GSC Search Analytics и чтения `gsc sitemaps`/`gsc sitemap` доступны только в CLI. `seo_recrawl_request` подключён к очереди переобхода Яндекса. `schemas/tools.json` перегенерирован из-за нового входа `url`.
 
 `cwv collect` — писатель CLI, а не тринадцатый инструмент: поверхность MCP остаётся в 12. `seo_weekly_report` читает полевые строки, сохранённые CLI, и добавляет раздел `cwv` с группировкой по шаблону URL и устройству, не более пяти шаблонов. Лабораторные строки PSI никогда не сохраняются, поэтому один `--source psi` не может заполнить этот раздел.
 
@@ -195,4 +195,4 @@ lv24-seo export skills --out .opencode/skills
 - **Технический аудит.** Обойди до 500 URL через `seo_crawl_site` и суммируй критические и высокие проблемы по id правила. Не называй необойдённый URL битым.
 - **Запрос записи.** Подготовь план переобхода для этих URL и сначала покажи квоту. Ничего не записывай, пока я не утвержу план.
 
-Source: `_source/engine-mcp.md`, `_source/engine-skills.md`, `_source/engine-cli.md`, `_source/engine-releases-0.5.2.md`, `_source/engine-releases-0.5.3.md`, `_source/engine-releases-0.6.0.md`, `_source/engine-releases-0.7.0.md`, `_source/engine-releases-0.8.0.md`, `_source/engine-releases-0.9.0.md`, `_source/engine-releases-0.10.0.md`.
+Source: `_source/engine-mcp.md`, `_source/engine-skills.md`, `_source/engine-cli.md`, `_source/engine-releases-0.11.0.md`, `_source/engine-releases-0.10.0.md`, `_source/engine-releases-0.9.0.md`, `_source/engine-releases-0.8.0.md`, `_source/engine-releases-0.7.0.md`, `_source/engine-releases-0.6.0.md`, `_source/engine-releases-0.5.3.md`.

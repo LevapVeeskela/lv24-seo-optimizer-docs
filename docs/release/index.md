@@ -1,6 +1,6 @@
 ---
 title: Releases and updates
-description: Engine 0.10.0 and desktop 0.8.0 releases, the 0.9.0, 0.7.0, 0.8.0, 0.6.0 and older history, signed auto-update matrix, release pipeline, version pinning and rollback.
+description: Engine 0.11.0 and desktop 0.9.0 releases, the 0.10.0, 0.9.0, 0.8.0 and older history, signed auto-update matrix, release pipeline, version pinning and rollback.
 ---
 
 # Releases and updates
@@ -9,10 +9,97 @@ The current releases are:
 
 | Product | Version | Released | Notes |
 |---|---|---|---|
-| Engine | `lv24-seo 0.10.0` | 2026-11-17 | Bing URL submission, sitemap feeds, crawl issues and quota views, 23 CLI commands and 12 MCP tools |
-| Desktop | `0.8.0` | 2026-11-17 | Bing URL submission and read-only sitemap, issue and quota cards, bundled engine 0.10.0 and `MIN_ENGINE_VERSION` 0.10.0 |
+| Engine | `lv24-seo 0.11.0` | 2026-11-17 | Full-platform read depth: GSC inspection and sitemaps, Yandex events/sitemaps/recrawl, Bing page/traffic/crawl/URL/joins, organic Metrika, CWV audits/history; 24 CLI commands and 12 MCP tools |
+| Desktop | `0.9.0` | 2026-11-17 | Read-only Diagnostics screen with five tabs and 18 allow-listed commands, bundled engine 0.11.0 and `MIN_ENGINE_VERSION` 0.11.0 |
 
-The desktop version and the engine version are independent, but the desktop pins an exact engine and refuses one below its minimum. `0.8.0` bundles `0.10.0` and requires at least `0.10.0`, so an installed `0.9.x` engine is reported as incompatible.
+The desktop version and the engine version are independent, but the desktop pins an exact engine and refuses one below its minimum. `0.9.0` bundles `0.11.0` and requires at least `0.11.0`, so an installed `0.10.x` engine is reported as incompatible.
+
+## Engine 0.11.0
+
+Released on 2026-11-17. Every supported platform gains the read APIs that were previously adapter-only,
+partial or missing. The CLI now has 24 top-level commands; the MCP surface stays at 12 tools and the
+SQLite schema stays at version 4.
+
+What changed:
+
+- **GSC URL Inspection.** `gsc inspect --url ABS [--language en-US] [--config ABS] [--json]` wires URL Inspection end-to-end. The result maps the full `indexStatusResult` (`verdict`, `coverageState`, `robotsTxtState`, `indexingState`, `lastCrawlTime`, `pageFetchState`, `googleCanonical`, `userCanonical`, `crawledAs`, `sitemap[]`, `referringUrls[]`), `richResultsResult` (`verdict`, `detectedItems[].items[].issues[]`) and `inspectionResultLink`. `--language` localizes human-readable states. Limitations are `one_url_per_call`, `url_inspection_quota_2000_per_day` and `inspection_reflects_last_crawl`: it is a report about the last crawl, not a live test.
+- **GSC sitemaps.** `gsc sitemaps [--sitemap-index URL]` and `gsc sitemap --path URL` map `path`, `lastSubmitted`, `lastDownloaded`, `isPending`, `isSitemapsIndex`, `type`, `errors`, `warnings` and `contents[{type,submitted,indexed}]`. GSC's `indexed` count is marked deprecated (`indexed_deprecated`, `sitemap_indexed_count_deprecated`), and child sitemap URLs of an index are reported as not exposed (`sitemap_index_children_not_exposed`) rather than guessed. Submit/delete stay `WRITE_DISABLED` because the engine signs `webmasters.readonly`.
+- **GSC query filters.** `gsc query` gains `--type`, repeatable `--filter dimension:operator:expression`, repeatable `--filter-list dimension:expr1,expr2`, `--data-state`, `--aggregation`, `--search-appearance` and `--branded`. Responses add `responseAggregationType` and the incomplete-data `metadata` (`firstIncompleteDate`/`firstIncompleteHour`) when Google returns it. Existing defaults and the 25k rows/page, 50k rows/call caps are unchanged. The richer selectors are CLI-only.
+- **Yandex events fix.** `search-urls/events/history` read an `events` list, but the API returns `indicators{APPEARED_IN_SEARCH,REMOVED_FROM_SEARCH}[{date,value}]`, so every call reported `empty_history` and dropped real data. The client now merges the appeared/removed series per date. A live window on 2026-10-02 returned 57 appeared / 0 removed. When the events endpoint resets the connection on a date window, the client retries unfiltered, filters locally and warns `client_side_date_filter`.
+- **Yandex read depth.** `yandex indexing` accepts `--date-from/--date-to` and merges the event series with the indexing HTTP series. `yandex samples --kind indexing|events [--limit] [--offset]` pages the provider sample endpoints with honest `total`/`truncated` (100 per page). `yandex sitemaps [--id] [--parent-id] [--limit] [--from]` reads sitemap lists and details (`sitemap_id`, `sitemap_url`, `last_access_date`, `errors_count`, `urls_count`, `children_count`, `sources[]`, `sitemap_type`); add/delete is not implemented. `yandex history --kind sqi|in-search|queries|query [--query-id]` reads SQI, pages-in-search, all-query and per-query series. `yandex queue [--id]` reads recrawl tasks with the provider `count`.
+- **Yandex recrawl is wired.** `yandex recrawl` plans with `--allow-write` and applies with `--confirm TOKEN`: one `POST` per URL, capped to `quota_remainder`, handling `202` (`task_id`, `quota_remainder`), `409 URL_ALREADY_ADDED` as `already_queued` and `429 QUOTA_EXCEEDED` with the remaining URLs in `not_attempted`. There is no batch endpoint.
+- **Bing read depth.** `bing pages` (`GetPageStats`), `bing traffic` (`GetRankAndTrafficStats`, daily), `bing crawl` (`GetCrawlStats`, six-month daily buckets), `bing urlinfo --url URL|domain:HOST` (`GetUrlInfo`), `bing children --url ... [--page] [--pages]` (`GetChildrenUrlInfo`, read POST, bounded to 10 pages), `bing users` (`GetSiteRoles`, read-only), `bing sites` (`GetUserSites`) and `bing joins --query|--page` (`GetQueryPageStats`, `GetPageQueryStats`, `GetQueryPageDetailStats`). The `Date(-62135596800000)` sentinel maps to `null` and is flagged `never_crawled`; `TotalChildUrlCount` is kept as a separate field.
+- **Honest empty answers.** Stats and joins add `no_rows_for_window`, `crawl` always adds `crawl_stats_six_month_window`, and lookups/lists add `provider_returned_no_rows`. A zero row count is no longer presented as "zero impressions".
+- **Organic Metrika.** New read-only `metrika` group: `pages`, `goals`, `queries`, `devices`, `countries`, `engagement` and `bytime`. The SEO collector applies `filters=ym:s:lastTrafficSource=='organic'`; `stats` and `report weekly` expose `organic_visits`/`organic_users` and keep all traffic explicit as `all_visits`/`all_users`. `metrika pages` returns organic landing pages with visits/users, bounce rate, average duration, page depth and pageviews. `metrika goals` queries the configured goal ids, optionally by `page` or `source`; an empty list is an honest warning, and more than five goals are truncated at Metrika's 20-metric cap. Sampling fields (`sample_share`, `sample_size`, `sample_space`, `data_lag`, `contains_sensitive_data`, `total_rows_rounded`) are carried into meta and limitations; only `sampled=false` is exact.
+- **CrUX and PSI depth.** `cwv audits --url ABS [--strategy mobile|desktop] [--category ...]` returns up to 100 bounded Lighthouse audits (`id`, `title`, `score`, `display_value`, description with HTML stripped, `details_type`, savings, `items_count`). `runtimeError`, CAPTCHA and redirects become warnings/limitations instead of a clean run. `cwv collect` gains repeatable `--category`. `cwv history (--url ABS | --origin ABS) [--device] [--weeks 1..40]` reads weekly CrUX p75 rows with honest gaps and truncation. `collectionPeriod.firstDate/lastDate` now drives `data_age_days`; the two-day heuristic is only a fallback with `crux_period_missing`, and `urlNormalizationDetails` produces `crux_url_normalized`.
+- **IndexNow rules.** The key must match `[A-Za-z0-9-]{8,128}` and is validated before planning. A same-host `keyLocation` directory prefix is enforced. Responses map `200 accepted`, `202 accepted_pending`, `400` format, `403 AUTH_INVALID` with the exact expected key URL, `422` host/key mismatch and `429` quota/spam. The key is never echoed.
+- **Surface and schema.** 24 top-level CLI commands (17 groups and 7 commands, adding `metrika`), 12 MCP tools (10 read-class: 7 pure read-only plus 3 local-state writers; 2 gated writes), 3 resources and 3 prompts unchanged, schema version 4 and no migration. `seo_indexing_triage` gains an optional `url` input and returns one GSC inspection; `schemas/tools.json` is regenerated for that input. GSC sitemap reads and the richer search selectors are CLI-only, so no thirteenth tool is added.
+
+Verification recorded for this release:
+
+| Check | Result |
+|---|---|
+| PyPI | `lv24-seo 0.11.0` published |
+| npm | `@lv24/seo 0.11.0` published |
+| MCP Registry | `io.github.LevapVeeskela/lv24-seo 0.11.0` published |
+| `gsc inspect` `/` | `PASS`, "Submitted and indexed", canonical match, `crawledAs: MOBILE` |
+| `gsc sitemaps` | 3 sitemaps; 3179 and 1551 submitted; one index |
+| `gsc query --filter country:equals:BLR --data-state all` | filtered rows; `metadata.firstIncompleteDate` present |
+| `yandex indexing` date window | 427 event rows; 2026-10-02 = 57 appeared / 0 removed |
+| `yandex sitemaps` / `history` / `queue` | 1 sitemap with 6532 URLs; 898 SQI points; 28 tasks |
+| `bing sites` / `users` / `urlinfo` | 1 site; 1 `Administrator`; 8380 children with sentinel dates `null` |
+| `bing pages` / `traffic` / `crawl` / `joins` | 0 rows with `no_rows_for_window`, not zero impressions |
+| `metrika pages` / `goals` / `devices` / `countries` | 4 organic landing pages; 5 goals; 3 Smartphones + 1 PC; Belarus 4 |
+| `cwv audits` / `cwv history` | 58 audits; 0 history rows with `low_traffic` + `crux_period_missing` |
+| Local gate | `ruff check`, `ruff format --check`, `mypy src`, registry `--check` and offline `pytest` green on the tagged commit |
+
+Known limits in 0.11.0:
+
+- Bing stats and joins return 0 rows for `lv24.by`, so their field semantics are covered by fixtures, not by a live non-empty response. `GetSiteMoves` is retired (live 404) and is not wired.
+- Bing `GetChildrenUrlInfo` returns 0 rows for this host even though `GetUrlInfo` reports 8380 children; the engine reports the provider answer instead of synthesising rows.
+- Yandex `indexing/samples` resets the connection provider-side for this host; it surfaces as `UPSTREAM_UNAVAILABLE`, not as empty data.
+- Yandex sitemap add/delete is not implemented; recrawl `202/409/429` handling is covered offline only (no live POST was made).
+- Metrika hides search phrases with fewer than 10 users and Google withholds keywords; goal names are not resolved (ids only).
+- CrUX has no field data for `lv24.by`, and the history API is bounded to 40 weekly periods.
+- IndexNow has no key file configured for `lv24.by`; native Bing URL submission remains the working write path. Google does not participate in IndexNow.
+- Bing Site Scan has no public API: the desktop opens the official page and the engine cannot import its report.
+
+## Desktop 0.9.0
+
+Released on 2026-11-17. It adds a read-only Diagnostics screen over engine `0.11.0`, bundles `lv24-seo 0.11.0` and raises `MIN_ENGINE_VERSION` to `0.11.0`, so an installed `0.10.x` engine is reported as incompatible. There is no new write surface.
+
+What changed:
+
+- **Read-only Diagnostics screen.** The sidebar gains **Diagnostics** (`/diagnostics`) with five tabs: Google (`gsc_inspect`, `gsc_sitemaps`), Yandex (`yandex_indexing`, `yandex_sitemaps`, `yandex_queue`), Bing (`bing_pages`, `bing_traffic`, `bing_crawl`, `bing_urlinfo`, `bing_joins`), Metrika (`metrika_pages`, `metrika_goals`, `metrika_devices`, `metrika_countries`, `metrika_engagement`, `metrika_bytime`) and Core Web Vitals (`cwv_audits`, `cwv_history`). Every command runs through the fixed `cli_run` allow-list; the screen has no write buttons, no confirm tokens and no `--allow-write` path.
+- **Google tab.** `gsc_inspect` inspects exactly one absolute URL and shows verdict, coverage state, robots/indexing state, last crawl, fetch state, Google/user canonical, `crawledAs`, referring URLs, rich-result issues and the inspection link. `gsc_sitemaps` lists submitted sitemaps with type, index flag, errors, warnings and per-content submitted counts. GSC's deprecated `indexed` count is labelled as such; child sitemap URLs of an index are not exposed.
+- **Yandex tab.** `yandex_indexing` shows appeared/removed events and indexing HTTP buckets for a date window. `yandex_sitemaps` lists sitemap ids, URL/error counts and last access. `yandex_queue` lists recrawl tasks with the provider total. A provider reset or an empty answer is shown as `client_side_date_filter` / `provider_returned_no_rows`, not as zero data.
+- **Bing tab.** `bing_pages`, `bing_traffic`, `bing_crawl`, `bing_urlinfo` and `bing_joins` expose page stats, daily clicks/impressions, six-month crawl buckets, URL index/crawl details and query/page joins. Empty stats render `no_rows_for_window`; lookups render `provider_returned_no_rows`. The `Date(-62135596800000)` sentinel is shown as "never", not 0001.
+- **Metrika tab.** `metrika_pages`, `metrika_goals`, `metrika_devices`, `metrika_countries`, `metrika_engagement` and `metrika_bytime` are organic-only. The tab shows `meta.organic_only`, the sampling fields and every limitation.
+- **Core Web Vitals tab.** `cwv_audits` lists bounded Lighthouse audits with score, display value and savings; `cwv_history` lists weekly CrUX p75 rows with collection periods. A low-traffic URL shows the explicit `low_traffic` empty state instead of a blank table.
+- **Honest report chrome.** Every tab renders the engine's `total`, `truncated`, `data_age_days` and `limitations` (or states that no limitations were reported). Provider empties are explicit states, never zeros. The panels do not auto-retry reads.
+- **Bridge hardening.** The Rust bridge adds 18 allow-listed command ids and rejects, before spawning the engine: write flags (`allowWrite`, `confirm`) and tokens on every diagnostics command; unknown `group`, `strategy`, `device` or `category` values; arguments that belong to a different command; and a `--site` override for Bing reads (the target stays `providers.bing.site`). The webview cannot pass an executable, a shell string or an arbitrary flag. Diagnostics commands are config-required and non-cancellable, like the other short reads.
+- **Engine 0.11.0 and contracts.** `MIN_ENGINE_VERSION` is `0.11.0`; an installed `0.10.x` sidecar is reported as incompatible instead of failing with `CLI_INVALID_JSON`. The bundled onedir sidecar is `lv24-seo 0.11.0`. Contracts (`config.schema.json`, CLI fixtures including `stats`) are regenerated from engine `0.11.0`. Bing URL submission, Bing sitemap submit and IndexNow keep their existing two-phase gates; GSC sitemap submit and Bing sitemap delete remain `WRITE_DISABLED`.
+
+Verification recorded for this release:
+
+| Check | Result |
+|---|---|
+| Published assets | `v0.9.0` for Windows x64, Linux x64 and macOS arm64/x64; `latest.json` and `SHA256SUMS.txt` published by the manual release workflow |
+| Local gate | `npm run typecheck`, `npm test`, `npm run build`, `npm run contract:check`, `cargo fmt --check`, `cargo clippy --all-targets -- -D warnings`, `cargo test` green on the release commit |
+| Tests | 742 Vitest tests and 163 Rust tests passed |
+| Contracts | up to date at engine `0.11.0` |
+| Sidecar pin | Windows x64 verified against the pinned SHA-256 (`db02d1b3…`, 14,478,498 bytes); Linux and macOS covered by rebuild-aware reports |
+| Release workflow | manual `Desktop build` with `engine_version=0.11.0`; requires a sidecar checksum report per shipped target |
+
+Known limits in 0.9.0:
+
+- Metrika goals are shown as totals only; the desktop does not expose the engine's optional `--dimension page|source` selector.
+- CWV history "all devices" omits the device filter instead of inventing a combined row.
+- Bing reads use `providers.bing.site`; the desktop has no `--site` override.
+- Bing Site Scan still has no public API: the Integrations card only opens the official page and cannot import a scan report.
+- An engine older than `0.11.0` is reported as incompatible. Update the engine or install the bundled sidecar.
+- The Diagnostics panels do not auto-retry; a failed read shows the engine error and a manual retry.
+- The screen is read-only by design: it adds no recrawl, sitemap or URL submission action.
 
 ## Engine 0.10.0
 
@@ -758,13 +845,13 @@ Manual-only is deliberate. A deb or rpm install is owned by the package database
 replace it; a portable ZIP has no installer to replace and may live on removable media. The desktop reports the installed bundle type and disables the in-app
 installer for those cases. It does not pretend that a manual package was updated.
 
-The Windows NSIS path has now been verified end-to-end eight times: `0.2.0 → 0.2.1`, `0.2.1 → 0.2.2`,
-`0.2.2 → 0.2.3`, `0.2.3 → 0.3.0`, `0.3.0 → 0.4.0`, `0.4.0 → 0.5.0`, `0.5.0 → 0.6.0` and `0.6.0 → 0.7.0`.
-For the eighth run, an installed `0.6.0` build updated through the Rust updater, downloaded and
-verified the signed package, installed it, relaunched, and reported **Desktop 0.7.0** with
-**Engine 0.9.0** and the engine ready; the Integrations screen shows the Bing indexing panel.
-Any `0.2.x` install with the in-app updater can jump straight to `0.7.0`; `0.1.0` has no
-updater and needs one manual install.
+The Windows NSIS path has now been verified end-to-end nine times: `0.2.0 → 0.2.1`, `0.2.1 → 0.2.2`,
+`0.2.2 → 0.2.3`, `0.2.3 → 0.3.0`, `0.3.0 → 0.4.0`, `0.4.0 → 0.5.0`, `0.5.0 → 0.6.0`, `0.6.0 → 0.7.0`
+and `0.7.0 → 0.8.0`. For the ninth run, an installed `0.7.0` build updated through the Rust updater,
+downloaded and verified the signed package, installed it, relaunched, and reported **Desktop 0.8.0**
+with **Engine 0.10.0** and the engine ready; the Bing URL submission, sitemap, crawl-issue and quota
+cards loaded. `0.8.0 → 0.9.0` is the next in-app update source. Any `0.2.x` install with the in-app
+updater can jump straight to `0.9.0`; `0.1.0` has no updater and needs one manual install.
 
 The `0.2.1 → 0.2.2` update runs the old `0.2.1` updater, which does not include the new tracked-PID
 cleanup. If a sidecar is active during that first update, retry after it exits or install `0.2.2`
@@ -778,12 +865,12 @@ approves the `desktop-release` environment; a non-owner run is skipped.
 
 | Input | Default | Meaning |
 |---|---|---|
-| `engine_version` | `0.9.0` | Exact engine bundled in the sidecar |
+| `engine_version` | `0.11.0` | Exact engine bundled in the sidecar |
 | `signed` | `false` | Request OS signing/notarization; not configured in this zero-spend repository |
 | `publish` | `false` | Create a GitHub release after every matrix build passes |
 | `tag` | Empty | `vX.Y.Z` release tag; required when `publish=true` |
 
-The default matches the `0.7.0` pin. The release gate rejects a manifest mismatch if a different version is passed.
+The default matches the `0.9.0` pin. The release gate rejects a manifest mismatch if a different version is passed.
 
 | Runner | Target | Bundles |
 |---|---|---|
@@ -798,7 +885,7 @@ days; the GitHub release is the durable distribution channel.
 ## Sidecar pin and checksums
 
 The release sidecar is a PyInstaller **onedir** tree, built on the matching host; PyInstaller does not cross-compile. The engine, Python, Pydantic, Typer and
-PyInstaller versions are pinned in `scripts/cli-checksums.json`. `0.7.0` pins engine `0.9.0` (up from `0.8.0`), Python `3.12`, Pydantic `2.14.3`, Typer `0.29.0` and PyInstaller
+PyInstaller versions are pinned in `scripts/cli-checksums.json`. `0.9.0` pins engine `0.11.0` (up from `0.10.0`), Python `3.12`, Pydantic `2.14.3`, Typer `0.29.0` and PyInstaller
 `6.22.3`.
 
 PyInstaller onedir output is not byte-reproducible. The checksum policy is therefore split:
@@ -812,7 +899,7 @@ PyInstaller onedir output is not byte-reproducible. The checksum policy is there
   shipped target: matching target name, `hashPolicy: "rebuild"`, `ok: true`, a 64-hex
   hash, a positive size and the exact engine version.
 
-For `0.9.0`, Windows x64 has a reviewed local pin; Linux and macOS were rebuilt by the release workflow
+For `0.9.0`, Windows x64 has a reviewed local pin (`db02d1b3…`, 14,478,498 bytes); Linux and macOS were rebuilt by the release workflow
 with passing rebuild-aware checksum reports, and their reviewed pins remain `null` until a local build is
 reviewed on those hosts. The `0.8.0` Windows pin did not carry over because the executable changes with
 the engine.
@@ -825,7 +912,7 @@ is not listed separately. Users who install manually verify the downloaded asset
 node scripts/verify-sidecar.mjs \
   --root src-tauri/engine \
   --target x86_64-pc-windows-msvc \
-  --engine-version 0.9.0
+  --engine-version 0.11.0
 ```
 
 ## `latest.json`, signing and publishing
@@ -857,18 +944,22 @@ uploaded manifest. A rerun reuses an existing draft, clears its assets and refus
 The desktop version must agree in `package.json`, `src-tauri/tauri.conf.json`, `src-tauri/Cargo.toml`, the Git tag and the release title. The engine pin lives
 in `scripts/cli-checksums.json`; the workflow passes `engine_version` explicitly and the release gate requires it to match the manifest.
 
-`MIN_ENGINE_VERSION` in `src-tauri/src/commands.rs` is `0.9.0` in the current source. The `0.7.0` bundle ships engine `0.9.0`,
-so the minimum matches the bundled engine and a `0.8.x` engine is reported as incompatible. The shell accepts an engine at least that new and marks an older one
+`MIN_ENGINE_VERSION` in `src-tauri/src/commands.rs` is `0.11.0` in the current source. The `0.9.0` bundle ships engine `0.11.0`,
+so the minimum matches the bundled engine and a `0.10.x` engine is reported as incompatible. The shell accepts an engine at least that new and marks an older one
 offline with a notice. A newer engine passes the gate but is not the release-tested pin. A development build may use `LV24_SEO_BIN` with another version; the UI
 labels it external and still checks the minimum. A `PATH` engine is used only when `LV24_SEO_ALLOW_PATH_ENGINE=1`.
 
 ## One-time 0.1.0 upgrade
 
-`0.1.0` has no updater, endpoint or public key. It cannot discover or install `0.7.0`. Download and install `0.7.0` manually once (NSIS installer or portable
-ZIP on Windows). After that, the `0.7.0` installation can auto-update to later releases when it uses an auto-update-capable bundle.
+`0.1.0` has no updater, endpoint or public key. It cannot discover or install `0.9.0`. Download and install `0.9.0` manually once (NSIS installer or portable
+ZIP on Windows). After that, the `0.9.0` installation can auto-update to later releases when it uses an auto-update-capable bundle.
 
 ## Earlier releases
 
+- **Engine 0.10.0** turned Bing URL submission into a gated `SubmitUrlbatch` write and added read-only
+  quota, sitemap-feed and crawl-issue views, 23 CLI commands and 12 tools.
+- **Desktop 0.8.0** added Bing URL submission and read-only sitemap, crawl-issue and quota cards,
+  bundled engine `0.10.0` and raised `MIN_ENGINE_VERSION` to `0.10.0`.
 - **Desktop 0.7.0** added the Bing indexing panel (sitemap plan/apply, IndexNow from the sitemap, Site Scan opener)
   and the per-session write secret, bundled engine `0.9.0` and raised `MIN_ENGINE_VERSION` to `0.9.0`.
 - **Engine 0.9.0** made Bing sitemap submit a gated `SubmitFeed` write, added one-click IndexNow from a bounded
@@ -931,4 +1022,4 @@ those protections system-wide.
 
 See [Security and privacy](/security/) for updater trust and [Architecture](/architecture/) for the sidecar layout.
 
-Source: `_source/engine-releases-0.9.0.md`, `_source/engine-releases-0.8.0.md`, `_source/engine-releases-0.7.0.md`, `_source/engine-releases-0.6.0.md`, `_source/engine-releases-0.5.3.md`, `_source/engine-releases-0.5.2.md`, `_source/desktop-releases-0.7.0.md`, `_source/desktop-releases-0.6.0.md`, `_source/desktop-releases-0.5.0.md`, `_source/desktop-releases-0.4.0.md`, `_source/desktop-releases-0.3.0.md`, `_source/desktop-releases-0.2.3.md`, `_source/desktop-releases-0.2.2.md`, `_source/desktop-releases-0.2.1.md`, `_source/desktop-releases-0.2.0.md`, `_source/desktop-release.md`, `_source/desktop-security.md`.
+Source: `_source/engine-releases-0.11.0.md`, `_source/engine-releases-0.10.0.md`, `_source/engine-releases-0.9.0.md`, `_source/engine-releases-0.8.0.md`, `_source/engine-releases-0.7.0.md`, `_source/engine-releases-0.6.0.md`, `_source/engine-releases-0.5.3.md`, `_source/engine-releases-0.5.2.md`, `_source/desktop-releases-0.9.0.md`, `_source/desktop-releases-0.8.0.md`, `_source/desktop-releases-0.7.0.md`, `_source/desktop-releases-0.6.0.md`, `_source/desktop-releases-0.5.0.md`, `_source/desktop-releases-0.4.0.md`, `_source/desktop-releases-0.3.0.md`, `_source/desktop-releases-0.2.3.md`, `_source/desktop-releases-0.2.2.md`, `_source/desktop-releases-0.2.1.md`, `_source/desktop-releases-0.2.0.md`, `_source/desktop-release.md`, `_source/desktop-security.md`.

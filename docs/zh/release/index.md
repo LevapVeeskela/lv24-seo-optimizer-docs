@@ -1,6 +1,6 @@
 ---
 title: 发行与更新
-description: 引擎 0.10.0 与桌面 0.8.0 发行说明、0.9.0、0.7.0、0.8.0、0.6.0、0.5.3、0.3.0 及更早版本历史、签名自动更新矩阵、发布流水线、版本固定与回滚。
+description: 引擎 0.11.0 与桌面 0.9.0 发行说明、0.10.0、0.9.0、0.8.0、0.7.0、0.6.0 及更早版本历史、签名自动更新矩阵、发布流水线、版本固定与回滚。
 ---
 
 # 发行与更新
@@ -9,10 +9,97 @@ description: 引擎 0.10.0 与桌面 0.8.0 发行说明、0.9.0、0.7.0、0.8.0�
 
 | 产品 | 版本 | 发布日期 | 说明 |
 |---|---|---|---|
-| 引擎 | `lv24-seo 0.10.0` | 2026-11-17 | Bing URL 提交、站点地图状态、抓取问题和配额视图、23 个 CLI 命令和 12 个 MCP 工具 |
-| 桌面 | `0.8.0` | 2026-11-17 | Bing URL 提交与只读站点地图、问题和配额卡片、捆绑引擎 0.10.0 和 `MIN_ENGINE_VERSION` 0.10.0 |
+| 引擎 | `lv24-seo 0.11.0` | 2026-11-17 | 全平台读取深度：GSC 检查与站点地图、Yandex 事件/站点地图/重新抓取、Bing 页面/流量/抓取/URL/关联、自然搜索 Metrika、CWV 审计与历史；24 个 CLI 命令和 12 个 MCP 工具 |
+| 桌面 | `0.9.0` | 2026-11-17 | 只读 Diagnostics 屏幕，五个标签页和 18 个白名单命令，捆绑引擎 0.11.0 和 `MIN_ENGINE_VERSION` 0.11.0 |
 
-桌面版本与引擎版本相互独立，但桌面固定精确引擎，并拒绝低于最低版本的引擎。`0.8.0` 捆绑 `0.10.0` 并要求至少 `0.10.0`，因此已安装的 `0.9.x` 引擎会被报告为不兼容。
+桌面版本与引擎版本相互独立，但桌面固定精确引擎，并拒绝低于最低版本的引擎。`0.9.0` 捆绑 `0.11.0` 并要求至少 `0.11.0`，因此已安装的 `0.10.x` 引擎会被报告为不兼容。
+
+## 引擎 0.11.0
+
+2026-11-17 发布。每个受支持的平台都获得此前仅存在于适配器、部分实现或缺失的读取 API。
+CLI 现在有 24 个顶层命令；MCP 接口仍为 12 个工具，SQLite 模式仍为版本 4。
+
+变更内容：
+
+- **GSC URL Inspection。** `gsc inspect --url ABS [--language en-US] [--config ABS] [--json]` 端到端接通 URL Inspection。结果映射完整的 `indexStatusResult`（`verdict`、`coverageState`、`robotsTxtState`、`indexingState`、`lastCrawlTime`、`pageFetchState`、`googleCanonical`、`userCanonical`、`crawledAs`、`sitemap[]`、`referringUrls[]`）、`richResultsResult`（`verdict`、`detectedItems[].items[].issues[]`）和 `inspectionResultLink`。`--language` 本地化人类可读状态。限制为 `one_url_per_call`、`url_inspection_quota_2000_per_day`、`inspection_reflects_last_crawl`：这是关于最后一次抓取的报告，不是实时测试。
+- **GSC 站点地图。** `gsc sitemaps [--sitemap-index URL]` 和 `gsc sitemap --path URL` 映射 `path`、`lastSubmitted`、`lastDownloaded`、`isPending`、`isSitemapsIndex`、`type`、`errors`、`warnings` 和 `contents[{type,submitted,indexed}]`。GSC 的 `indexed` 计数标记为已弃用（`indexed_deprecated`、`sitemap_indexed_count_deprecated`），索引的子站点地图 URL 报告为未暴露（`sitemap_index_children_not_exposed`），而不是猜测。提交/删除仍为 `WRITE_DISABLED`，因为引擎只签署 `webmasters.readonly`。
+- **GSC 查询过滤器。** `gsc query` 新增 `--type`、可重复的 `--filter dimension:operator:expression`、可重复的 `--filter-list dimension:expr1,expr2`、`--data-state`、`--aggregation`、`--search-appearance` 和 `--branded`。当 Google 返回时，响应增加 `responseAggregationType` 和不完整数据的 `metadata`（`firstIncompleteDate`/`firstIncompleteHour`）。现有默认值和每页 25k 行、每次调用 50k 行的上限不变。更丰富的选择器仅限 CLI。
+- **Yandex 事件修复。** `search-urls/events/history` 读取的是 `events` 列表，但 API 返回 `indicators{APPEARED_IN_SEARCH,REMOVED_FROM_SEARCH}[{date,value}]`，因此每次调用都报告 `empty_history` 并丢弃真实数据。客户端现在按日期合并 appeared/removed 序列。2026-10-02 的实时窗口返回 57 appeared / 0 removed。当事件端点在日期窗口上重置连接时，客户端不带窗口重试，在本地过滤并警告 `client_side_date_filter`。
+- **Yandex 读取深度。** `yandex indexing` 接受 `--date-from/--date-to`，并把事件序列与索引 HTTP 序列合并。`yandex samples --kind indexing|events [--limit] [--offset]` 分页读取提供商样本端点，诚实报告 `total`/`truncated`（每页 100 条）。`yandex sitemaps [--id] [--parent-id] [--limit] [--from]` 读取站点地图列表和详情（`sitemap_id`、`sitemap_url`、`last_access_date`、`errors_count`、`urls_count`、`children_count`、`sources[]`、`sitemap_type`）；添加/删除未实现。`yandex history --kind sqi|in-search|queries|query [--query-id]` 读取 SQI、搜索中页面、全部查询和单查询序列。`yandex queue [--id]` 读取重新抓取任务及提供商 `count`。
+- **Yandex 重新抓取已接通。** `yandex recrawl` 用 `--allow-write` 规划，用 `--confirm TOKEN` 应用：每个 URL 一次 `POST`，受 `quota_remainder` 限制，处理 `202`（`task_id`、`quota_remainder`）、`409 URL_ALREADY_ADDED` 为 `already_queued`，以及 `429 QUOTA_EXCEEDED`，其余 URL 放在 `not_attempted`。没有批量端点。
+- **Bing 读取深度。** `bing pages`（`GetPageStats`）、`bing traffic`（`GetRankAndTrafficStats`，每日）、`bing crawl`（`GetCrawlStats`，六个月每日分桶）、`bing urlinfo --url URL|domain:HOST`（`GetUrlInfo`）、`bing children --url ... [--page] [--pages]`（`GetChildrenUrlInfo`，读取 POST，最多 10 页）、`bing users`（`GetSiteRoles`，只读）、`bing sites`（`GetUserSites`）和 `bing joins --query|--page`（`GetQueryPageStats`、`GetPageQueryStats`、`GetQueryPageDetailStats`）。`Date(-62135596800000)` 哨兵映射为 `null` 并标记 `never_crawled`；`TotalChildUrlCount` 作为单独字段保留。
+- **诚实的空答案。** 统计和关联增加 `no_rows_for_window`，`crawl` 始终增加 `crawl_stats_six_month_window`，查找/列表增加 `provider_returned_no_rows`。零行不再被呈现为“零展示”。
+- **自然搜索 Metrika。** 新增只读 `metrika` 组：`pages`、`goals`、`queries`、`devices`、`countries`、`engagement` 和 `bytime`。SEO 采集器应用 `filters=ym:s:lastTrafficSource=='organic'`；`stats` 和 `report weekly` 暴露 `organic_visits`/`organic_users`，并把全部流量明确保留为 `all_visits`/`all_users`。`metrika pages` 返回自然搜索落地页及访问/用户、跳出率、平均时长、页面深度和浏览量。`metrika goals` 查询已配置的目标 id，可按 `page` 或 `source` 分组；空列表是诚实警告，超过五个目标会按 Metrika 的 20 指标上限截断。抽样字段（`sample_share`、`sample_size`、`sample_space`、`data_lag`、`contains_sensitive_data`、`total_rows_rounded`）带入 meta 和 limitations；只有 `sampled=false` 才算精确。
+- **CrUX 与 PSI 深度。** `cwv audits --url ABS [--strategy mobile|desktop] [--category ...]` 返回最多 100 条有界 Lighthouse 审计（`id`、`title`、`score`、`display_value`、去除 HTML 的描述、`details_type`、可节省量、`items_count`）。`runtimeError`、CAPTCHA 和重定向变成警告/限制，而不是干净运行。`cwv collect` 新增可重复的 `--category`。`cwv history (--url ABS | --origin ABS) [--device] [--weeks 1..40]` 读取每周 CrUX p75 行，诚实报告缺口和截断。`collectionPeriod.firstDate/lastDate` 现在决定 `data_age_days`；两天启发式仅作为 `crux_period_missing` 的回退，`urlNormalizationDetails` 产生 `crux_url_normalized`。
+- **IndexNow 规则。** 密钥必须匹配 `[A-Za-z0-9-]{8,128}`，并在规划前验证。同主机 `keyLocation` 目录前缀会被强制执行。响应映射 `200 accepted`、`202 accepted_pending`、`400` 格式、`403 AUTH_INVALID`（带精确的预期密钥 URL）、`422` 主机/密钥不匹配和 `429` 配额/垃圾提交。密钥绝不被回显。
+- **接口与模式。** 24 个顶层 CLI 命令（17 个组和 7 个命令，新增 `metrika`）、12 个 MCP 工具（10 个读取类：7 个纯只读加 3 个本地状态写入者；2 个受限写入）、3 个资源和 3 个提示不变，模式版本 4 且无迁移。`seo_indexing_triage` 增加可选 `url` 输入并返回一次 GSC 检查；`schemas/tools.json` 因该输入重新生成。GSC 站点地图读取和更丰富的搜索选择器仅限 CLI，因此不增加第 13 个工具。
+
+本次发行记录的验证：
+
+| 检查 | 结果 |
+|---|---|
+| PyPI | `lv24-seo 0.11.0` 已发布 |
+| npm | `@lv24/seo 0.11.0` 已发布 |
+| MCP Registry | `io.github.LevapVeeskela/lv24-seo 0.11.0` 已发布 |
+| `gsc inspect` `/` | `PASS`，“Submitted and indexed”，规范 URL 匹配，`crawledAs: MOBILE` |
+| `gsc sitemaps` | 3 个站点地图；3179 和 1551 已提交；一个是索引 |
+| `gsc query --filter country:equals:BLR --data-state all` | 返回过滤行；存在 `metadata.firstIncompleteDate` |
+| `yandex indexing` 日期窗口 | 427 行事件；2026-10-02 = 57 appeared / 0 removed |
+| `yandex sitemaps` / `history` / `queue` | 1 个站点地图含 6532 个 URL；898 个 SQI 点；28 个任务 |
+| `bing sites` / `users` / `urlinfo` | 1 个站点；1 个 `Administrator`；8380 个子 URL，哨兵日期为 `null` |
+| `bing pages` / `traffic` / `crawl` / `joins` | 0 行，带 `no_rows_for_window`，不是零展示 |
+| `metrika pages` / `goals` / `devices` / `countries` | 4 个自然搜索落地页；5 个目标；3 个 Smartphones + 1 个 PC；白俄罗斯 4 |
+| `cwv audits` / `cwv history` | 58 条审计；0 行历史，带 `low_traffic` + `crux_period_missing` |
+| 本地门禁 | `ruff check`、`ruff format --check`、`mypy src`、registry `--check` 和离线 `pytest` 在标记提交上全绿 |
+
+0.11.0 的已知限制：
+
+- Bing 统计和关联对 `lv24.by` 返回 0 行，因此其字段语义由夹具而非实时非空响应覆盖。`GetSiteMoves` 已退役（实时 404），未接通。
+- 即使 `GetUrlInfo` 报告 8380 个子 URL，Bing `GetChildrenUrlInfo` 对该主机仍返回 0 行；引擎报告提供商答案，而不是合成行。
+- Yandex `indexing/samples` 对该主机在提供商侧重置连接；它表现为 `UPSTREAM_UNAVAILABLE`，而不是空数据。
+- Yandex 站点地图添加/删除未实现；重新抓取的 `202/409/429` 处理仅离线覆盖（未发出实时 POST）。
+- Metrika 隐藏少于 10 个用户的搜索词，Google 保留关键词；目标名称不解析（仅 id）。
+- CrUX 没有 `lv24.by` 的字段数据，历史 API 上限为 40 个周期。
+- `lv24.by` 未配置 IndexNow 密钥文件；原生 Bing URL 提交仍是可用的写入路径。Google 不参与 IndexNow。
+- Bing Site Scan 没有公开 API：桌面只打开官方页面，引擎无法导入其报告。
+
+## 桌面 0.9.0
+
+2026-11-17 发布。它在引擎 `0.11.0` 上增加只读 Diagnostics 屏幕，捆绑 `lv24-seo 0.11.0`，并把
+`MIN_ENGINE_VERSION` 提高到 `0.11.0`，因此已安装的 `0.10.x` 引擎会被报告为不兼容。没有新的写入接口。
+
+变更内容：
+
+- **只读 Diagnostics 屏幕。** 侧边栏新增 **Diagnostics**（`/diagnostics`），包含五个标签页：Google（`gsc_inspect`、`gsc_sitemaps`）、Yandex（`yandex_indexing`、`yandex_sitemaps`、`yandex_queue`）、Bing（`bing_pages`、`bing_traffic`、`bing_crawl`、`bing_urlinfo`、`bing_joins`）、Metrika（`metrika_pages`、`metrika_goals`、`metrika_devices`、`metrika_countries`、`metrika_engagement`、`metrika_bytime`）和 Core Web Vitals（`cwv_audits`、`cwv_history`）。每个命令都经过固定的 `cli_run` 白名单；屏幕没有写入按钮、确认令牌或 `--allow-write` 路径。
+- **Google 标签页。** `gsc_inspect` 检查恰好一个绝对 URL，显示判定、覆盖状态、robots/索引状态、最后抓取、抓取状态、Google/用户规范 URL、`crawledAs`、引用 URL、富媒体问题及检查链接。`gsc_sitemaps` 列出已提交的站点地图及类型、索引标志、错误、警告和各内容提交数。GSC 已弃用的 `indexed` 计数会标注；索引的子站点地图 URL 不暴露。
+- **Yandex 标签页。** `yandex_indexing` 显示日期窗口内的 appeared/removed 事件和索引 HTTP 分桶。`yandex_sitemaps` 列出站点地图 id、URL/错误数和最后访问。`yandex_queue` 列出重新抓取任务及提供商总数。提供商重置或空答案显示为 `client_side_date_filter` / `provider_returned_no_rows`，而不是零数据。
+- **Bing 标签页。** `bing_pages`、`bing_traffic`、`bing_crawl`、`bing_urlinfo` 和 `bing_joins` 展示页面统计、每日点击/展示、六个月抓取分桶、URL 索引/抓取详情以及查询/页面关联。空统计渲染 `no_rows_for_window`；查找渲染 `provider_returned_no_rows`。`Date(-62135596800000)` 哨兵显示为“never”，而不是 0001。
+- **Metrika 标签页。** `metrika_pages`、`metrika_goals`、`metrika_devices`、`metrika_countries`、`metrika_engagement` 和 `metrika_bytime` 仅限自然搜索。标签页显示 `meta.organic_only`、抽样字段和所有限制。
+- **Core Web Vitals 标签页。** `cwv_audits` 列出有界 Lighthouse 审计及评分、显示值和可节省量；`cwv_history` 列出带收集周期的每周 CrUX p75 行。低流量 URL 显示明确的 `low_traffic` 空状态，而不是空白表格。
+- **诚实的报告外观。** 每个标签页都渲染引擎的 `total`、`truncated`、`data_age_days` 和 `limitations`（或说明未报告限制）。提供商空答案是明确状态，绝不是零。面板不会自动重试读取。
+- **桥接加固。** Rust 桥接增加 18 个白名单命令 id，并在启动引擎前拒绝：每个诊断命令上的写入标志（`allowWrite`、`confirm`）和令牌；未知的 `group`、`strategy`、`device` 或 `category` 值；属于其他命令的参数；以及 Bing 读取的 `--site` 覆盖（目标仍为 `providers.bing.site`）。Webview 无法传递可执行文件、shell 字符串或任意标志。诊断命令需要配置且不可取消，与其他短读取相同。
+- **引擎 0.11.0 与契约。** `MIN_ENGINE_VERSION` 为 `0.11.0`；已安装的 `0.10.x` sidecar 会被报告为不兼容，而不是以 `CLI_INVALID_JSON` 失败。捆绑的 onedir sidecar 为 `lv24-seo 0.11.0`。契约（`config.schema.json`、包括 `stats` 的 CLI 夹具）从引擎 `0.11.0` 重新生成。Bing URL 提交、Bing 站点地图提交和 IndexNow 保留现有两阶段门控；GSC 站点地图提交和 Bing 站点地图删除仍为 `WRITE_DISABLED`。
+
+本次发行记录的验证：
+
+| 检查 | 结果 |
+|---|---|
+| 已发布资产 | `v0.9.0` 覆盖 Windows x64、Linux x64 和 macOS arm64/x64；`latest.json` 和 `SHA256SUMS.txt` 由手动发布 workflow 发布 |
+| 本地门禁 | `npm run typecheck`、`npm test`、`npm run build`、`npm run contract:check`、`cargo fmt --check`、`cargo clippy --all-targets -- -D warnings`、`cargo test` 在发布提交上全绿 |
+| 测试 | 742 个 Vitest 测试和 163 个 Rust 测试通过 |
+| 契约 | 与引擎 `0.11.0` 一致 |
+| Sidecar 固定 | Windows x64 通过固定 SHA-256 验证（`db02d1b3…`，14,478,498 字节）；Linux 和 macOS 由 rebuild-aware 报告覆盖 |
+| 发布 workflow | 手动 `Desktop build`，`engine_version=0.11.0`；要求每个目标都有 sidecar 校验和报告 |
+
+0.9.0 的已知限制：
+
+- Metrika 目标仅显示为总计；桌面不暴露引擎可选的 `--dimension page|source` 选择器。
+- CWV 历史“all devices”省略设备过滤，而不是发明合并行。
+- Bing 读取使用 `providers.bing.site`；桌面没有 `--site` 覆盖。
+- Bing Site Scan 仍无公开 API：Integrations 卡片只打开官方页面，无法导入扫描报告。
+- 低于 `0.11.0` 的引擎会被报告为不兼容。请更新引擎或安装捆绑 sidecar。
+- Diagnostics 面板不会自动重试；读取失败会显示引擎错误和手动重试。
+- 该屏幕设计为只读：不增加重新抓取、站点地图或 URL 提交操作。
 
 ## 引擎 0.10.0
 
@@ -595,10 +682,12 @@ PID**。不会按映像名称匹配，因此另一个已安装副本、便携构
 portable ZIP 没有可替换的安装器，且可能位于可移动介质上。桌面端报告已安装的包类型，并对这些
 情况禁用应用内安装器。它不会假装手动包已被更新。
 
-Windows NSIS 路径现已完成八次端到端验证：`0.2.0 → 0.2.1`、`0.2.1 → 0.2.2`、
-`0.2.2 → 0.2.3`、`0.2.3 → 0.3.0`、`0.3.0 → 0.4.0`、`0.4.0 → 0.5.0`、`0.5.0 → 0.6.0` 和 `0.6.0 → 0.7.0`。第八次运行中，已安装的
-`0.6.0` 通过 Rust 更新器升级，下载并验证已签名包，安装并重启后报告 **Desktop 0.7.0**、**Engine 0.9.0** 且引擎就绪；
-Integrations 屏幕显示 Bing 索引面板。任何带应用内更新器的 `0.2.x` 安装都可直接升级到 `0.7.0`；`0.1.0` 没有更新器，需要一次手动安装。
+Windows NSIS 路径现已完成九次端到端验证：`0.2.0 → 0.2.1`、`0.2.1 → 0.2.2`、
+`0.2.2 → 0.2.3`、`0.2.3 → 0.3.0`、`0.3.0 → 0.4.0`、`0.4.0 → 0.5.0`、`0.5.0 → 0.6.0`、`0.6.0 → 0.7.0`
+和 `0.7.0 → 0.8.0`。第九次运行中，已安装的 `0.7.0` 通过 Rust 更新器升级，下载并验证已签名包，安装并重启后
+报告 **Desktop 0.8.0**、**Engine 0.10.0** 且引擎就绪；Bing URL 提交、站点地图、抓取问题和配额卡片已加载。
+`0.8.0 → 0.9.0` 是下一个应用内更新来源。任何带应用内更新器的 `0.2.x` 安装都可直接升级到 `0.9.0`；
+`0.1.0` 没有更新器，需要一次手动安装。
 
 `0.2.1 → 0.2.2` 更新由旧的 `0.2.1` 更新器执行，其中没有新的受跟踪 PID 清理。如果首次更新期间
 有 sidecar 正在运行，请在其退出后重试，或手动安装 `0.2.2`。`0.2.2 → 0.2.3` 及后续更新使用受跟踪 PID
@@ -611,7 +700,7 @@ Integrations 屏幕显示 Bing 索引面板。任何带应用内更新器的 `0.
 
 | 输入 | 默认值 | 含义 |
 |---|---|---|
-| `engine_version` | `0.9.0` | sidecar 中捆绑的精确引擎版本 |
+| `engine_version` | `0.11.0` | sidecar 中捆绑的精确引擎版本 |
 | `signed` | `false` | 请求操作系统签名/公证；此零支出仓库未配置 |
 | `publish` | `false` | 所有矩阵构建通过后创建 GitHub release |
 | `tag` | 空 | `vX.Y.Z` 发布标签；`publish=true` 时必填 |
@@ -631,8 +720,8 @@ Integrations 屏幕显示 Bing 索引面板。任何带应用内更新器的 `0.
 ## Sidecar 固定与校验和
 
 发布 sidecar 是 PyInstaller **onedir** 树，在匹配的主机上构建；PyInstaller 不交叉编译。引擎、
-Python、Pydantic、Typer 和 PyInstaller 版本固定在 `scripts/cli-checksums.json`。`0.7.0` 固定
-引擎 `0.9.0`（高于 `0.8.0`）、Python `3.12`、Pydantic `2.14.3`、Typer `0.29.0` 和 PyInstaller `6.22.3`。
+Python、Pydantic、Typer 和 PyInstaller 版本固定在 `scripts/cli-checksums.json`。`0.9.0` 固定
+引擎 `0.11.0`（高于 `0.10.0`）、Python `3.12`、Pydantic `2.14.3`、Typer `0.29.0` 和 PyInstaller `6.22.3`。
 
 PyInstaller onedir 输出不是字节可复现的。因此校验和政策分为三部分：
 
@@ -652,7 +741,7 @@ rebuild-aware 报告，其已审查固定值仍为 `null`，直到在这些主�
 node scripts/verify-sidecar.mjs \
   --root src-tauri/engine \
   --target x86_64-pc-windows-msvc \
-  --engine-version 0.9.0
+  --engine-version 0.11.0
 ```
 
 ## `latest.json`、签名与发布
@@ -684,20 +773,22 @@ node scripts/verify-sidecar.mjs \
 和发布标题中一致。引擎固定值位于 `scripts/cli-checksums.json`；workflow 显式传入
 `engine_version`，发布门控要求它与清单一致。
 
-当前源码中 `src-tauri/src/commands.rs` 的 `MIN_ENGINE_VERSION` 为 `0.9.0`。`0.7.0` 捆绑引擎
-`0.9.0`，因此最低版本与捆绑引擎一致，`0.8.x` 引擎会被视为不兼容。外壳接受不低于该
+当前源码中 `src-tauri/src/commands.rs` 的 `MIN_ENGINE_VERSION` 为 `0.11.0`。`0.9.0` 捆绑引擎
+`0.11.0`，因此最低版本与捆绑引擎一致，`0.10.x` 引擎会被视为不兼容。外壳接受不低于该
 版本的引擎，并把更旧版本标记为离线并显示通知。更新的引擎会通过门控，但不是发布测试过的固定
 版本。开发构建可通过 `LV24_SEO_BIN` 使用其他版本；UI 会将其标记为外部并仍检查最低版本。只有
 设置 `LV24_SEO_ALLOW_PATH_ENGINE=1` 时才使用 `PATH` 中的引擎。
 
 ## 从 0.1.0 一次性升级
 
-`0.1.0` 没有更新器、端点和公钥。它无法发现或安装 `0.7.0`。请手动下载并安装一次 `0.7.0`
-（Windows 上的 NSIS 安装器或便携 ZIP）。之后，`0.7.0` 安装在使用支持自动更新的包类型时，
+`0.1.0` 没有更新器、端点和公钥。它无法发现或安装 `0.9.0`。请手动下载并安装一次 `0.9.0`
+（Windows 上的 NSIS 安装器或便携 ZIP）。之后，`0.9.0` 安装在使用支持自动更新的包类型时，
 可以自动更新到后续版本。
 
 ## 更早的版本
 
+- **引擎 0.10.0** 把 Bing URL 提交变成受限的 `SubmitUrlbatch` 写入，并增加只读配额、站点地图源和抓取问题视图、23 个 CLI 命令和 12 个工具。
+- **桌面 0.8.0** 增加了 Bing URL 提交和只读站点地图、抓取问题和配额卡片，捆绑引擎 `0.10.0`，并把 `MIN_ENGINE_VERSION` 提高到 `0.10.0`。
 - **桌面 0.7.0** 增加了 Bing 索引面板（站点地图计划/应用、从站点地图运行 IndexNow、Site Scan 打开器）和每会话写入密钥，捆绑引擎 `0.9.0`，并把 `MIN_ENGINE_VERSION` 提高到 `0.9.0`。
 - **引擎 0.9.0** 把 Bing 站点地图提交变成受限的 `SubmitFeed` 写入，增加从有界站点地图一键运行 IndexNow 和 MCP 可选 `provider` 输入，同时保留 22 个 CLI 命令和 12 个工具。
 - **桌面 0.5.0** 增加了恢复流程、经确认的计划任务安装、Portfolio 页面和 CWV 卡片，捆绑引擎 `0.7.0`，并把 `MIN_ENGINE_VERSION` 提高到 `0.7.0`。
@@ -751,4 +842,4 @@ sha256sum -c SHA256SUMS.txt --ignore-missing
 
 更新信任见[安全与隐私](/zh/security/)，sidecar 布局见[架构](/zh/architecture/)。
 
-Source: `_source/engine-releases-0.9.0.md`, `_source/engine-releases-0.8.0.md`, `_source/engine-releases-0.7.0.md`, `_source/engine-releases-0.6.0.md`, `_source/engine-releases-0.5.3.md`, `_source/engine-releases-0.5.2.md`, `_source/desktop-releases-0.7.0.md`, `_source/desktop-releases-0.6.0.md`, `_source/desktop-releases-0.5.0.md`, `_source/desktop-releases-0.4.0.md`, `_source/desktop-releases-0.3.0.md`, `_source/desktop-releases-0.2.3.md`, `_source/desktop-releases-0.2.2.md`, `_source/desktop-releases-0.2.1.md`, `_source/desktop-releases-0.2.0.md`, `_source/desktop-release.md`, `_source/desktop-security.md`.
+Source: `_source/engine-releases-0.11.0.md`, `_source/engine-releases-0.10.0.md`, `_source/engine-releases-0.9.0.md`, `_source/engine-releases-0.8.0.md`, `_source/engine-releases-0.7.0.md`, `_source/engine-releases-0.6.0.md`, `_source/engine-releases-0.5.3.md`, `_source/engine-releases-0.5.2.md`, `_source/desktop-releases-0.9.0.md`, `_source/desktop-releases-0.8.0.md`, `_source/desktop-releases-0.7.0.md`, `_source/desktop-releases-0.6.0.md`, `_source/desktop-releases-0.5.0.md`, `_source/desktop-releases-0.4.0.md`, `_source/desktop-releases-0.3.0.md`, `_source/desktop-releases-0.2.3.md`, `_source/desktop-releases-0.2.2.md`, `_source/desktop-releases-0.2.1.md`, `_source/desktop-releases-0.2.0.md`, `_source/desktop-release.md`, `_source/desktop-security.md`.

@@ -82,15 +82,15 @@ GSC 也可以使用服务账号而不是粘贴 OAuth 令牌。把 `providers.gsc
 
 ## 桌面安装矩阵
 
-桌面端 `0.8.0` 是当前版本，内置 `lv24-seo 0.10.0`；它要求引擎 `0.10.0` 或更新。从项目的 Releases 页面下载资源文件；`SHA256SUMS.txt` 覆盖所有已发布资源。
+桌面端 `0.9.0` 是当前版本，内置 `lv24-seo 0.11.0`；它要求引擎 `0.11.0` 或更新。从项目的 Releases 页面下载资源文件；`SHA256SUMS.txt` 覆盖所有已发布资源。
 
 | 平台 | 文件 | 自动更新 |
 |---|---|---|
-| Windows 10/11 x64 | NSIS `LV24.SEO.Optimizer_0.8.0_x64-setup.exe`（+ `.sig`）、便携包 `LV24-SEO-Optimizer_0.8.0_x64-portable.zip`（+ `.zip.sha256`） | 仅 NSIS；便携包手动更新 |
-| Linux x64 | `LV24.SEO.Optimizer_0.8.0_amd64.AppImage`（+ `.AppImage.sig`）、`LV24.SEO.Optimizer_0.8.0_amd64.deb`、`LV24.SEO.Optimizer-0.8.0-1.x86_64.rpm` | 仅 AppImage；deb/rpm 手动更新 |
-| macOS 13+ arm64/x64 | 首次安装用 `LV24.SEO.Optimizer_0.8.0_aarch64.dmg` / `LV24.SEO.Optimizer_0.8.0_x64.dmg`，更新用 `LV24.SEO.Optimizer_0.8.0_aarch64.app.tar.gz` / `LV24.SEO.Optimizer_0.8.0_x64.app.tar.gz`（+ `.sig`） | 仅 `.app`；DMG 用于首次安装 |
+| Windows 10/11 x64 | NSIS `LV24.SEO.Optimizer_0.9.0_x64-setup.exe`（+ `.sig`）、便携包 `LV24-SEO-Optimizer_0.9.0_x64-portable.zip`（+ `.zip.sha256`） | 仅 NSIS；便携包手动更新 |
+| Linux x64 | `LV24.SEO.Optimizer_0.9.0_amd64.AppImage`（+ `.AppImage.sig`）、`LV24.SEO.Optimizer_0.9.0_amd64.deb`、`LV24.SEO.Optimizer-0.9.0-1.x86_64.rpm` | 仅 AppImage；deb/rpm 手动更新 |
+| macOS 13+ arm64/x64 | 首次安装用 `LV24.SEO.Optimizer_0.9.0_aarch64.dmg` / `LV24.SEO.Optimizer_0.9.0_x64.dmg`，更新用 `LV24.SEO.Optimizer_0.9.0_aarch64.app.tar.gz` / `LV24.SEO.Optimizer_0.9.0_x64.app.tar.gz`（+ `.sig`） | 仅 `.app`；DMG 用于首次安装 |
 
-引擎 `0.10.0` 增加 `bing` 组：通过 `SubmitUrlbatch` 每批 500 个 URL 的原生 `bing submit`，以及只读的 `bing quota`、`bing sitemaps` 和 `bing issues`。它保留 `0.9.0` 的 Bing 站点地图 `SubmitFeed` 路径和一键 `indexnow submit --from-sitemap`；限制见[发行说明](/zh/release/)。
+引擎 `0.11.0` 增加全平台读取深度：GSC URL Inspection 和站点地图、Yandex 事件/站点地图/历史/队列和受限重新抓取、Bing 页面/流量/抓取/URL/关联读取、自然搜索 `metrika` 组、CrUX 历史和 PSI 审计，以及更严格的 IndexNow 密钥规则。桌面端 `0.9.0` 在只读 Diagnostics 屏幕中展示这些读取；限制见[发行说明](/zh/release/)。
 
 ### Windows
 
@@ -115,7 +115,7 @@ Apple 芯片使用 `aarch64` DMG，Intel 使用 `x64` DMG。打开 DMG，将 **L
 
 ### 从桌面 0.1.0 升级
 
-`0.1.0` 是仅限 Windows 的预览，没有更新器、端点或公钥。请手动安装一次 `0.8.0`（NSIS 安装程序或便携 ZIP）。从 `0.2.0` 起，只有 Windows NSIS、macOS `.app` 和 Linux AppImage 可以自动更新。
+`0.1.0` 是仅限 Windows 的预览，没有更新器、端点或公钥。请手动安装一次 `0.9.0`（NSIS 安装程序或便携 ZIP）。从 `0.2.0` 起，只有 Windows NSIS、macOS `.app` 和 Linux AppImage 可以自动更新。
 
 ## 未签名构建
 
@@ -146,4 +146,4 @@ pip uninstall lv24-seo
 - [配置参考](/zh/reference/config/) — 所有 `seo.toml` 键。
 - [安全与隐私](/zh/security/) — token 存储和写操作门控。
 
-Source: `_source/engine-README.md`, `_source/engine-cli.md`, `_source/engine-config.md`, `_source/desktop-README.md`, `_source/desktop-releases-0.8.0.md`, `_source/desktop-releases-0.7.0.md`, `_source/desktop-releases-0.6.0.md`, `_source/desktop-releases-0.5.0.md`, `_source/desktop-releases-0.4.0.md`, `_source/desktop-releases-0.3.0.md`, `_source/desktop-releases-0.2.3.md`, `_source/desktop-releases-0.2.2.md`, `_source/desktop-releases-0.2.0.md`.
+Source: `_source/engine-README.md`, `_source/engine-cli.md`, `_source/engine-config.md`, `_source/desktop-README.md`, `_source/desktop-releases-0.9.0.md`, `_source/desktop-releases-0.8.0.md`, `_source/desktop-releases-0.7.0.md`, `_source/desktop-releases-0.6.0.md`, `_source/desktop-releases-0.5.0.md`, `_source/desktop-releases-0.4.0.md`, `_source/desktop-releases-0.3.0.md`, `_source/desktop-releases-0.2.3.md`, `_source/desktop-releases-0.2.2.md`, `_source/desktop-releases-0.2.0.md`.

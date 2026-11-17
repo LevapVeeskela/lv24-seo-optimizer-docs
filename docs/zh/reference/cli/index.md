@@ -24,13 +24,13 @@ description: lv24-seo 命令行的命令、全局参数、JSON 信封、退出�
 使用 `--json` 时，命令只输出一个 JSON 文档，不会输出其他内容：
 
 ```json
-{ "ok": true, "data": {}, "meta": { "version": "0.10.0", "duration_ms": 812 }, "warnings": [] }
+{ "ok": true, "data": {}, "meta": { "version": "0.11.0", "duration_ms": 812 }, "warnings": [] }
 ```
 
 失败的命令使用相同结构，但 `ok: false`，并用 `error` 对象代替 `data`：
 
 ```json
-{ "ok": false, "error": { "code": "AUTH_REQUIRED", "message": "Google Search Console token is missing", "retryable": false, "next_action": "lv24-seo auth login --provider gsc" }, "meta": { "version": "0.10.0" }, "warnings": ["gsc: token missing"] }
+{ "ok": false, "error": { "code": "AUTH_REQUIRED", "message": "Google Search Console token is missing", "retryable": false, "next_action": "lv24-seo auth login --provider gsc" }, "meta": { "version": "0.11.0" }, "warnings": ["gsc: token missing"] }
 ```
 
 - `data` 因命令而异。`meta` 始终包含 `version`，通常还会加入 `duration_ms`、`truncated`、
@@ -57,7 +57,10 @@ description: lv24-seo 命令行的命令、全局参数、JSON 信封、退出�
 ### `--strict` 与退出码 5
 
 `--strict` 把截断变成 CI 闸门。它适用于 `stats`、`gsc query`、`yandex queries`、`yandex indexing`、
-`crawl`、`report weekly` 和 `report diff`：
+`yandex samples`、`yandex sitemaps`、`yandex history`、`yandex queue`、七个 `metrika` 读取、
+`bing pages`、`bing traffic`、`bing crawl`、`bing urlinfo`、`bing children`、`bing users`、
+`bing sites`、`bing joins`、`bing quota`、`bing sitemaps`、`bing issues`、`crawl`、`report weekly`
+和 `report diff`：
 
 ```bash
 lv24-seo gsc query --start 2026-11-01 --end 2026-11-07 --strict --json
@@ -146,13 +149,14 @@ Bing 站点地图提交、Bing URL 提交和 IndexNow 会真正写入。Bing URL
 | Start | `version`, `doctor`, `init`, `properties`, `stats` | 本地文件和环境；`stats` 只读取提供方 KPI，不写入。 |
 | Authentication | `auth status`, `auth set`, `auth login`, `auth logout` | 本地密钥存储；`login` 只打印说明。 |
 | Configuration | `config show` | 有效配置，凭据已掩码。 |
-| Google Search Console | `gsc query` | 只读搜索分析。 |
+| Google Search Console | `gsc query`, `gsc inspect`, `gsc sitemaps`, `gsc sitemap` | 带过滤的搜索分析、URL Inspection 和站点地图读取，均只读。 |
 | Sitemap | `sitemap submit` | 受控写入；Bing `SubmitFeed` 已接通，GSC 提交仍返回 `WRITE_DISABLED`。 |
-| Yandex Webmaster | `yandex queries`, `yandex indexing`, `yandex recrawl` | 查询只读；recrawl 是受控写入。`queries` 保留 `avg_click_position`、`query_id` 和 `extra_indicators`；`indexing` 合并历史系列并报告 `site_problems`。 |
+| Yandex Webmaster | `yandex queries`, `yandex indexing`, `yandex samples`, `yandex sitemaps`, `yandex history`, `yandex queue`, `yandex recrawl` | 查询、事件、样本、站点地图、历史和队列只读；recrawl 是受控写入，受剩余配额限制。 |
+| Yandex Metrika | `metrika pages`, `metrika goals`, `metrika queries`, `metrika devices`, `metrika countries`, `metrika engagement`, `metrika bytime` | 只读自然搜索视图；每个调用都应用 `ym:s:lastTrafficSource=='organic'`。 |
 | IndexNow | `indexnow submit` | 受控写入，提交显式 URL 或从项目站点地图读取的 URL。 |
-| Bing | `bing submit`, `bing sitemaps`, `bing issues`, `bing quota` | `submit` 是受控的 `SubmitUrlbatch` 写入；其余三个读取配额、站点地图源和抓取问题。 |
+| Bing | `bing submit`, `bing pages`, `bing traffic`, `bing crawl`, `bing urlinfo`, `bing children`, `bing users`, `bing sites`, `bing joins`, `bing sitemaps`, `bing issues`, `bing quota` | `submit` 是受控的 `SubmitUrlbatch` 写入；其余读取页面、流量、抓取、URL、关联、站点地图、问题和配额。 |
 | Crawl and audit | `crawl` | 与提供方无关；配置了存储时保存本地页面和问题。 |
-| CWV | `cwv collect` | 按 URL 和设备查询 CrUX 并持久化字段 p75 行；PSI 实验室行会返回但绝不存储。 |
+| CWV | `cwv collect`, `cwv audits`, `cwv history` | `collect` 持久化 CrUX 字段 p75 行；`audits` 和 `history` 是只读 PSI/CrUX 读取。 |
 | Reports | `report weekly`, `report diff` | `weekly` 保存本地快照；`diff` 只读。 |
 | Scheduling | `schedule print`, `schedule install`, `schedule status`, `schedule uninstall` | `print` 只渲染；`install` 和 `uninstall` 默认只生成计划，只有 `--allow-write` 才写入；`status` 只读。 |
 | Logs | `logs analyze` | 只读分析一个本地 nginx JSON 访问日志；不会存储或上传。 |
@@ -161,7 +165,7 @@ Bing 站点地图提交、Bing URL 提交和 IndexNow 会真正写入。Bing URL
 | Portfolio | `portfolio list` | 只读汇总一个目录下的本地项目；不调用提供方、不读取令牌、不写入。 |
 | Agents and MCP | `mcp serve`, `install`, `export tools`, `export skills` | 主机配置、生成文件或本地服务器。 |
 
-CLI 有 23 个顶层命令：16 个组和 7 个命令（`version`、`doctor`、`init`、`properties`、`stats`、`crawl`、`install`）。
+CLI 有 24 个顶层命令：17 个组和 7 个命令（`version`、`doctor`、`init`、`properties`、`stats`、`crawl`、`install`）。
 
 ## 示例
 
@@ -179,23 +183,53 @@ lv24-seo stats --days 7 --lag-days 2 --json
 
 ```bash
 lv24-seo gsc query --start 2026-11-01 --end 2026-11-07 --dimensions query,page --limit 100 --json
+lv24-seo gsc query --start 2026-11-01 --end 2026-11-07 --type image --data-state all --filter country:equals:BLR --json
+lv24-seo gsc inspect --url https://example.com/ --language en-US --json
+lv24-seo gsc sitemaps --sitemap-index https://example.com/sitemap-seo.xml --json
+lv24-seo gsc sitemap --path https://example.com/sitemap.xml --json
 ```
 
 `--start` 和 `--end` 是必填项。没有 `--days` 简写，也没有 `--property` 覆盖：资源来自
 `seo.toml` 中的 `[providers.gsc]`。维度用逗号分隔，仅限 `query`、`page`、`country`、`device`
 和 `date`。
 
+`--type` 接受 `web`、`image`、`video`、`news`、`discover`、`googleNews` 和 `webMultimodal`。
+`--filter` 接受 `dimension:operator:expression` 且可重复（一个 AND 组）；`--filter-list` 接受
+`dimension:expr1,expr2` 且可重复。`--data-state` 接受 `all`、`final` 和 `hourly_all`；
+`--aggregation` 接受 `auto`、`byPage`、`byProperty` 和 `byNewsShowcasePanel`；`--search-appearance`
+添加 `searchAppearance equals` 过滤；`--branded` 接受 `branded` 或 `non_branded`，并且不能与
+`query` 过滤同时使用。
+
+`gsc inspect` 只处理一个绝对 URL。它映射完整 `indexStatusResult`、富媒体结果和
+`inspectionResultLink`，并报告 `one_url_per_call`、`url_inspection_quota_2000_per_day` 和
+`inspection_reflects_last_crawl`：它描述 Google 的最后一次抓取，不是实时测试。`gsc sitemaps` 和
+`gsc sitemap --path` 映射类型、索引标志、错误、警告和 `contents[]`；已弃用的 `indexed` 计数会标注，
+索引的子站点地图 URL 不暴露。站点地图提交/删除仍为 `WRITE_DISABLED`。
+
 ### Yandex
 
 ```bash
 lv24-seo yandex queries --limit 100 --json
-lv24-seo yandex indexing --json
+lv24-seo yandex indexing --date-from 2026-10-01 --date-to 2026-10-31 --json
+lv24-seo yandex samples --kind events --limit 100 --json
+lv24-seo yandex sitemaps --json
+lv24-seo yandex history --kind sqi --json
+lv24-seo yandex queue --json
 ```
 
 `yandex queries` 返回顶部行，而不是完整的查询与页面关联：Yandex 每个周期最多提供 3,000 个查询。它保留
 `avg_click_position`，在提供商发送时返回 `query_id`，并把未映射指标保留在 `extra_indicators` 中而不是
 丢弃整行。`yandex indexing` 显示配置的 `host_id` 的索引历史、搜索中页面数、诊断、`site_problems` 和
-搜索 URL 事件，并把 `indexing/history` 系列（`http_2xx` … `other`）合并为每个日期一行。
+搜索 URL 事件，并把 `indexing/history` 系列（`http_2xx` … `other`）与 appeared/removed 事件系列合并为
+每个日期一行。提供商重置日期窗口时，会不带窗口重试并报告 `client_side_date_filter`。
+
+`yandex samples` 每页 100 行分页读取样本端点，诚实报告总数。`yandex sitemaps` 列出 id、URL、错误/URL
+数、子项和来源；添加/删除未实现。`yandex history --kind sqi|in-search|queries|query` 读取 SQI、搜索中
+页面、全部查询和单查询序列。`yandex queue` 读取重新抓取任务及提供商总数。
+
+`yandex recrawl --url https://example.com/page --allow-write` 规划写入；`--confirm TOKEN` 应用时每个
+URL 一次 POST，受每日剩余配额限制。`202` 行携带 `task_id` 和 `quota_remainder`，`409` 为
+`already_queued`，`429` 停止循环并把剩余放在 `not_attempted`。
 
 ### Bing 与 IndexNow
 
@@ -204,6 +238,14 @@ lv24-seo sitemap submit --provider bing --allow-write --json
 lv24-seo sitemap submit --provider bing --allow-write --confirm TOKEN --json
 lv24-seo bing submit --url https://example.com/page --allow-write --json
 lv24-seo bing submit --url https://example.com/page --allow-write --confirm TOKEN --json
+lv24-seo bing pages --json
+lv24-seo bing traffic --json
+lv24-seo bing crawl --json
+lv24-seo bing urlinfo --url domain:example.com --json
+lv24-seo bing children --url domain:example.com --page 0 --pages 2 --json
+lv24-seo bing users --json
+lv24-seo bing sites --json
+lv24-seo bing joins --query "seo tools" --json
 lv24-seo bing quota --json
 lv24-seo bing sitemaps --json
 lv24-seo bing issues --json
@@ -219,24 +261,68 @@ lv24-seo indexnow submit --from-sitemap --allow-write --confirm TOKEN --json
 没有按 URL 的状态，因此结果说 `accepted`，而不是已索引，重复 URL 可能消耗配额。`bing quota` 报告
 `daily_remaining` 和 `monthly_remaining`，不是总量；月度窗口可能先耗尽，重置时间表未记录。
 `bing sitemaps` 显示源 URL、提供商状态、最后抓取和 URL 数，但没有按 URL 的错误；`bing issues` 解码
-抓取问题位掩码，没有严重性或日期。`indexnow submit --from-sitemap` 在计划阶段读取站点地图，并从
-`providers.bing.site`、`providers.bing.indexnow_key` 和 `providers.bing.indexnow_key_location` 解析
-主机、密钥和密钥位置。`<sitemapindex>` 限制为根加五个子站点地图和 10,000 个 URL；显式 `--url` 先合并，
-主机外 URL 被跳过。应用会重新获取站点地图，如果 URL 集合变化，则以 `CONFIRM_REQUIRED` 使令牌失效。
-缺少密钥时计划返回 `AUTH_REQUIRED`，密钥文件缺失或不匹配时应用返回 `INVALID_INPUT`。
+抓取问题位掩码，没有严重性或日期。
+
+`bing pages`、`bing traffic`、`bing crawl` 和 `bing joins` 是只读统计视图。空统计响应携带
+`no_rows_for_window`，不是零展示；`bing crawl` 始终携带 `crawl_stats_six_month_window`。
+`bing urlinfo --url URL|domain:HOST` 读取 URL 索引/抓取详情；WCF `Date(-62135596800000)` 哨兵映射为
+`null`，从未抓取的行携带 `never_crawled`。`bing children` 最多 10 页，完整最后一页标记 `truncated`
+和 `children_page_cap`。`bing users` 读取站点角色且不回显委托码；`bing sites` 读取账户的已验证站点。
+`bing joins --query|--page` 选择三种查询/页面关联之一，并返回相同的紧凑行结构。
+
+`indexnow submit --from-sitemap` 在计划阶段读取站点地图，并从 `providers.bing.site`、
+`providers.bing.indexnow_key` 和 `providers.bing.indexnow_key_location` 解析主机、密钥和密钥位置。
+密钥必须是 8–128 个 `A-Z`、`a-z`、`0-9` 和 `-` 字符；同主机 `keyLocation` 目录前缀会被强制执行。
+`<sitemapindex>` 限制为根加五个子站点地图和 10,000 个 URL；显式 `--url` 先合并，主机外 URL 被跳过。
+应用会重新获取站点地图，如果 URL 集合变化，则以 `CONFIRM_REQUIRED` 使令牌失效。缺少密钥时计划返回
+`AUTH_REQUIRED`。提供商状态映射 `200` accepted、`202` accepted-pending、`400` 格式、`403` 缺失/不匹配
+的密钥文件、`422` 主机/密钥不匹配和 `429` 配额/垃圾提交；密钥绝不回显。
 
 ### Core Web Vitals
 
 ```bash
-lv24-seo cwv collect --url https://example.com/ --url https://example.com/blog/post --device phone --source crux --json
+lv24-seo cwv collect --url https://example.com/ --url https://example.com/blog/post --device phone --source crux --category performance --json
+lv24-seo cwv audits --url https://example.com/ --strategy mobile --category performance --json
+lv24-seo cwv history --origin https://example.com --device phone --weeks 12 --json
 ```
 
 `cwv collect` 是周报 `cwv` 分区背后的写入器。CrUX 按 URL 和设备查询（`mobile` 是 `phone` 的别名），
 每个返回的 p75 成为一行 `metric_daily` 字段行，包含 `source=crux`、`scope`、绝对 URL、指标和
 `report.timezone` 中的获取日期。PSI 行保留在 `data.lab` 中且绝不持久化，而 PSI 没有 `tablet`，所以
 `tablet` 会以 `psi_tablet_unsupported` 跳过。`--limit` 将 URL 限制为 50（默认 10）；低流量 URL 不写行，
-绝不写零，达到上限的运行设置 `meta.truncated: true` 和 `cwv_url_cap`。该命令需要 CrUX 密钥
+绝不写零，达到上限的运行设置 `meta.truncated: true` 和 `cwv_url_cap`。`--category` 可重复，选择 PSI
+路径的 Lighthouse 类别。`data_age_days` 来自 `collectionPeriod.lastDate`；两天启发式仅作为
+`crux_period_missing` 回退，规范化 URL 添加 `crux_url_normalized`。该命令需要 CrUX 密钥
 （任何调用前 `AUTH_REQUIRED`）和已初始化存储（`CONFIG_INVALID`）。
+
+`cwv audits` 返回最多 100 条 Lighthouse 审计行（`psi_audits_cap`），含评分、显示值、去 HTML 描述和
+可节省量；绝不包含元素数组。`runtimeError`、CAPTCHA 或不同的 `finalUrl` 变成警告/限制，而不是干净运行。
+不会持久化任何内容。
+
+`cwv history` 读取每周 CrUX p75 周期，最新在最后，含 `first_date`/`last_date`、可选规范设备和可用指标。
+`--weeks` 为 1..40。缺失的 p75 单元格成为 `crux_history_gaps`，绝不填充；少于请求的周期添加
+`crux_history_short`。历史只读且不持久化。
+
+### Yandex Metrika
+
+```bash
+lv24-seo metrika pages --days 7 --lag-days 2 --limit 100 --json
+lv24-seo metrika goals --days 7 --dimension page --json
+lv24-seo metrika queries --days 7 --json
+lv24-seo metrika devices --days 7 --json
+lv24-seo metrika countries --days 7 --json
+lv24-seo metrika engagement --days 7 --json
+lv24-seo metrika bytime --days 7 --group day --json
+```
+
+全部七个命令都是只读的，并使用 `providers.yandex_metrika.counter`。每个调用应用
+`filters=ym:s:lastTrafficSource=='organic'`；`meta.organic_only` 为 `true`，`meta.filters` 重复该表达式。
+`pages` 返回自然搜索落地页及访问/用户、跳出率、平均访问时长、页面深度和浏览量。`goals` 从
+`providers.yandex_metrika.goals` 读取目标 id，并查询达成、访问、用户和转化率，可按 `page` 或 `source`
+分组；空列表只警告不调用提供商，超过五个目标会按 Metrika 的 20 指标上限截断。`queries` 总是说明
+Google 保留搜索词、Metrika 隐藏少于 10 个用户的搜索词。抽样字段（`sampled`、`sample_share`、
+`sample_size`、`sample_space`、`data_lag`、`contains_sensitive_data`、`total_rows_rounded`）带入 meta
+和 limitations；只有 `sampled=false` 才精确。
 
 ### 抓取
 
@@ -337,4 +423,4 @@ lv24-seo export skills --out skills/
 - [MCP 与智能体技能](/zh/mcp/)
 - [故障排查](/zh/troubleshooting/)
 
-Source: `_source/engine-cli.md`, `_source/engine-mcp.md`, `_source/engine-releases-0.5.2.md`, `_source/engine-releases-0.5.3.md`, `_source/engine-releases-0.6.0.md`, `_source/engine-releases-0.7.0.md`, `_source/engine-releases-0.8.0.md`, `_source/engine-releases-0.9.0.md`, `_source/engine-releases-0.10.0.md`; 引擎仓库中 0.10.0 的 `--help` 输出。
+Source: `_source/engine-cli.md`, `_source/engine-mcp.md`, `_source/engine-releases-0.11.0.md`, `_source/engine-releases-0.10.0.md`, `_source/engine-releases-0.9.0.md`, `_source/engine-releases-0.8.0.md`, `_source/engine-releases-0.7.0.md`, `_source/engine-releases-0.6.0.md`, `_source/engine-releases-0.5.3.md`; 引擎仓库中 0.11.0 的 `--help` 输出。

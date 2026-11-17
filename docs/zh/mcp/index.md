@@ -21,7 +21,7 @@ MCP 服务器提供一个小而明确的能力面：12 个工具、3 个资源�
 | `seo_crawl_site` | read | `true` | `false` | `false` | `false` |
 | `seo_weekly_report` | read | `true` | `false` | `false` | `false` |
 
-它们保存索引事件、抓取或周报快照，但从不改变提供商状态，也不需要确认令牌。依据 `readOnlyHint` 分支的 MCP 客户端可能会在调用前请求确认；这是有意为之。十二个工具分为 10 个读取类（7 个纯只读加这 3 个本地状态写入者）和 2 个受限写入。两个写入都需要 `allow_write`、计划和确认令牌，以及服务器的 `LV24_SEO_WRITE_SECRET`；Bing 站点地图提交已接通，而 GSC 站点地图提交、Bing 站点地图删除和 Yandex 重新抓取仍返回 `WRITE_DISABLED`。
+它们保存索引事件、抓取或周报快照，但从不改变提供商状态，也不需要确认令牌。依据 `readOnlyHint` 分支的 MCP 客户端可能会在调用前请求确认；这是有意为之。十二个工具分为 10 个读取类（7 个纯只读加这 3 个本地状态写入者）和 2 个受限写入。两个写入都需要 `allow_write`、计划和确认令牌，以及服务器的 `LV24_SEO_WRITE_SECRET`；Bing 站点地图提交和 Yandex 重新抓取已接通，而 GSC 站点地图提交和 Bing 站点地图删除仍返回 `WRITE_DISABLED`。
 
 两个写入工具带有 `destructiveHint: true`，并且需要显式开启：`allow_write` 默认为 `false`，任何不带它的调用都会在构建计划之前返回 `WRITE_DISABLED`。它们遵循与 CLI 相同的两阶段契约，见下文。
 
@@ -48,7 +48,7 @@ dry run 的 `data` 对象：
 
 服务器把工作区存储交给写入闸门，因此重放的令牌返回 `status: skipped` 和 `reason: duplicate`，提供商只被调用一次。没有存储时应用仍会运行，但响应会警告：在令牌有效期内没有重放保护。提供商失败会释放声明，因此真正的重试被允许，失败的写入绝不会被记录为已发送。
 
-契约已在服务器中实现。`seo_sitemap_submit` 使用 `provider: "bing"` 时调用与 CLI 相同的 Bing `SubmitFeed` 路径；GSC 站点地图提交、Bing 站点地图删除和 Yandex 重新抓取即使带 `allow_write=true` 和密钥也仍返回 `WRITE_DISABLED`。IndexNow 仍仅限 CLI 和桌面端，没有 MCP 工具。不会模拟任何结果。
+契约已在服务器中实现。`seo_sitemap_submit` 使用 `provider: "bing"` 时调用与 CLI 相同的 Bing `SubmitFeed` 路径，`seo_recrawl_request` 调用相同的 Yandex 重新抓取路径，每个 URL 一次 POST 并受配额限制。GSC 站点地图提交和 Bing 站点地图删除即使带 `allow_write=true` 和密钥也仍返回 `WRITE_DISABLED`。IndexNow 仍仅限 CLI 和桌面端，没有 MCP 工具。不会模拟任何结果。
 
 ## 工具
 
@@ -61,10 +61,10 @@ dry run 的 `data` 对象：
 | `seo_crawl_site` | `start_url`、`max_urls` 0 或 1–5000、`include_rules` | 抓取摘要、问题、链接图和站点地图覆盖 |
 | `seo_weekly_report` | `days` 1–90、`lag_days` 0–14 | 周报各部分，包括截至今天读取的已存储 CWV 行，以及信封 meta |
 | `seo_report_diff` | `base`、`head`，格式 `START..END` | 标题变化、问题数量、机会变动、限制、Markdown |
-| `seo_indexing_triage` | 无 | 带原因、数量、示例和 `next_action` 的桶 |
+| `seo_indexing_triage` | `max_examples` 0–20（默认 5）、可选 `url` | 带原因、数量、示例和 `next_action` 的桶；带 `url` 时在 `data.inspection` 中包含一次 GSC 检查 |
 | `seo_opportunities` | `days` 1–90（默认 28）、`limit` 1–500、`min_impressions` | 带证据和 `expected_gain` 的排序机会 |
 | `seo_log_analysis` | `file`（绝对路径）、`bot`（`googlebot`、`yandexbot`、`bingbot`、`other` 或空） | 一个本地 nginx JSON 访问日志的机器人汇总和抓取浪费摘要 |
-| `seo_recrawl_request` | `host_id`（默认：已配置主机）、`urls`、`allow_write`（默认 `false`）、`plan_hash`、`confirm_token` | 两阶段受限写入；未接通提供商适配器时返回 `WRITE_DISABLED` |
+| `seo_recrawl_request` | `host_id`（默认：已配置主机）、`urls`、`allow_write`（默认 `false`）、`plan_hash`、`confirm_token` | 两阶段受限写入；每个 URL 一次 Yandex POST，受每日剩余配额限制；`202` 携带 `task_id`，`409` 为 `already_queued`，`429` 报告 `not_attempted` |
 | `seo_sitemap_submit` | `provider`（`gsc` 或 `bing`，默认 `gsc`）、`property`、`sitemap_url`、`action`、`allow_write`（默认 `false`）、`plan_hash`、`confirm_token` | 两阶段受限写入；Bing 提交已接通，GSC 提交和 Bing 删除返回 `WRITE_DISABLED` |
 
 `gsc_search_analytics` 默认使用 `report.timezone` 中最近七个完整天。`seo_weekly_report` 不接受属性参数：属性、时区和默认延迟来自配置。`seo_opportunities` 返回 `expected_gain`，这是优先级估计，不是流量承诺。
@@ -80,6 +80,8 @@ MCP 周报工具会把 `days` 上限设为 90、`lag_days` 上限设为 14，并
 `seo_sitemap_submit` 在 0.9.0 中增加了可选 `provider`（`gsc|bing`，默认 `gsc`）；工具名、12 工具接口和其余输入不变。对 Bing，`property` 默认为 `providers.bing.site`，`sitemap_url` 默认为 `<project.base_url>/sitemap.xml`。计划会检查 `bing_api_key` 秘密，缺少时返回 `AUTH_REQUIRED`，因此不会发放无法应用的令牌。重放返回 `status: skipped` 和 `reason: duplicate`，提供商失败会释放声明。Bing 删除和任何 GSC 站点地图写入仍为 `WRITE_DISABLED`。从站点地图运行 IndexNow 仅限 CLI 和桌面端。
 
 引擎 0.10.0 增加 `bing` CLI 组：`bing submit`（原生 `SubmitUrlbatch`，每批 500 个 URL；accepted，不是 indexed）、`bing quota`（每日和每月值是剩余量，不是总量）、`bing sitemaps`（源状态和 URL 数，没有按 URL 的错误）和 `bing issues`（解码后的抓取问题位掩码，没有严重性或日期）。它们都不增加 MCP 工具：接口仍为 12 个，`seo_sitemap_submit` 仍提交站点地图，而不是 URL 批次。
+
+引擎 0.11.0 保持 12 工具接口，并在不增加第 13 个工具的情况下增加读取深度。`seo_indexing_triage` 接受可选 `url`，并在 `data.inspection` 中包含一次 GSC URL Inspection；不带它时工具保留现有输入和诚实限制：该调用不暴露 Google 的 URL 级覆盖。更丰富的 GSC Search Analytics 选择器和 `gsc sitemaps`/`gsc sitemap` 读取仅限 CLI。`seo_recrawl_request` 已接通 Yandex 重新抓取队列。`schemas/tools.json` 因新的 `url` 输入重新生成。
 
 `cwv collect` 是 CLI 写入器，不是第 13 个工具：MCP 接口仍为 12。`seo_weekly_report` 读取 CLI 已持久化的字段行，并增加按 URL 模板和设备分组的 `cwv` 分区，最多五个模板。PSI 实验室行绝不存储，因此单独的 `--source psi` 无法填充该分区。
 
@@ -195,4 +197,4 @@ lv24-seo export skills --out .opencode/skills
 - **技术审计。** 用 `seo_crawl_site` 抓取最多 500 个 URL，按规则 id 汇总 critical 和 high 问题。不要把未抓取的 URL 说成失效。
 - **写入请求。** 为这些 URL 准备重新抓取计划，先显示配额。在我批准计划前不要写入任何内容。
 
-Source: `_source/engine-mcp.md`, `_source/engine-skills.md`, `_source/engine-cli.md`, `_source/engine-releases-0.5.2.md`, `_source/engine-releases-0.5.3.md`, `_source/engine-releases-0.6.0.md`, `_source/engine-releases-0.7.0.md`, `_source/engine-releases-0.8.0.md`, `_source/engine-releases-0.9.0.md`, `_source/engine-releases-0.10.0.md`.
+Source: `_source/engine-mcp.md`, `_source/engine-skills.md`, `_source/engine-cli.md`, `_source/engine-releases-0.11.0.md`, `_source/engine-releases-0.10.0.md`, `_source/engine-releases-0.9.0.md`, `_source/engine-releases-0.8.0.md`, `_source/engine-releases-0.7.0.md`, `_source/engine-releases-0.6.0.md`, `_source/engine-releases-0.5.3.md`.

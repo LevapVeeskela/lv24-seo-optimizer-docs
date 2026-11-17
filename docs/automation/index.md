@@ -76,7 +76,7 @@ Provider writes are separate from report delivery. The CLI uses a dry run follow
 
 The gate supports a pending-to-sent idempotency claim. With an initialised workspace the CLI attaches the SQLite ledger, so a failed provider call releases the claim and a retry is allowed; a completed or in-flight claim is a duplicate and returns `skipped`. Without a data directory the apply still runs, but the envelope warns that replay protection is off for the token's five-minute lifetime. A dry run opens no ledger and creates no database. A crash can leave a pending claim with no TTL, which is treated as in-flight until an operator releases it.
 
-In 0.5.3, only IndexNow actually submits. GSC sitemap submit and Yandex recrawl refuse with `WRITE_DISABLED` instead of pretending. MCP write tools require `allow_write=true`; their handlers are not wired in this build either, so they return `WRITE_DISABLED`.
+In 0.11.0, IndexNow, Bing sitemap submit, Bing URL submission and Yandex recrawl actually submit; GSC sitemap submit and Bing sitemap delete refuse with `WRITE_DISABLED` instead of pretending. MCP write tools require `allow_write=true`; `seo_sitemap_submit` for Bing and `seo_recrawl_request` are wired, while GSC submit and Bing delete return `WRITE_DISABLED`.
 
 ## GitHub Actions
 
@@ -107,4 +107,4 @@ Provider and delivery credentials come from repository secrets. Non-secret ident
 
 Scheduler backends apply the zone where they can and report a warning where they cannot. An invalid zone fails config validation with `CONFIG_INVALID`; it is never silently replaced. Review Windows tasks after a DST transition, and confirm that the installed cron daemon supports `CRON_TZ` before relying on it.
 
-Source: `_source/engine-scheduling.md`, `_source/engine-cli.md`, `_source/engine-config.md`, `_source/engine-releases-0.5.2.md`.
+Source: `_source/engine-scheduling.md`, `_source/engine-cli.md`, `_source/engine-config.md`, `_source/engine-releases-0.11.0.md`.

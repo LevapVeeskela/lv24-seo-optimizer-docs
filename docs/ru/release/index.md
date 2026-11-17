@@ -1,6 +1,6 @@
 ---
 title: Релизы и обновления
-description: Релизы движка 0.10.0 и приложения 0.8.0, история 0.9.0, 0.7.0, 0.8.0, 0.6.0, 0.5.3, 0.3.0 и более ранних версий, матрица подписанных автообновлений, релизный конвейер, закрепление версий и откат.
+description: Релизы движка 0.11.0 и приложения 0.9.0, история 0.10.0, 0.9.0, 0.8.0, 0.7.0, 0.6.0 и более ранних версий, матрица подписанных автообновлений, релизный конвейер, закрепление версий и откат.
 ---
 
 # Релизы и обновления
@@ -9,10 +9,99 @@ description: Релизы движка 0.10.0 и приложения 0.8.0, и�
 
 | Продукт | Версия | Дата | Примечания |
 |---|---|---|---|
-| Движок | `lv24-seo 0.10.0` | 2026-11-17 | Отправка URL в Bing, статус sitemap, проблемы обхода и квота, 23 команды CLI и 12 инструментов MCP |
-| Приложение | `0.8.0` | 2026-11-17 | Отправка URL в Bing и карточки sitemap, проблем и квоты только для чтения, движок 0.10.0 и `MIN_ENGINE_VERSION` 0.10.0 |
+| Движок | `lv24-seo 0.11.0` | 2026-11-17 | Глубина чтения по всем платформам: инспекция и карты сайта GSC, события/карты/переобход Яндекса, страницы/трафик/обход/URL/связки Bing, органическая Метрика, аудиты и история CWV; 24 команды CLI и 12 инструментов MCP |
+| Приложение | `0.9.0` | 2026-11-17 | Экран Diagnostics только для чтения с пятью вкладками и 18 командами из белого списка, движок 0.11.0 и `MIN_ENGINE_VERSION` 0.11.0 |
 
-Версия приложения и версия движка независимы, но приложение закрепляет точный движок и отказывается работать с версией ниже минимальной. `0.8.0` включает `0.10.0` и требует минимум `0.10.0`, поэтому установленный движок `0.9.x` считается несовместимым.
+Версия приложения и версия движка независимы, но приложение закрепляет точный движок и отказывается работать с версией ниже минимальной. `0.9.0` включает `0.11.0` и требует минимум `0.11.0`, поэтому установленный движок `0.10.x` считается несовместимым.
+
+## Движок 0.11.0
+
+Выпущен 2026-11-17. Каждая поддерживаемая платформа получает API чтения, которые раньше были
+только в адаптере, частичными или отсутствовали. В CLI теперь 24 команды верхнего уровня;
+поверхность MCP остаётся в 12 инструментов, схема SQLite — версия 4.
+
+Что изменилось:
+
+- **URL Inspection в GSC.** `gsc inspect --url ABS [--language en-US] [--config ABS] [--json]` подключает URL Inspection целиком. Результат отображает полный `indexStatusResult` (`verdict`, `coverageState`, `robotsTxtState`, `indexingState`, `lastCrawlTime`, `pageFetchState`, `googleCanonical`, `userCanonical`, `crawledAs`, `sitemap[]`, `referringUrls[]`), `richResultsResult` (`verdict`, `detectedItems[].items[].issues[]`) и `inspectionResultLink`. `--language` локализует человекочитаемые состояния. Ограничения: `one_url_per_call`, `url_inspection_quota_2000_per_day`, `inspection_reflects_last_crawl` — это отчёт о последнем обходе, а не живой тест.
+- **Карты сайта GSC.** `gsc sitemaps [--sitemap-index URL]` и `gsc sitemap --path URL` отображают `path`, `lastSubmitted`, `lastDownloaded`, `isPending`, `isSitemapsIndex`, `type`, `errors`, `warnings` и `contents[{type,submitted,indexed}]`. Устаревший счётчик `indexed` помечается (`indexed_deprecated`, `sitemap_indexed_count_deprecated`), а дочерние URL индекса сообщаются как нераскрытые (`sitemap_index_children_not_exposed`), а не угадываются. Отправка и удаление остаются `WRITE_DISABLED`, потому что движок подписывает `webmasters.readonly`.
+- **Фильтры запросов GSC.** `gsc query` получает `--type`, повторяемый `--filter dimension:operator:expression`, повторяемый `--filter-list dimension:expr1,expr2`, `--data-state`, `--aggregation`, `--search-appearance` и `--branded`. Ответы добавляют `responseAggregationType` и `metadata` о неполных данных (`firstIncompleteDate`/`firstIncompleteHour`), когда Google их возвращает. Пределы не изменились: 25 тыс. строк на страницу и 50 тыс. строк/день/сайт/тип. Богатые селекторы доступны только в CLI.
+- **Исправление событий Яндекса.** `search-urls/events/history` читал список `events`, но API возвращает `indicators{APPEARED_IN_SEARCH,REMOVED_FROM_SEARCH}[{date,value}]`, поэтому каждый вызов сообщал `empty_history` и терял реальные данные. Теперь ряды appeared/removed объединяются по дате. Живое окно 2026-10-02 вернуло 57 appeared / 0 removed. Если endpoint сбрасывает соединение на окне дат, клиент повторяет запрос без окна, фильтрует локально и предупреждает `client_side_date_filter`.
+- **Глубина чтения Яндекса.** `yandex indexing` принимает `--date-from/--date-to` и объединяет ряды событий с HTTP-рядами индексации. `yandex samples --kind indexing|events [--limit] [--offset]` листает endpoint примеров с честными `total`/`truncated` (100 на страницу). `yandex sitemaps [--id] [--parent-id] [--limit] [--from]` читает списки и детали карт (`sitemap_id`, `sitemap_url`, `last_access_date`, `errors_count`, `urls_count`, `children_count`, `sources[]`, `sitemap_type`); добавление/удаление не реализовано. `yandex history --kind sqi|in-search|queries|query [--query-id]` читает SQI, страницы в поиске, все запросы и ряды одного запроса. `yandex queue [--id]` читает задачи переобхода с `count` провайдера.
+- **Переобход Яндекса подключён.** `yandex recrawl` планирует с `--allow-write` и применяет с `--confirm TOKEN`: один `POST` на URL, с ограничением по `quota_remainder`, обрабатывая `202` (`task_id`, `quota_remainder`), `409 URL_ALREADY_ADDED` как `already_queued` и `429 QUOTA_EXCEEDED` с остатком URL в `not_attempted`. Пакетного endpoint нет.
+- **Глубина чтения Bing.** `bing pages` (`GetPageStats`), `bing traffic` (`GetRankAndTrafficStats`, ежедневно), `bing crawl` (`GetCrawlStats`, шестимесячные дневные корзины), `bing urlinfo --url URL|domain:HOST` (`GetUrlInfo`), `bing children --url ... [--page] [--pages]` (`GetChildrenUrlInfo`, read POST, не более 10 страниц), `bing users` (`GetSiteRoles`, только чтение), `bing sites` (`GetUserSites`) и `bing joins --query|--page` (`GetQueryPageStats`, `GetPageQueryStats`, `GetQueryPageDetailStats`). Сентинел `Date(-62135596800000)` отображается в `null` и помечается `never_crawled`; `TotalChildUrlCount` хранится отдельным полем.
+- **Честные пустые ответы.** Статистика и связки добавляют `no_rows_for_window`, `crawl` всегда добавляет `crawl_stats_six_month_window`, а поиски и списки — `provider_returned_no_rows`. Ноль строк больше не выдаётся за «ноль показов».
+- **Органическая Метрика.** Новая группа только для чтения `metrika`: `pages`, `goals`, `queries`, `devices`, `countries`, `engagement` и `bytime`. SEO-коллектор применяет `filters=ym:s:lastTrafficSource=='organic'`; `stats` и `report weekly` показывают `organic_visits`/`organic_users`, а весь трафик явно как `all_visits`/`all_users`. `metrika pages` возвращает органические страницы входа с визитами/пользователями, отказами, средней длительностью, глубиной и просмотрами. `metrika goals` опрашивает настроенные id целей, при желании по `page` или `source`; пустой список — честное предупреждение, а больше пяти целей обрезаются по лимиту Метрики в 20 метрик. Поля сэмплирования (`sample_share`, `sample_size`, `sample_space`, `data_lag`, `contains_sensitive_data`, `total_rows_rounded`) переносятся в meta и limitations; точным считается только `sampled=false`.
+- **Глубина CrUX и PSI.** `cwv audits --url ABS [--strategy mobile|desktop] [--category ...]` возвращает до 100 ограниченных аудитов Lighthouse (`id`, `title`, `score`, `display_value`, описание без HTML, `details_type`, экономия, `items_count`). `runtimeError`, CAPTCHA и редиректы становятся предупреждениями/ограничениями, а не чистым запуском. `cwv collect` получает повторяемый `--category`. `cwv history (--url ABS | --origin ABS) [--device] [--weeks 1..40]` читает недельные ряды p75 CrUX с честными пропусками и усечением. `collectionPeriod.firstDate/lastDate` теперь определяет `data_age_days`; двухдневная эвристика остаётся только запасной с `crux_period_missing`, а `urlNormalizationDetails` даёт `crux_url_normalized`.
+- **Правила IndexNow.** Ключ должен соответствовать `[A-Za-z0-9-]{8,128}` и проверяется до планирования. Каталог `keyLocation` на том же хосте обязателен. Ответы: `200 accepted`, `202 accepted_pending`, `400` формат, `403 AUTH_INVALID` с точным ожидаемым URL ключа, `422` несоответствие хоста/ключа и `429` квота/спам. Ключ никогда не выводится.
+- **Поверхность и схема.** 24 команды CLI верхнего уровня (17 групп и 7 команд, добавлена `metrika`), 12 инструментов MCP (10 класса чтения: 7 чистых только для чтения и 3 инструмента, сохраняющих локальное состояние; 2 записи с воротами), 3 ресурса и 3 промпта без изменений, схема версии 4 без миграции. `seo_indexing_triage` получает необязательный вход `url` и возвращает одну инспекцию GSC; `schemas/tools.json` перегенерирован из-за этого входа. Чтение карт GSC и богатые селекторы поиска доступны только в CLI, поэтому тринадцатый инструмент не добавляется.
+
+Проверка, записанная для этого релиза:
+
+| Проверка | Результат |
+|---|---|
+| PyPI | `lv24-seo 0.11.0` опубликован |
+| npm | `@lv24/seo 0.11.0` опубликован |
+| MCP Registry | `io.github.LevapVeeskela/lv24-seo 0.11.0` опубликован |
+| `gsc inspect` `/` | `PASS`, «Submitted and indexed», канонический URL совпадает, `crawledAs: MOBILE` |
+| `gsc sitemaps` | 3 карты; 3179 и 1551 отправлено; одна — индекс |
+| `gsc query --filter country:equals:BLR --data-state all` | отфильтрованные строки; `metadata.firstIncompleteDate` присутствует |
+| `yandex indexing` с окном дат | 427 строк событий; 2026-10-02 = 57 appeared / 0 removed |
+| `yandex sitemaps` / `history` / `queue` | 1 карта с 6532 URL; 898 точек SQI; 28 задач |
+| `bing sites` / `users` / `urlinfo` | 1 сайт; 1 `Administrator`; 8380 дочерних URL с сентинельными датами `null` |
+| `bing pages` / `traffic` / `crawl` / `joins` | 0 строк с `no_rows_for_window`, а не ноль показов |
+| `metrika pages` / `goals` / `devices` / `countries` | 4 органические страницы входа; 5 целей; 3 Smartphones + 1 PC; Беларусь 4 |
+| `cwv audits` / `cwv history` | 58 аудитов; 0 строк истории с `low_traffic` + `crux_period_missing` |
+| Локальный гейт | `ruff check`, `ruff format --check`, `mypy src`, registry `--check` и офлайн `pytest` зелёные на тегированном коммите |
+
+Известные ограничения 0.11.0:
+
+- Статистика и связки Bing возвращают 0 строк для `lv24.by`, поэтому семантика полей покрыта фикстурами, а не живым непустым ответом. `GetSiteMoves` выведен из эксплуатации (живой 404) и не подключён.
+- `GetChildrenUrlInfo` Bing возвращает 0 строк для этого хоста, хотя `GetUrlInfo` сообщает 8380 дочерних URL; движок сообщает ответ провайдера, а не синтезирует строки.
+- `indexing/samples` Яндекса сбрасывает соединение на стороне провайдера для этого хоста; это проявляется как `UPSTREAM_UNAVAILABLE`, а не пустые данные.
+- Добавление/удаление карт сайта Яндекса не реализовано; обработка `202/409/429` переобхода покрыта только офлайн (живой POST не выполнялся).
+- Метрика скрывает поисковые фразы с менее чем 10 пользователями, а Google скрывает ключевые слова; имена целей не разрешаются (только id).
+- У CrUX нет полевых данных для `lv24.by`, а API истории ограничен 40 недельными периодами.
+- Для `lv24.by` не настроен файл ключа IndexNow; нативная отправка URL в Bing остаётся рабочим путём записи. Google не участвует в IndexNow.
+- У Bing Site Scan нет публичного API: приложение открывает официальную страницу, а движок не может импортировать её отчёт.
+
+## Приложение 0.9.0
+
+Выпущено 2026-11-17. Оно добавляет экран Diagnostics только для чтения поверх движка `0.11.0`,
+включает `lv24-seo 0.11.0` и поднимает `MIN_ENGINE_VERSION` до `0.11.0`, поэтому установленный
+движок `0.10.x` считается несовместимым. Новой поверхности записи нет.
+
+Что изменилось:
+
+- **Экран Diagnostics только для чтения.** В боковом меню появляется **Diagnostics** (`/diagnostics`) с пятью вкладками: Google (`gsc_inspect`, `gsc_sitemaps`), Yandex (`yandex_indexing`, `yandex_sitemaps`, `yandex_queue`), Bing (`bing_pages`, `bing_traffic`, `bing_crawl`, `bing_urlinfo`, `bing_joins`), Metrika (`metrika_pages`, `metrika_goals`, `metrika_devices`, `metrika_countries`, `metrika_engagement`, `metrika_bytime`) и Core Web Vitals (`cwv_audits`, `cwv_history`). Каждая команда идёт через фиксированный белый список `cli_run`; на экране нет кнопок записи, токенов подтверждения и пути `--allow-write`.
+- **Вкладка Google.** `gsc_inspect` проверяет ровно один абсолютный URL и показывает вердикт, состояние покрытия, состояние robots/индексации, последний обход, состояние загрузки, канонические URL Google/пользователя, `crawledAs`, ссылающиеся URL, проблемы расширенных результатов и ссылку на проверку. `gsc_sitemaps` перечисляет отправленные карты с типом, признаком индекса, ошибками, предупреждениями и числом отправленных элементов. Устаревший счётчик `indexed` помечен; дочерние URL индекса не раскрываются.
+- **Вкладка Yandex.** `yandex_indexing` показывает события appeared/removed и HTTP-корзины индексации за окно дат. `yandex_sitemaps` перечисляет id карт, число URL/ошибок и последний доступ. `yandex_queue` перечисляет задачи переобхода с общим числом провайдера. Сброс провайдера или пустой ответ показывается как `client_side_date_filter` / `provider_returned_no_rows`, а не как нулевые данные.
+- **Вкладка Bing.** `bing_pages`, `bing_traffic`, `bing_crawl`, `bing_urlinfo` и `bing_joins` показывают статистику страниц, дневные клики/показы, шестимесячные корзины обхода, детали индексации/обхода URL и связки запрос/страница. Пустая статистика отображает `no_rows_for_window`; поиски — `provider_returned_no_rows`. Сентинел `Date(-62135596800000)` показывается как «never», а не 0001.
+- **Вкладка Metrika.** `metrika_pages`, `metrika_goals`, `metrika_devices`, `metrika_countries`, `metrika_engagement` и `metrika_bytime` работают только с органическим трафиком. Вкладка показывает `meta.organic_only`, поля сэмплирования и все ограничения.
+- **Вкладка Core Web Vitals.** `cwv_audits` перечисляет ограниченные аудиты Lighthouse с оценкой, отображаемым значением и экономией; `cwv_history` перечисляет недельные ряды p75 CrUX с периодами сбора. URL с малым трафиком показывает явное пустое состояние `low_traffic`, а не пустую таблицу.
+- **Честное оформление отчётов.** Каждая вкладка отображает `total`, `truncated`, `data_age_days` и `limitations` движка (или сообщает, что ограничений нет). Пустые ответы провайдера — явные состояния, а не нули. Панели не повторяют чтение автоматически.
+- **Усиление моста.** Rust-мост добавляет 18 id команд в белый список и отклоняет до запуска движка: флаги записи (`allowWrite`, `confirm`) и токены на каждой диагностической команде; неизвестные значения `group`, `strategy`, `device` или `category`; аргументы, принадлежащие другой команде; и переопределение `--site` для чтения Bing (цель остаётся `providers.bing.site`). Webview не может передать исполняемый файл, shell-строку или произвольный флаг. Диагностические команды требуют конфигурацию и не отменяемы, как другие короткие чтения.
+- **Движок 0.11.0 и контракты.** `MIN_ENGINE_VERSION` равен `0.11.0`; установленный sidecar `0.10.x` сообщается как несовместимый вместо ошибки `CLI_INVALID_JSON`. Встроенный onedir sidecar — `lv24-seo 0.11.0`. Контракты (`config.schema.json`, фикстуры CLI включая `stats`) перегенерированы из движка `0.11.0`. Отправка URL в Bing, отправка карты в Bing и IndexNow сохраняют свои двухфазные ворота; отправка карты GSC и удаление карты Bing остаются `WRITE_DISABLED`.
+
+Проверка, записанная для этого релиза:
+
+| Проверка | Результат |
+|---|---|
+| Опубликованные артефакты | `v0.9.0` для Windows x64, Linux x64 и macOS arm64/x64; `latest.json` и `SHA256SUMS.txt` публикуются ручным релизным workflow |
+| Локальный гейт | `npm run typecheck`, `npm test`, `npm run build`, `npm run contract:check`, `cargo fmt --check`, `cargo clippy --all-targets -- -D warnings`, `cargo test` зелёные на релизном коммите |
+| Тесты | 742 теста Vitest и 163 теста Rust прошли |
+| Контракты | актуальны для движка `0.11.0` |
+| Пин sidecar | Windows x64 проверен по закреплённому SHA-256 (`db02d1b3…`, 14 478 498 байт); Linux и macOS покрыты rebuild-aware отчётами |
+| Релизный workflow | ручной `Desktop build` с `engine_version=0.11.0`; требует отчёт контрольных сумм sidecar для каждой цели |
+
+Известные ограничения 0.9.0:
+
+- Цели Метрики показываются только как итоги; приложение не раскрывает необязательный селектор движка `--dimension page|source`.
+- История CWV «all devices» опускает фильтр устройства, а не изобретает объединённую строку.
+- Чтение Bing использует `providers.bing.site`; в приложении нет переопределения `--site`.
+- У Bing Site Scan по-прежнему нет публичного API: карточка Integrations только открывает официальную страницу и не может импортировать отчёт.
+- Движок старше `0.11.0` сообщается как несовместимый. Обновите движок или установите встроенный sidecar.
+- Панели Diagnostics не повторяют запрос автоматически; сбой показывает ошибку движка и ручной повтор.
+- Экран по замыслу только для чтения: он не добавляет действий переобхода, отправки карты или URL.
 
 ## Движок 0.10.0
 
@@ -637,13 +726,13 @@ Manual-only — намеренно. Пакет deb или rpm принадлеж
 пакета и отключает встроенный установщик для таких случаев. Оно не делает вид, что ручной пакет
 был обновлён.
 
-Путь Windows NSIS теперь проверен end-to-end восемь раз: `0.2.0 → 0.2.1`, `0.2.1 → 0.2.2`,
-`0.2.2 → 0.2.3`, `0.2.3 → 0.3.0`, `0.3.0 → 0.4.0`, `0.4.0 → 0.5.0`, `0.5.0 → 0.6.0` и `0.6.0 → 0.7.0`.
-В восьмом запуске установленная сборка `0.6.0` обновилась через Rust-обновлятор, скачала и проверила
-подписанный пакет, установила его, перезапустилась и сообщила **Desktop 0.7.0** с **Engine 0.9.0**
-и готовым движком; экран Integrations показывает панель индексации Bing.
-Любая установка `0.2.x` с обновлятором может сразу перейти на `0.7.0`; у `0.1.0` нет обновлятора,
-нужна одна ручная установка.
+Путь Windows NSIS теперь проверен end-to-end девять раз: `0.2.0 → 0.2.1`, `0.2.1 → 0.2.2`,
+`0.2.2 → 0.2.3`, `0.2.3 → 0.3.0`, `0.3.0 → 0.4.0`, `0.4.0 → 0.5.0`, `0.5.0 → 0.6.0`, `0.6.0 → 0.7.0`
+и `0.7.0 → 0.8.0`. В девятом запуске установленная сборка `0.7.0` обновилась через Rust-обновлятор,
+скачала и проверила подписанный пакет, установила его, перезапустилась и сообщила **Desktop 0.8.0**
+с **Engine 0.10.0** и готовым движком; загрузились карточки отправки URL, sitemap, проблем обхода и
+квоты Bing. `0.8.0 → 0.9.0` — следующий источник обновления. Любая установка `0.2.x` с обновлятором
+может сразу перейти на `0.9.0`; у `0.1.0` нет обновлятора, нужна одна ручная установка.
 
 Обновление `0.2.1 → 0.2.2` выполняет старый обновлятор `0.2.1`, в котором нет новой очистки
 отслеживаемых PID. Если во время первого обновления активен sidecar, повторите после его выхода
@@ -658,7 +747,7 @@ Workflow приложения ручной и owner-gated. У него нет т
 
 | Вход | Значение по умолчанию | Смысл |
 |---|---|---|
-| `engine_version` | `0.9.0` | Точная версия движка в sidecar |
+| `engine_version` | `0.11.0` | Точная версия движка в sidecar |
 | `signed` | `false` | Запросить подпись/нотаризацию ОС; в этом zero-spend репозитории не настроено |
 | `publish` | `false` | Создать GitHub release после прохождения всей матрицы |
 | `tag` | Пусто | Тег релиза `vX.Y.Z`; обязателен при `publish=true` |
@@ -681,7 +770,7 @@ Workflow приложения ручной и owner-gated. У него нет т
 
 Релизный sidecar — дерево PyInstaller **onedir**, собранное на соответствующем хосте; PyInstaller не
 кросс-компилирует. Версии движка, Python, Pydantic, Typer и PyInstaller закреплены в
-`scripts/cli-checksums.json`. `0.7.0` закрепляет движок `0.9.0` (выше `0.8.0`), Python `3.12`, Pydantic `2.14.3`,
+`scripts/cli-checksums.json`. `0.9.0` закрепляет движок `0.11.0` (выше `0.10.0`), Python `3.12`, Pydantic `2.14.3`,
 Typer `0.29.0` и PyInstaller `6.22.3`.
 
 Вывод PyInstaller onedir не байт-воспроизводим. Поэтому политика контрольных сумм разделена:
@@ -695,7 +784,7 @@ Typer `0.29.0` и PyInstaller `6.22.3`.
   target: совпадение имени target, `hashPolicy: "rebuild"`, `ok: true`, 64-hex хеш, положительный
   размер и точную версию движка.
 
-Для `0.9.0` Windows x64 имеет проверенный локальный пин; sidecar для Linux и macOS пересобраны релизным
+Для `0.9.0` Windows x64 имеет проверенный локальный пин (`db02d1b3…`, 14 478 498 байт); sidecar для Linux и macOS пересобраны релизным
 workflow с пройденными rebuild-aware отчётами, а их проверенные пины остаются `null`, пока локальная сборка
 не будет проверена на этих хостах. Windows-пин `0.8.0`
 не переносился, потому что исполняемый файл меняется вместе с движком. Отчёты контрольных сумм — доказательства CI, а не релизные артефакты.
@@ -707,7 +796,7 @@ workflow с пройденными rebuild-aware отчётами, а их пр�
 node scripts/verify-sidecar.mjs \
   --root src-tauri/engine \
   --target x86_64-pc-windows-msvc \
-  --engine-version 0.9.0
+  --engine-version 0.11.0
 ```
 
 ## `latest.json`, подпись и публикация
@@ -744,8 +833,8 @@ node scripts/verify-sidecar.mjs \
 `scripts/cli-checksums.json`; workflow передаёт `engine_version` явно, а релизный гейт требует
 совпадения с манифестом.
 
-`MIN_ENGINE_VERSION` в `src-tauri/src/commands.rs` в текущем исходнике равен `0.9.0`. Сборка `0.7.0`
-включает движок `0.9.0`, поэтому минимум совпадает с движком сборки, а движок `0.8.x` считается
+`MIN_ENGINE_VERSION` в `src-tauri/src/commands.rs` в текущем исходнике равен `0.11.0`. Сборка `0.9.0`
+включает движок `0.11.0`, поэтому минимум совпадает с движком сборки, а движок `0.10.x` считается
 несовместимым. Оболочка
 принимает движок не старше этой версии и помечает более старый как offline с уведомлением. Более
 новый движок проходит гейт, но не является релизно-проверенным пином. Сборочная версия может
@@ -754,13 +843,17 @@ node scripts/verify-sidecar.mjs \
 
 ## Однократное обновление с 0.1.0
 
-У `0.1.0` нет updater, endpoint и публичного ключа. Он не может найти или установить `0.7.0`.
-Скачайте и установите `0.7.0` вручную один раз (NSIS-установщик или portable ZIP в Windows).
-После этого установка `0.7.0` может автоматически обновляться до следующих релизов, если
+У `0.1.0` нет updater, endpoint и публичного ключа. Он не может найти или установить `0.9.0`.
+Скачайте и установите `0.9.0` вручную один раз (NSIS-установщик или portable ZIP в Windows).
+После этого установка `0.9.0` может автоматически обновляться до следующих релизов, если
 использует пакет с поддержкой автообновления.
 
 ## Предыдущие релизы
 
+- **Движок 0.10.0** превратил отправку URL в Bing в защищённую запись `SubmitUrlbatch` и добавил
+  представления квоты, фидов sitemap и проблем обхода только для чтения, 23 команды CLI и 12 инструментов.
+- **Приложение 0.8.0** добавило отправку URL в Bing и карточки sitemap, проблем обхода и квоты только для
+  чтения, включило движок `0.10.0` и подняло `MIN_ENGINE_VERSION` до `0.10.0`.
 - **Приложение 0.7.0** добавило панель индексации Bing (план/применение sitemap, IndexNow из sitemap,
   открытие Site Scan) и посессионный секрет записи, включило движок `0.9.0` и подняло `MIN_ENGINE_VERSION` до `0.9.0`.
 - **Движок 0.9.0** сделал отправку sitemap в Bing защищённой записью `SubmitFeed`, добавил IndexNow в один
@@ -826,4 +919,4 @@ Gatekeeper ожидаемы; сверьте контрольную сумму и
 
 См. [Безопасность и приватность](/ru/security/) для доверия к обновлениям и [Архитектуру](/ru/architecture/) для раскладки sidecar.
 
-Source: `_source/engine-releases-0.9.0.md`, `_source/engine-releases-0.8.0.md`, `_source/engine-releases-0.7.0.md`, `_source/engine-releases-0.6.0.md`, `_source/engine-releases-0.5.3.md`, `_source/engine-releases-0.5.2.md`, `_source/desktop-releases-0.7.0.md`, `_source/desktop-releases-0.6.0.md`, `_source/desktop-releases-0.5.0.md`, `_source/desktop-releases-0.4.0.md`, `_source/desktop-releases-0.3.0.md`, `_source/desktop-releases-0.2.3.md`, `_source/desktop-releases-0.2.2.md`, `_source/desktop-releases-0.2.1.md`, `_source/desktop-releases-0.2.0.md`, `_source/desktop-release.md`, `_source/desktop-security.md`.
+Source: `_source/engine-releases-0.11.0.md`, `_source/engine-releases-0.10.0.md`, `_source/engine-releases-0.9.0.md`, `_source/engine-releases-0.8.0.md`, `_source/engine-releases-0.7.0.md`, `_source/engine-releases-0.6.0.md`, `_source/engine-releases-0.5.3.md`, `_source/engine-releases-0.5.2.md`, `_source/desktop-releases-0.9.0.md`, `_source/desktop-releases-0.8.0.md`, `_source/desktop-releases-0.7.0.md`, `_source/desktop-releases-0.6.0.md`, `_source/desktop-releases-0.5.0.md`, `_source/desktop-releases-0.4.0.md`, `_source/desktop-releases-0.3.0.md`, `_source/desktop-releases-0.2.3.md`, `_source/desktop-releases-0.2.2.md`, `_source/desktop-releases-0.2.1.md`, `_source/desktop-releases-0.2.0.md`, `_source/desktop-release.md`, `_source/desktop-security.md`.

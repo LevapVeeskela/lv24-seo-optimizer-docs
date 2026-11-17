@@ -21,14 +21,24 @@ MCP tools return the same envelope (as `structuredContent` when the SDK supports
 | `QUOTA_EXCEEDED` | 4 | usually | HTTP 429, or the local rate limiter cannot fit the wait in its budget | Wait for the reset; lower `--limit`; split the window |
 | `UPSTREAM_UNAVAILABLE` | 4 | often | Network/timeout, HTTP 5xx, invalid JSON, or a capability the client does not implement | Retry later; check egress and provider status |
 | `WRITE_DISABLED` | 2 | no | A write was attempted without `--allow-write`/`allow_write`, the write secret is missing, the adapter is not wired, or a secret could not be stored | See [Write tools](#write_disabled--confirm_required) |
-| `CONFIRM_REQUIRED` | 1 | no | A gated CLI write received a missing, expired or plan-mismatched `--confirm` token | Rerun the dry run and pass the fresh token |
-| `INVALID_INPUT` | 2 | no | Bad flag, date, limit, URL, provider name or client name | Fix the argument; read `next_action` |
-| `CONFIG_INVALID` | 2 | no | Bad `seo.toml`, bad host JSON, BOM, or a missing explicit config path | Fix the file named in the message |
-| `TRUNCATED` | 5 | n/a | Reserved as an error code. **Not emitted:** truncation is `meta.truncated` / `limitations` and exits `0` | Raise the limit within provider caps |
+| `CONFIRM_REQUIRED` | 2 | no | A gated write received a missing, expired or plan-mismatched confirm token | Rerun the dry run and pass the fresh token |
+| `INVALID_INPUT` | 2 | no | Bad flag, date, limit, URL, path, task transition, provider name or client name | Fix the argument; read `next_action` |
+| `CONFIG_INVALID` | 2 | no | Bad `seo.toml`, bad host JSON, BOM, a missing explicit config path, or `tasks` without an initialised workspace | Fix the file named in the message, or run `lv24-seo init` |
+| `STORE_LOCKED` | 1 | yes | Another process holds the SQLite write lock past the busy timeout | Wait for the other run (crawl, report, MCP server), then retry; nothing was written |
+| `STORE_CORRUPT` | 1 | no | The database file is not valid SQLite; a byte copy is kept as `<db>.corrupt-<utc>` | Inspect `detail.backup_path`, move the original aside, rerun |
+| `STORE_UNAVAILABLE` | 1 | no | SQLite could not open or write the path (permissions, missing directory, disk) | Fix the path/permissions; run `doctor --json` |
+| `TRUNCATED` | 5 | n/a | Reserved as an error code. **Not emitted:** truncation is `meta.truncated` / `limitations` and exits `0` unless `--strict` is set | Raise the limit within provider caps |
 | `INTERNAL` | 1 | no | Unexpected failure; the message deliberately omits the traceback | Run `doctor --json`; report with the envelope |
 
-Exit `5` is only produced for a successful payload with `meta.truncated` **and** `meta.strict`;
-no current command sets `strict`. Treat `meta.truncated` as the signal, not the exit code.
+Exit `5` is produced only for a successful payload with `meta.truncated` **and** `meta.strict`.
+`--strict` exists on the read commands (`stats`, `gsc query`, `yandex queries`, `yandex indexing`,
+`crawl`, `report weekly`, `report diff`) and always sets `meta.strict`; without it, truncation is
+still visible in `meta.truncated` but the command exits `0`. `report diff --markdown --strict`
+prints the Markdown and then exits `5` for truncated data.
+
+`STORE_*` codes are typed storage failures, not program bugs. They currently map to exit `1`
+(unexpected) because they have no dedicated exit status; use `error.code` and `retryable`, not the
+exit number. `STORE_LOCKED` is the only one safe to retry as-is.
 
 ## AUTH_REQUIRED and AUTH_INVALID
 
@@ -80,11 +90,25 @@ Provider-side lifetimes:
 | Google OAuth refresh token | until revoked | The OAuth app must be in production (published). In testing mode, refresh tokens expire after 7 days |
 | Google service account | no expiry | Must be added to the property as Full/Owner |
 
-**Current build caveat:** there is no OAuth refresh flow and no service-account auth. `auth set
---provider gsc` stores a single string and sends it as `Authorization: Bearer`. That is a Google
-**access token**, which normally lives about an hour. Store a fresh one per run; the long
-refresh-token lifetimes above apply once the refresh flow lands. Yandex tokens are static and work
-for their full lifetime.
+**GSC service accounts:** set `providers.gsc.service_account_file` or
+`LV24_SEO_GSC_SERVICE_ACCOUNT_FILE` to an **absolute** path to the JSON key. The engine reads the
+key once per process, signs an RS256 JWT, exchanges it at the Google token endpoint, caches the
+access token and refreshes it 60 seconds before expiry. A relative, missing or unreadable file is
+`CONFIG_INVALID`; an invalid JSON/key or a rejected exchange is `CONFIG_INVALID`/`AUTH_INVALID` with
+a next action. `auth set --provider gsc` still stores a plain OAuth access token, which normally
+lives about an hour and is not refreshed. `auth status` reports only stored secrets; a configured
+service-account file is reported by `properties` and by the `gsc_auth` check in `doctor`. Yandex
+tokens are static and work for their full lifetime.
+
+### Service-account file errors
+
+| Message | Cause | Fix |
+|---|---|---|
+| `Google service account file path must be absolute` | A relative `service_account_file` | Use an absolute path (or `~`-expanded) in `seo.toml`/the environment |
+| `Google service account file not found` / `is not a file` | Wrong path or a directory | Point at the downloaded JSON key; keep it outside the repository |
+| `cannot read the Google service account file` | Permissions or a locked volume | Fix permissions or move the key to a readable location |
+| `... is not valid JSON` / `is not a service-account key` | Truncated or wrong JSON | Download a new key from Google Cloud → IAM → Service accounts → Keys |
+| `Google rejected the service-account token request` | Key revoked, clock skew, or API disabled | Create a new key, check the system clock, enable the Search Console API |
 
 `auth status` reports `present` and the source (`env`, `keyring`, `file`) but never a value. An
 environment token is read-only: `auth set` and `auth logout` return `WRITE_DISABLED` while it is
@@ -145,7 +169,7 @@ Do not run `lv24-seo yandex hosts`: that command does not exist in this build (`
 | GSC URL Inspection | 2,000/day/site, 600/min | One URL per call, no batch |
 | GSC project | 40,000 QPM / 30M QPD | All projects on one Cloud project |
 | Yandex Webmaster | no published global RPD/RPS | Query analytics (popular queries) is fragile above ~10k req/hour (429) |
-| Yandex recrawl | hard daily quota | The API exposes `GET /recrawl/quota`; the adapter is not wired, so the CLI only plans the write and consumes no quota |
+| Yandex recrawl | hard daily quota | `yandex recrawl` reads `GET /recrawl/quota` first and caps the list to the remainder; one POST per URL, `429` stops the loop with `not_attempted` |
 | Metrika | `/stat/v1/data` 200 requests / 5 min; 5,000/day/user; 30 rps/IP; 3 parallel | Report and stat calls |
 | CrUX | 150 queries/min/project | Origin-level field data |
 | PSI | ~25,000/day | Lab audits |
@@ -206,20 +230,26 @@ error:
 The command still exits 0. Retry later; Yandex query reports also lag roughly four days. Check the
 host in Webmaster before assuming maintenance — a wrong `host_id` looks identical.
 
+An **empty** history is not a degraded host. When the host answered but has no indexing buckets or
+search-URL events for the window, the result is `rows: []`, `total: 0`,
+`limitations: ["empty_history"]`, no `degraded_host` warning, and exit 0. `HOST_NOT_LOADED` /
+`degraded_host` is reserved for a host-scoped 404 or an explicit not-loaded payload.
+
 GET-based Yandex reads are retried on 429/5xx up to three attempts; the degraded result above is
 what remains after a host-scoped 404. POST-based reads (GSC search analytics, URL Inspection, CrUX,
 Metrika `/stat/v1/data`) are not retried at all.
 
 ## WRITE_DISABLED / CONFIRM_REQUIRED
 
-CLI writes use the ADR-0003 flow: a dry run returns a plan plus a short-lived confirm token, and
-applying the plan requires the same plan plus that token.
+CLI writes use the ADR-0003 flow: a plan (`--allow-write` plus `LV24_SEO_WRITE_SECRET`) returns the
+payload and a short-lived confirm token, and applying the plan requires the same plan plus that
+token.
 
-| Command | Dry run | Apply |
+| Command | Plan | Apply |
 |---|---|---|
 | `indexnow submit` | `--allow-write` + `LV24_SEO_WRITE_SECRET` → plan + token | Sends the URLs to IndexNow |
-| `sitemap submit` | same → plan + token | `WRITE_DISABLED`: `gsc sitemap submit is not wired yet` (no provider call) |
-| `yandex recrawl` | same → plan + token | `WRITE_DISABLED`: `yandex recrawl is not wired yet` (no provider call) |
+| `sitemap submit` | same → plan + token | `--provider bing`: JSON `SubmitFeed`; GSC: `WRITE_DISABLED` (`gsc sitemap submit is not wired yet`, no provider call) |
+| `yandex recrawl` | same → plan + token | One `POST /recrawl/queue` per URL, capped to the remaining daily quota; `202` rows carry `task_id`/`quota_remainder`, `409` is `already_queued`, `429` stops with `not_attempted` |
 
 `yandex recrawl` reads `providers.yandex_webmaster.host_id` from `seo.toml`; if it is blank, the
 command returns `INVALID_INPUT` and exit 2 before the write gate.
@@ -240,7 +270,7 @@ lv24-seo indexnow submit --host example.com --key YOUR_INDEXNOW_KEY \
 ```
 
 IndexNow also requires the key file to be live at `https://<host>/<key>.txt` before the apply step.
-The dry run never contacts IndexNow; only the apply with a valid token does.
+The plan never contacts IndexNow; only the apply with a valid token does.
 
 The token is an HMAC over the action, target, full plan hash and expiry. Changing the URLs, host,
 key, property or even the summary invalidates it:
@@ -252,7 +282,7 @@ key, property or even the summary invalidates it:
 Tokens live 300 seconds. With an initialised workspace the CLI attaches the SQLite idempotency
 ledger, so replaying the same token returns `status: skipped` / `reason: duplicate` and the provider
 is called once. Without a data directory the apply still runs, but the envelope warns that replay
-protection is off for the token's five-minute lifetime — run `lv24-seo init` to enable it. A dry run
+protection is off for the token's five-minute lifetime — run `lv24-seo init` to enable it. The plan
 opens no ledger and creates no database.
 
 An apply claims the slot as `pending`, promotes it to `sent` only after the provider confirms, and
@@ -264,12 +294,12 @@ promotion leaves `pending`, which is treated as in-flight until an operator rele
 
 | Message | Cause | Fix |
 |---|---|---|
-| `write operations are disabled by default` | `--allow-write` was not passed | Review the dry run, then opt in per call |
+| `write operations are disabled by default` | `--allow-write` was not passed | Pass `--allow-write` plus `LV24_SEO_WRITE_SECRET` to plan; apply with `--allow-write --confirm TOKEN` |
 | `write secret is empty: set LV24_SEO_WRITE_SECRET` | `--allow-write` without the environment secret | Set a long random value in the same shell or service |
 | `gsc sitemap submit is not wired yet` | GSC sitemap adapter absent | Submit in Search Console until it lands |
-| `yandex recrawl is not wired yet` | Recrawl adapter absent | Queue in Yandex Webmaster until it lands |
+| `Yandex recrawl quota exceeded for <url>` | Daily recrawl quota exhausted (429) | Wait for the quota to reset; earlier `task_id`s stay reported and the rest is in `not_attempted` |
 | `<tool> is a write tool and is disabled by default` | MCP write tool called without `allow_write=true` | Pass `allow_write=true` only after reviewing the plan |
-| `recrawl writes are not available in this build` / `sitemap writes are not available in this build` | MCP call with `allow_write=true`, but the MCP write layer is not wired | Use the CLI write surface; MCP writes remain disabled |
+| `recrawl writes are not available in this build` / `sitemap writes are not available in this build` | MCP call with `allow_write=true`, but the engine service exposes no write handler | Use the CLI write surface; these MCP writes remain disabled |
 
 `WRITE_DISABLED` also comes from the secret store, with a different message:
 
@@ -279,10 +309,53 @@ promotion leaves `pending`, which is treated as in-flight until an operator rele
 | `the OS keyring rejected the write and file storage is disabled` | Locked/unavailable keyring | Unlock it, or set `LV24_SEO_ALLOW_FILE_SECRETS=1` for the 0600 file fallback |
 | `no writable secret backend` | No keyring and no file fallback | Install the `secrets` extra or enable the file fallback |
 
-MCP has no confirm-token path yet: both write tools return `WRITE_DISABLED` even with
-`allow_write=true`. Only the CLI can perform a write in this build, and only IndexNow reaches a
-provider. Keep `--allow-write` per call; never enable writes globally in an agent config, and never
-log or commit `LV24_SEO_WRITE_SECRET`.
+MCP write tools implement the same two-phase flow: `allow_write=true` plus `plan_hash` and
+`confirm_token` from the dry run, with `LV24_SEO_WRITE_SECRET` in the server environment. Bing
+sitemap submit and Yandex recrawl are wired; GSC submit and Bing delete return `WRITE_DISABLED`
+and nothing is sent. IndexNow stays CLI/desktop-only. Keep
+`allow_write` per call; never enable writes globally in an agent config, and never log or commit
+`LV24_SEO_WRITE_SECRET`.
+
+## STORE_LOCKED / STORE_CORRUPT / STORE_UNAVAILABLE
+
+The store translates raw `sqlite3` failures into typed errors instead of a generic `INTERNAL`
+"report the bug" envelope:
+
+| Code | Meaning | What to do |
+|---|---|---|
+| `STORE_LOCKED` | Another connection held the write lock past the busy timeout. `retryable: true`; nothing was written. | Let the other lv24-seo process (crawl, report, MCP server) finish, then rerun. |
+| `STORE_CORRUPT` | The file is not a usable SQLite database. A byte copy is made first and named `<db>.corrupt-<utc>` (for example `seo.sqlite3.corrupt-20261115T124500Z`); `detail.backup_path` names it. The original is never moved or deleted. | Inspect or archive the backup, move the original aside, rerun to create a new database. |
+| `STORE_UNAVAILABLE` | SQLite could not open or write the path: permissions, missing parent directory, read-only file, disk full or I/O error. | Check the directory and free space; `lv24-seo doctor --json` now fails when a declared data directory is unusable. |
+
+The message and `detail` never contain row data, tokens or SQL parameters.
+
+`backup create` is the one `STORE_CORRUPT` path that does **not** write `<db>.corrupt-<utc>`: it
+promises to leave the source workspace untouched, so it reports the corrupt file and writes no
+archive. Inspect or restore that file from another copy.
+
+## logs, tasks and backup
+
+These commands add no new error codes; they reuse `INVALID_INPUT` (exit `2`), `CONFIG_INVALID`
+(exit `2`) and `STORE_CORRUPT` (exit `1`).
+
+| Symptom | Cause | Fix |
+|---|---|---|
+| `logs analyze` says the path “must be absolute”, “must name exactly one file, not a glob”, or “UNC, network and device paths are not accepted” | The log path contract is deliberately narrow | Pass one absolute local regular file: no `*`, `?`, `[`, no `\\server\share`, no `NUL`/`COM1` |
+| `logs analyze` says the path “is a directory” or “is not a regular file” | A directory or special file was passed | Pass the access log itself |
+| `logs analyze` says the file “is larger than the … byte limit” | The log exceeds **100 MiB** | Rotate or split the log and analyse one part at a time |
+| `warnings: skipped N of M lines: blank or not nginx JSON` | Blank, truncated or non-JSON lines | Expected for a rotated or partially written log; the parsed share is reported |
+| Bot counts look wrong, or a fake Googlebot appears | Bot classes are **user-agent only** | Treat the rollup as triage; there is no reverse-DNS or published-IP verification |
+| `tasks …` returns `CONFIG_INVALID`: “tasks need the local history store” | No initialised data directory | Run `lv24-seo init`, or set `storage.data_dir` and retry |
+| `tasks update` returns `INVALID_INPUT`: “invalid task transition” | The requested move is not in the lifecycle | Allowed: `open → in_progress\|verified\|dismissed`, `in_progress → open\|verified\|dismissed`, `verified → open\|dismissed`, `dismissed → open\|in_progress` |
+| `tasks add --payload` rejects a field as a credential | A key ends with `token`, `secret`, `password`, `api_key` or `authorization` | Store evidence only; remove the field |
+| `backup create` says the output directory must be absolute, does not exist or is not a directory | `--out` must be an existing absolute directory | Create it first, then pass the absolute path |
+| `backup create` says “the archive already exists” | The timestamped name already exists (a rerun in the same second) | Pass `--force` to replace it, or wait a second |
+| `backup create` returns `STORE_CORRUPT` | The source database is not valid SQLite | The source is left untouched and no archive is written; inspect or restore it from another copy |
+| `backup create` warns “the database was not found” | A config-only workspace | The archive contains `seo.toml` only; run `init` if you expected history |
+| `backup restore --to` says “the restore directory already exists” | `--to` never merges or overwrites, including an empty directory | Choose a path that does not exist yet (the parent must exist) |
+| `backup restore --to` says “the archive contains no database” | A config-only archive | No database is invented; the restored directory holds only `seo.toml` |
+| `backup restore` says “unsafe member path” | The archive was edited or made by another tool | Use an archive from `backup create`; absolute paths, `..`, backslashes and symlink members are rejected |
+| `backup restore --config` returns `CONFIRM_REQUIRED` | The token expired, the archive changed, or the workspace changed after the plan | Re-run without `--confirm`, review the fresh plan, then pass the new token within 5 minutes |
 
 ## Empty or partial reports
 
@@ -300,9 +373,10 @@ Expected lag:
 
 | Source | Lag |
 |---|---|
-| GSC search analytics | 2–3 days (`--lag-days 2` is the report default) |
+| GSC search analytics | 2–3 days (`--lag-days 2` is the report default); `data_age_days` is floored at 3 |
 | Yandex Webmaster queries | ~4 days |
 | Yandex Metrika | Near real time for the requested date window |
+| Bing Webmaster | Age of the newest dated row in the feed |
 | CrUX | 28-day rolling p75 |
 | PSI | Lab run, current request |
 
@@ -315,6 +389,8 @@ Common warning strings and their fixes:
 | `yandex_webmaster: host_id missing` | Set `providers.yandex_webmaster.host_id` |
 | `yandex_metrika: counter missing` | Set `providers.yandex_metrika.counter` |
 | `host_not_loaded` + `degraded_host` | Wait, or fix the host id |
+| `empty_history` (limitation) | The host answered but has no buckets/events yet; not an outage |
+| `off-origin sitemap loc excluded` | A sitemap listed a URL outside the site; it was dropped, not fetched |
 | `no provider rows; traffic and opportunities are empty` | Configure at least one engine and property |
 | `store: not configured; snapshot was not saved` | Run `init` so the data directory exists |
 | `write ledger: no data directory` … | Run `init`; a store-less apply has no replay protection |
@@ -351,7 +427,7 @@ lv24-seo properties --json
 
 | Source | What it contains | What it never contains |
 |---|---|---|
-| `doctor --json` | Python version, platform, config path, effective data directory and its scope, cwd/data-dir writability, token presence, an ambiguity warning for a relative data directory | Tokens, network results |
+| `doctor --json` | Python version, platform, config path, effective data directory and its scope, `meta.data_dir_declared`, cwd/data-dir writability, token presence, an ambiguity warning for a relative data directory. A **declared** data directory that is missing or unwritable is fatal (`ok: false`, `meta.healthy: false`) | Tokens, network results |
 | `auth status --json` | Provider, secret name, `present`, `source`, `expires_at` | Secret values |
 | `config show --json` | Effective config with secret-looking keys masked as `***` | Tokens, passwords, API keys |
 | Error envelope | `code`, `message`, `next_action`, `retryable`, optional `detail` | Request bodies, headers, token fields; input-validation details can echo the value you passed (including a URL query) |
@@ -394,7 +470,7 @@ The first three rows describe the `0.0.1` alpha; re-check `lv24-seo --help` afte
 | Symptom | Cause | Fix |
 |---|---|---|
 | `install` says the file “is not valid JSON” but it looks valid | UTF-8 BOM at the start of the file (common with Windows PowerShell 5.1 `Set-Content -Encoding utf8`) | Rewrite as UTF-8 without BOM, or delete the file and rerun `install` |
-| `No such command 'mcp'` | The `mcp serve` subcommand is not wired in this build | Use the checkout launcher in [MCP client setup](mcp-clients.md#launcher-status-in-the-current-alpha) |
+| `No such command 'mcp'` | The `mcp serve` subcommand is not wired in this build | Use the checkout launcher in [MCP client setup](mcp-clients.md#launcher-status) |
 | `uvx` says `lv24-seo was not found in the package registry` | The package is not published yet | Use the checkout launcher |
 | Server fails to start from a GUI client | The app does not inherit the shell `PATH`, so `uvx` is not found | Put the absolute path (`where uvx` / `which uvx`) in `command` |
 | VS Code lists nothing after `install --client vscode` | `install` writes `mcpServers`; VS Code's `.vscode/mcp.json` uses `servers` | Rename the key or use the VS Code block in [MCP client setup](mcp-clients.md#vs-code-copilot-chat) |

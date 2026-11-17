@@ -48,6 +48,23 @@ token and a local idempotency ledger. Sitemap submission and Yandex recrawl
 currently return `WRITE_DISABLED`. Write calls are not automatically retried.
 MCP annotations describe intent; they are not an authorization mechanism.
 
+`backup restore --config` (in-place replacement of a workspace) follows the same
+two-phase gate: a plan, then `--allow-write` plus the plan's confirm token.
+`backup restore --to DIR` is deliberately not gated because it only creates a
+new directory: an existing, non-empty or symlinked target is refused, archive
+members are restricted to the manifest, and absolute paths, `..` segments,
+backslashes and symlink members are rejected before extraction. The restored
+database passes `PRAGMA quick_check` before and after it is moved into place,
+and a failed restore removes only the directory that call created.
+
+Local host-scheduler changes are gated too. `schedule install` and
+`schedule uninstall` only print a plan by default; they touch cron, systemd
+user units or Task Scheduler only with `--allow-write`. `schedule status` is
+read-only. Uninstall removes exactly the generated `# >>> lv24-seo:<job> >>>`
+block, the two `<job>.service` / `<job>.timer` units or the named task, reports
+what it removed, and is idempotent. There are no wildcard process kills, and
+unrelated cron lines or tasks are never modified.
+
 ## Supply chain
 
 CI runs offline tests, type/style checks, generated-schema drift checks and

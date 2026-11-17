@@ -21,7 +21,7 @@ Three tools persist local state and are not advertised as read-only:
 | `seo_crawl_site` | read | `true` | `false` | `false` | `false` |
 | `seo_weekly_report` | read | `true` | `false` | `false` | `false` |
 
-They save indexing events, crawl snapshots or weekly snapshots but never mutate provider state and need no confirm token. MCP clients that branch on `readOnlyHint` may ask for confirmation before calling them; that is intentional. The twelve tools break down as 10 read-class tools (7 pure read-only plus these 3 local-state writers) and the 2 gated writes. Both gated writes require `allow_write`, a plan and a confirm token, and the server's `LV24_SEO_WRITE_SECRET`; Bing sitemap submit is wired, while GSC sitemap submit, Bing sitemap delete and Yandex recrawl still return `WRITE_DISABLED`.
+They save indexing events, crawl snapshots or weekly snapshots but never mutate provider state and need no confirm token. MCP clients that branch on `readOnlyHint` may ask for confirmation before calling them; that is intentional. The twelve tools break down as 10 read-class tools (7 pure read-only plus these 3 local-state writers) and the 2 gated writes. Both gated writes require `allow_write`, a plan and a confirm token, and the server's `LV24_SEO_WRITE_SECRET`; Bing sitemap submit and Yandex recrawl are wired, while GSC sitemap submit and Bing sitemap delete still return `WRITE_DISABLED`.
 
 The two write tools carry `destructiveHint: true` and are opt-in: `allow_write` defaults to `false` and every call without it returns `WRITE_DISABLED` before a plan is built. They follow the same two-phase contract as the CLI, described below.
 
@@ -48,7 +48,7 @@ The token is an HMAC over the action, target, full plan hash and expiry, and liv
 
 The server passes its workspace store to the write gate, so a replayed token returns `status: skipped` with `reason: duplicate` and the provider is called once. Without a store the apply still runs, but the response warns that replay protection is off for the token's lifetime. A provider failure releases the claim, so a genuine retry is allowed and a failed write is never recorded as sent.
 
-The contract is implemented in the server. `seo_sitemap_submit` with `provider: "bing"` calls the same Bing `SubmitFeed` path as the CLI; GSC sitemap submit, Bing sitemap delete and Yandex recrawl still return `WRITE_DISABLED` even with `allow_write=true` and a secret. IndexNow remains CLI/desktop-only and has no MCP tool. Nothing is simulated.
+The contract is implemented in the server. `seo_sitemap_submit` with `provider: "bing"` calls the same Bing `SubmitFeed` path as the CLI, and `seo_recrawl_request` calls the same Yandex recrawl path with one POST per URL and a quota cap. GSC sitemap submit and Bing sitemap delete still return `WRITE_DISABLED` even with `allow_write=true` and a secret. IndexNow remains CLI/desktop-only and has no MCP tool. Nothing is simulated.
 
 ## Tools
 
@@ -61,10 +61,10 @@ The contract is implemented in the server. `seo_sitemap_submit` with `provider: 
 | `seo_crawl_site` | `start_url`, `max_urls` 0 or 1–5000, `include_rules` | Crawl summary, issues, link graph and sitemap coverage |
 | `seo_weekly_report` | `days` 1–90, `lag_days` 0–14 | Weekly report sections, including stored CWV rows read through today, plus envelope meta |
 | `seo_report_diff` | `base`, `head` as `START..END` | Headline changes, issue counts, opportunity churn, limitations, Markdown |
-| `seo_indexing_triage` | None | Buckets with reason, count, examples and `next_action` |
+| `seo_indexing_triage` | `max_examples` 0–20 (default 5), optional `url` | Buckets with reason, count, examples and `next_action`; with `url`, one GSC URL Inspection result in `data.inspection` |
 | `seo_opportunities` | `days` 1–90 (default 28), `limit` 1–500, `min_impressions` | Ranked opportunities with evidence and `expected_gain` |
 | `seo_log_analysis` | `file` (absolute path), `bot` (`googlebot`, `yandexbot`, `bingbot`, `other` or empty) | Bot rollup and crawl-waste summary for one local nginx JSON access log |
-| `seo_recrawl_request` | `host_id` (default: configured host), `urls`, `allow_write` (default `false`), `plan_hash`, `confirm_token` | Two-phase gated write; `WRITE_DISABLED` while no provider adapter is wired |
+| `seo_recrawl_request` | `host_id` (default: configured host), `urls`, `allow_write` (default `false`), `plan_hash`, `confirm_token` | Two-phase gated write; one Yandex POST per URL, capped to the remaining daily quota; `202` carries `task_id`, `409` is `already_queued`, `429` reports `not_attempted` |
 | `seo_sitemap_submit` | `provider` (`gsc` or `bing`, default `gsc`), `property`, `sitemap_url`, `action`, `allow_write` (default `false`), `plan_hash`, `confirm_token` | Two-phase gated write; Bing submit is wired, GSC submit and Bing delete return `WRITE_DISABLED` |
 
 `gsc_search_analytics` defaults to the last seven full days in `report.timezone`. `seo_weekly_report` takes no property argument: the property, timezone and lag defaults come from config. `seo_opportunities` returns `expected_gain`, a prioritisation estimate, never a traffic promise.
@@ -80,6 +80,8 @@ The MCP weekly tool caps `days` at 90 and `lag_days` at 14 with a warning; value
 `seo_sitemap_submit` gained an optional `provider` (`gsc|bing`, default `gsc`) in 0.9.0; the tool name, the 12-tool surface and the rest of its inputs are unchanged. For Bing, `property` defaults to `providers.bing.site` and `sitemap_url` to `<project.base_url>/sitemap.xml`. The plan checks the `bing_api_key` secret and returns `AUTH_REQUIRED` when it is missing, so a token that cannot be applied is never handed out. A replay returns `status: skipped` with `reason: duplicate`, and a provider failure releases the claim. Bing delete and every GSC sitemap write remain `WRITE_DISABLED`. IndexNow from a sitemap is CLI and desktop only.
 
 Engine 0.10.0 adds the `bing` CLI group: `bing submit` (native `SubmitUrlbatch` in 500-URL batches; accepted, never indexed), `bing quota` (daily and monthly values are remaining, not totals), `bing sitemaps` (feed status and URL count, no per-URL errors) and `bing issues` (decoded crawl-issue bitmask, no severity or date). None of them adds an MCP tool: the surface stays at 12, and `seo_sitemap_submit` still submits a sitemap, not a URL batch.
+
+Engine 0.11.0 keeps the 12-tool surface and adds read depth without a thirteenth tool. `seo_indexing_triage` accepts an optional `url` and includes one GSC URL Inspection result in `data.inspection`; without it the tool keeps its existing inputs and the honest limitation that Google URL-level coverage is not exposed. The richer GSC Search Analytics selectors and the `gsc sitemaps`/`gsc sitemap` reads are CLI-only. `seo_recrawl_request` is wired to the Yandex recrawl queue. `schemas/tools.json` is regenerated for the new `url` input.
 
 `cwv collect` is a CLI writer, not a thirteenth tool: the MCP surface stays at 12. `seo_weekly_report` reads whatever field rows the CLI has persisted and adds the `cwv` section grouped by URL template and device, with at most five templates. PSI lab rows are never stored, so `--source psi` alone cannot populate that section.
 
@@ -195,4 +197,4 @@ Codes: `AUTH_REQUIRED`, `AUTH_INVALID`, `PROPERTY_NOT_FOUND`, `QUOTA_EXCEEDED`, 
 - **Technical audit.** Crawl up to 500 URLs with `seo_crawl_site` and summarise critical and high issues by rule id. Do not describe an unvisited URL as broken.
 - **Write request.** Prepare a recrawl plan for these URLs and show the quota first. Do not write anything until I approve the plan.
 
-Source: `_source/engine-mcp.md`, `_source/engine-skills.md`, `_source/engine-cli.md`, `_source/engine-releases-0.5.2.md`, `_source/engine-releases-0.5.3.md`, `_source/engine-releases-0.6.0.md`, `_source/engine-releases-0.7.0.md`, `_source/engine-releases-0.8.0.md`, `_source/engine-releases-0.9.0.md`, `_source/engine-releases-0.10.0.md`.
+Source: `_source/engine-mcp.md`, `_source/engine-skills.md`, `_source/engine-cli.md`, `_source/engine-releases-0.11.0.md`, `_source/engine-releases-0.10.0.md`, `_source/engine-releases-0.9.0.md`, `_source/engine-releases-0.8.0.md`, `_source/engine-releases-0.7.0.md`, `_source/engine-releases-0.6.0.md`, `_source/engine-releases-0.5.3.md`.

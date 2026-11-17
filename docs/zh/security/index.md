@@ -5,7 +5,7 @@ description: LV24 SEO Optimizer 的威胁模型、密钥处理、写入门禁、
 
 # 安全与隐私
 
-LV24 SEO Optimizer 以本地为先。引擎（`lv24-seo 0.5.3`）负责数据源、抓取、存储和报告；
+LV24 SEO Optimizer 以本地为先。引擎（`lv24-seo 0.11.0`）负责数据源、抓取、存储和报告；
 桌面应用（`0.3.0`）只是引擎之上的界面和进程外壳，不重新实现数据源客户端，也不代理
 数据源流量。
 
@@ -97,15 +97,18 @@ SQLite 幂等账本，因此重放同一令牌返回 `status: skipped` 和 `reas
 | 动作 | 当前构建中的状态 |
 |---|---|
 | IndexNow 提交 | 已接通；需要 `--allow-write`、确认令牌和 `LV24_SEO_WRITE_SECRET` |
-| GSC sitemap 提交 | `WRITE_DISABLED` — 适配器未接通 |
-| Yandex recrawl | `WRITE_DISABLED` — 适配器未接通 |
-| MCP 写入工具 | 已实现两阶段 `plan_hash` + `confirm_token` 契约；未接通数据源适配器时返回 `WRITE_DISABLED` |
+| Bing 站点地图提交 | 通过 `SubmitFeed` 接通；同样的两阶段门控 |
+| Bing URL 提交 | 通过 `SubmitUrlbatch` 接通；accepted，不是 indexed |
+| Yandex recrawl | 已接通；每个 URL 一次 POST，受每日剩余配额限制 |
+| GSC sitemap 提交 | `WRITE_DISABLED` — 需要完整 `webmasters` scope，引擎不请求它 |
+| MCP 写入工具 | 两阶段 `plan_hash` + `confirm_token`；Bing 提交和 Yandex recrawl 已接通，GSC 提交和 Bing 删除返回 `WRITE_DISABLED` |
 
-当前构建中只有 CLI 能执行数据源写入，且只有 IndexNow 会到达数据源。MCP 写入工具
-（`seo_recrawl_request`、`seo_sitemap_submit`）带有 `destructiveHint: true`，且 `allow_write`
-默认为 `false`。它们从服务器环境读取 `LV24_SEO_WRITE_SECRET`；空密钥会得到 `WRITE_DISABLED`，
-绝不是弱默认值。不带 `confirm_token` 的调用是 dry run，返回 `plan_hash`、`confirm_token` 和
-`ttl_seconds`；应用必须回传 `plan_hash` 和令牌，哈希不匹配会得到 `CONFIRM_REQUIRED`，工作区
+CLI 和 MCP 服务器都能执行数据源写入。IndexNow、Bing 站点地图提交、Bing URL 提交和 Yandex 重新抓取会
+到达数据源；GSC 站点地图提交和 Bing 站点地图删除不会。MCP 写入工具（`seo_recrawl_request`、
+`seo_sitemap_submit`）带有 `destructiveHint: true`，且 `allow_write` 默认为 `false`。它们从服务器环境
+读取 `LV24_SEO_WRITE_SECRET`；空密钥会得到 `WRITE_DISABLED`，绝不是弱默认值。不带 `confirm_token`
+的调用是 dry run，返回 `plan_hash`、`confirm_token` 和 `ttl_seconds`；应用必须回传 `plan_hash` 和
+令牌，哈希不匹配会得到 `CONFIRM_REQUIRED`，工作区
 存储会占用幂等槽位，因此重放返回 `skipped`，而不是第二次调用数据源。
 
 本地状态工具不同。`seo_crawl_site` 和 `seo_weekly_report` 会保存抓取和周报快照，因此
@@ -249,4 +252,4 @@ cookie、`Authorization` 头、`LV24_SEO_WRITE_SECRET`、`.env` 内容、`data/s
 
 信任边界见[架构](/zh/architecture/)，已签名更新的矩阵见[发布与更新](/zh/release/)。
 
-Source: `_source/engine-security.md`, `_source/desktop-security.md`, `_source/engine-architecture.md`, `_source/desktop-architecture.md`, `_source/engine-releases-0.5.2.md`, `_source/engine-releases-0.5.3.md`, `_source/desktop-releases-0.2.2.md`, `_source/desktop-releases-0.2.3.md`.
+Source: `_source/engine-security.md`, `_source/desktop-security.md`, `_source/engine-architecture.md`, `_source/desktop-architecture.md`, `_source/engine-releases-0.11.0.md`, `_source/engine-releases-0.5.3.md`, `_source/desktop-releases-0.9.0.md`, `_source/desktop-releases-0.2.2.md`, `_source/desktop-releases-0.2.3.md`.

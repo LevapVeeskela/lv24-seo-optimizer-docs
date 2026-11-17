@@ -7,14 +7,15 @@ scraping.
 
 [![License: Apache-2.0](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](LICENSE)
 [![Status: pre-release](https://img.shields.io/badge/status-pre--release-orange.svg)](#public-status)
-[![Engine: lv24-seo 0.5.2](https://img.shields.io/badge/engine-lv24--seo%200.5.2-informational.svg)](docs/releases/0.2.2.md)
+[![Engine: lv24-seo 0.11.0](https://img.shields.io/badge/engine-lv24--seo%200.11.0-informational.svg)](docs/releases/0.9.0.md)
 
-> **0.2.2 hardening patch.** Windows, Linux and macOS installers are published. Windows NSIS,
-> macOS `.app` and Linux AppImage can auto-update from `0.2.0` onward; deb, rpm, MSI and the portable
-> ZIP are manual-only. `0.1.0` has no updater and must be upgraded manually once. The pinned engine
-> is `lv24-seo 0.5.2`, which ships the `stats` command described by
-> [`contracts/stats-v1.md`](contracts/stats-v1.md). Read [Public status](#public-status) before
-> relying on anything here.
+> **0.9.0 released (2026-11-17).** `0.9.0` is the latest published line; `0.8.0`, `0.7.0`, `0.6.0`,
+> `0.5.0`, `0.4.0` and `0.3.0` remain available for rollback. Windows NSIS, macOS `.app` and Linux
+> AppImage can auto-update from `0.2.0` onward; deb, rpm, MSI and the portable ZIP are manual-only.
+> `0.1.0` has no updater and must be upgraded manually once. `0.9.0` bundles `lv24-seo 0.11.0`, adds
+> the read-only Diagnostics screen (Google, Yandex, Bing, Metrika, Core Web Vitals), and raises
+> `MIN_ENGINE_VERSION` to `0.11.0`. Read [Public status](#public-status) before relying on anything
+> here. Release notes: [`docs/releases/0.9.0.md`](docs/releases/0.9.0.md).
 
 ## Screenshot
 
@@ -31,15 +32,56 @@ not want to remember flags:
 
 - **Project and provider settings** for Google Search Console, Yandex Webmaster, Yandex Metrika,
   Bing/IndexNow, Chrome UX Report and PageSpeed Insights.
+- **Onboarding without the terminal:** a folder → site → review wizard runs `lv24-seo init`, never
+  overwrites an existing `seo.toml`, and remembers recent workspaces in the header chip.
 - **A stats dashboard** built on the bounded `lv24-seo stats --json` envelope:
   current values, previous-period comparison, coverage, data age, truncation and limitations.
+- **A crawl screen** with a URL budget, severity/rule/search filters, bounded rendering and JSON/CSV
+  export.
+- **Crawl log analysis:** one local nginx JSON access log, a bot filter, parsed/skipped lines, crawl
+  waste by bot, a daily bot rollup and JSON/CSV export — read-only and never uploaded.
+- **A task lifecycle:** findings move through `open`, `in_progress`, `verified` and `dismissed`, with
+  filters, evidence and an idempotent add form.
+- **Portable workspace backups:** a `.zip` with a manifest, a redacted `seo.toml` and a consistent
+  SQLite copy; tokens are never included. **Restore** is two-phase — review the plan, confirm, then
+  apply — and keeps pre-restore copies of the database and config.
+- **Bing indexing actions:** a two-phase Bing sitemap submit, an IndexNow batch built from the
+  sitemap, and a native Bing URL submission with an optional URL list or sitemap source. Review the
+  engine plan, confirm, then apply; success means Bing **accepted** the URLs, not that they are
+  indexed. Read-only cards show `GetFeeds` sitemaps (URL, status, last crawl, URL count),
+  `GetCrawlIssues` rows (HTTP code, decoded issue bitmask, in-links) and the remaining daily/monthly
+  `GetUrlSubmissionQuota`. A missing Bing key is reported as `AUTH_REQUIRED` with a Settings hint.
+  **Bing Site Scan** has no public API in the official Webmaster method list, so the desktop only
+  opens the official page in your default browser — it never claims to start a scan.
+- **Read-only platform diagnostics:** a Diagnostics screen with five tabs — Google URL Inspection
+  and sitemaps, Yandex indexing history/search events/sitemaps/recrawl queue, Bing page, traffic,
+  crawl, URL and query/page-join stats, Metrika pages, goals, devices, countries, engagement and
+  visits over time, and CWV Lighthouse audits plus CrUX weekly history. Every answer shows
+  `total`, truncation, data age, limitations, `organic_only` and sampling fields where relevant; a
+  provider-empty answer is labeled `no_rows_for_window`, `provider_returned_no_rows` or
+  `low_traffic`, never zero-filled. There is no write action on this page.
 - **A report view** for the weekly digest: headline, the sections the engine returns, limitations,
-  warnings and the generated local HTML report, which opens in your default browser.
+  warnings and the generated local HTML report, which opens in your default browser. It also compares
+  the two newest stored snapshots, renders the attributed change digest, shows Core Web Vitals by URL
+  template and exports JSON/CSV.
+- **A portfolio page:** scan one folder for projects, compare open issues and local activity across
+  sites, filter/sort the list and open a site's workspace.
 - **Configuration output** that is safe to copy: effective redacted JSON, read-only Source TOML with
   secret-looking values redacted, saved-vs-draft diff, validation errors, doctor diagnostics and
   environment-override names.
-- **A recommendations-to-agent workflow**: review findings, copy a bounded Markdown prompt or export
-  it as `.md`, hand it to a coding agent, then re-run the report to verify the fix.
+- **A recommendations-to-agent workflow**: review findings, search and sort them, copy a bounded
+  Markdown prompt, bulk-export or queue the visible set, hand it to a coding agent, then re-run the
+  report to verify the fix.
+- **Integrations:** MCP snippets for Claude Desktop, OpenCode, VS Code and Cursor, two-phase Bing
+  sitemap/IndexNow/URL submission actions, a Site Scan opener, plus a schedule card that previews a
+  cron/systemd/Windows artifact or installs the host job after confirmation.
+- **A per-workspace reporting window** (7/28/90 days, 2- or 3-day provider lag) and honest run status:
+  elapsed time, last run, truncation and limitations.
+- **Cancellable background runs:** crawl, weekly report, log analysis, backup create/restore and host
+  schedule install get a window-wide run banner with a **Cancel** button. The shell cancels only the
+  exact child process it spawned for that run; a run that already finished answers `false`, and a
+  cancelled run is shown as cancelled rather than as a generic error. Cancellation is not rollback
+  and there is no job queue.
 - **Explicit write gates** for delivery, schedule installation, MCP client installation and any
   provider write action.
 - **Signed in-app updates** for the bundle types that can replace themselves, with a manual release
@@ -51,9 +93,9 @@ The desktop is one surface over the same engine. These are the tools the engine 
 
 | Surface | What you get |
 |---|---|
-| Desktop | Dashboard, weekly report view, config editor/diff/validation, recommendations, agent task queue, signed updates |
-| CLI | 17 top-level commands (10 groups + 7 commands): `version`, `doctor`, `init`, `properties`, `stats`, `crawl`, `install`, `auth`, `config`, `gsc`, `yandex`, `sitemap`, `indexnow`, `report`, `schedule`, `export`, `mcp` |
-| MCP | 11 tools, 3 resources, 3 prompts; no provider writes by default |
+| Desktop | Project wizard, dashboard with properties and reporting window, crawl screen, log analysis, task lifecycle, portfolio, weekly report with snapshot comparison, attributed digest and CWV, read-only platform diagnostics (GSC, Yandex, Bing, Metrika, CWV), config editor/diff/validation, recommendations with search/bulk, integrations snippets, Bing sitemap/IndexNow/URL submission actions, read-only Bing sitemap/issue/quota views, Site Scan opener, backup create/restore, host schedule install, agent task queue, signed updates |
+| CLI | 22 top-level commands (15 groups + 7 commands): `version`, `doctor`, `init`, `properties`, `stats`, `crawl`, `install`, `auth`, `config`, `gsc`, `yandex`, `sitemap`, `indexnow`, `report`, `cwv`, `schedule`, `export`, `logs`, `tasks`, `backup`, `portfolio`, `mcp` |
+| MCP | 12 tools, 3 resources, 3 prompts; no provider writes by default |
 | Skills | `seo-weekly`, `seo-indexing-triage`, `seo-technical-audit` |
 | Automation | cron, systemd timer and Windows Task Scheduler generators; SMTP/Telegram delivery |
 
@@ -70,12 +112,14 @@ MCP tools by access level:
 | `seo_report_diff` | read-only | Diff two stored weekly snapshots |
 | `seo_indexing_triage` | read-only | Group indexing problems into an action list |
 | `seo_opportunities` | read-only | Striking-distance and decay opportunities |
-| `seo_recrawl_request` | gated write (`destructiveHint: true`) | Yandex recrawl queue; `WRITE_DISABLED` in 0.5.2 |
-| `seo_sitemap_submit` | gated write (`destructiveHint: true`) | GSC/Bing sitemap submit/delete; `WRITE_DISABLED` in 0.5.2 |
+| `seo_log_analysis` | read-only | Bot rollup and crawl waste from one local nginx JSON access log |
+| `seo_recrawl_request` | gated write (`destructiveHint: true`) | Yandex recrawl queue; wired in 0.11.0 (quota-capped, one URL per request) |
+| `seo_sitemap_submit` | gated write (`destructiveHint: true`) | Bing sitemap submit (works with `allow_write=true`); GSC submit and Bing delete stay `WRITE_DISABLED` in 0.11.0 |
 
 The two local-state tools never touch provider state and are not destructive. The two provider
-writes require `allow_write=true`; the pinned engine returns `WRITE_DISABLED` until the write
-adapters land. The full inputs, outputs and limits are in the engine's
+writes require `allow_write=true`; GSC submit and Bing delete still return `WRITE_DISABLED` in the
+pinned engine, and the desktop never turns a disabled path into a success.
+The full inputs, outputs and limits are in the engine's
 [`docs/mcp.md`](https://github.com/LevapVeeskela/lv24-seo-optimizer/blob/main/docs/mcp.md).
 
 ## What it is not
@@ -92,17 +136,21 @@ adapters land. The full inputs, outputs and limits are in the engine's
 ## Install
 
 Download from [Releases](https://github.com/LevapVeeskela/lv24-seo-optimizer-desktop/releases).
-Full notes, install steps and limitations: [`docs/releases/0.2.2.md`](docs/releases/0.2.2.md).
+The latest published line is `0.9.0`; full notes, install steps and limitations:
+[`docs/releases/0.9.0.md`](docs/releases/0.9.0.md) for the current release,
+[`docs/releases/0.8.0.md`](docs/releases/0.8.0.md) for the previous one and
+[`docs/releases/0.7.0.md`](docs/releases/0.7.0.md) for the one before that. `0.8.0`, `0.7.0`,
+`0.6.0`, `0.5.0` and `0.4.0` remain available for rollback.
 
 | Platform | Assets | Auto-update |
 |---|---|---|
-| Windows 10/11 x64 | `LV24.SEO.Optimizer_0.2.2_x64-setup.exe` (+ `.exe.sig`), `LV24-SEO-Optimizer_0.2.2_x64-portable.zip` | NSIS only; portable ZIP is manual |
-| Linux x64 | `LV24.SEO.Optimizer_0.2.2_amd64.AppImage` (+ `.AppImage.sig`), `LV24.SEO.Optimizer_0.2.2_amd64.deb`, `LV24.SEO.Optimizer-0.2.2-1.x86_64.rpm` | AppImage only; deb/rpm are manual |
-| macOS 13+ arm64/x64 | `LV24.SEO.Optimizer_0.2.2_aarch64.dmg`, `LV24.SEO.Optimizer_0.2.2_x64.dmg`, `LV24.SEO.Optimizer_0.2.2_aarch64.app.tar.gz` and `LV24.SEO.Optimizer_0.2.2_x64.app.tar.gz` (+ `.sig`) | `.app` only; DMG is the first install |
+| Windows 10/11 x64 | `LV24.SEO.Optimizer_0.9.0_x64-setup.exe` (+ `.exe.sig`), `LV24-SEO-Optimizer_0.9.0_x64-portable.zip` | NSIS only; portable ZIP is manual |
+| Linux x64 | `LV24.SEO.Optimizer_0.9.0_amd64.AppImage` (+ `.AppImage.sig`), `LV24.SEO.Optimizer_0.9.0_amd64.deb`, `LV24.SEO.Optimizer-0.9.0-1.x86_64.rpm` | AppImage only; deb/rpm are manual |
+| macOS 13+ arm64/x64 | `LV24.SEO.Optimizer_0.9.0_aarch64.dmg`, `LV24.SEO.Optimizer_0.9.0_x64.dmg`, `LV24.SEO.Optimizer_0.9.0_aarch64.app.tar.gz` and `LV24.SEO.Optimizer_0.9.0_x64.app.tar.gz` (+ `.sig`) | `.app` only; DMG is the first install |
 
-The `0.2.x` releases also publish `latest.json` and `SHA256SUMS.txt`. Verify the checksum before
-running an installer. `SHA256SUMS.txt` covers every other published asset, including updater
-signatures and `latest.json`.
+The `0.2.x` through `0.9.x` releases also publish `latest.json` and `SHA256SUMS.txt`. Verify the
+checksum before running an installer. `SHA256SUMS.txt` covers every other published asset, including
+updater signatures and `latest.json`.
 
 ### Windows
 
@@ -176,9 +224,9 @@ assets.
 
 ### Upgrading from 0.1.0
 
-`0.1.0` has no updater, endpoint or public key. Install `0.2.2` manually once (NSIS installer or
-portable ZIP). Auto-update works from `0.2.0` onward when the installed bundle is Windows NSIS,
-macOS `.app` or Linux AppImage.
+`0.1.0` has no updater, endpoint or public key. Install `0.9.0` manually once (NSIS installer or
+portable ZIP); auto-update works from `0.2.0` onward when the installed bundle is Windows NSIS, macOS
+`.app` or Linux AppImage.
 
 ## Auto-update
 
@@ -190,6 +238,14 @@ updates** in Settings.
 - **User confirms.** The app never downloads or installs an update on its own. The panel shows the
   version and notes; **Download and install** starts the update. An unsaved configuration draft
   disables the button.
+- **Install runs in Rust.** The webview only has permission to read the manifest
+  (`updater:allow-check`); it cannot call the updater plugin's `downloadAndInstall`. The shell
+  re-checks the endpoint and refuses a version that differs from the one you saw
+  (`UPDATE_VERSION_MISMATCH`), runs one install at a time (`UPDATE_IN_PROGRESS`) and reports download
+  progress. A second window or a stale panel cannot install something else.
+- **Cancel is real.** **Cancel** during the download stops it before the installer starts
+  (`UPDATE_CANCELLED`). Once installation has begun the app says the update cannot be undone instead
+  of pretending the click cancelled it.
 - **Signature verified.** Packages are signed with a minisign/Ed25519 key whose public key is
   embedded in the app. `requireSignedVersion` binds the announced version to the signed package. A
   signature failure blocks that artifact and points to the release page; it is not retried.
@@ -200,7 +256,8 @@ updates** in Settings.
 - **Sidecar cleanup before install.** The engine sidecar lives inside the installed resource
   directory, so a running `lv24-seo` process would keep it locked and break the NSIS update. Before
   the installer starts, the shell stops only the engine PIDs this app instance spawned — never a
-  process matched by name. If a sidecar cannot be stopped, the install is blocked with
+  process matched by name. The install command repeats that stop itself, so a skipped preparation
+  step cannot leave a locked file. If a sidecar cannot be stopped, the install is blocked with
   `UPDATE_ENGINE_BUSY` and can be retried once that run exits.
 - **Manual-only bundles.** deb, rpm, MSI and the portable ZIP cannot replace the running
   installation. The Settings panel disables the in-app installer and links to the release page.
@@ -215,7 +272,7 @@ given to the release job. See [`docs/security.md`](docs/security.md#8-updates) a
 | Tool | Version | Why |
 |---|---|---|
 | Node.js | 24.x | Vite, TypeScript and the Tauri CLI |
-| Rust | 1.90+ | Tauri shell; `rustfmt` and `clippy` |
+| Rust | 1.90+ (CI and releases pin 1.95.0) | Tauri shell; `rustfmt` and `clippy` |
 | Python | 3.12 (3.11+ works) | contract generation and the PyInstaller sidecar |
 | [`uv`](https://docs.astral.sh/uv/) | current | reproducible Python environment for the sidecar |
 | Tauri prerequisites | current | WebView2 on Windows, WebKitGTK on Linux, Xcode CLT on macOS |
@@ -256,7 +313,7 @@ PowerShell).
 Build the bundled sidecar (PyInstaller **onedir**) and then the platform bundles:
 
 ```bash
-python scripts/build-sidecar.py --engine-version 0.5.2 --target x86_64-pc-windows-msvc
+python scripts/build-sidecar.py --engine-version 0.11.0 --target x86_64-pc-windows-msvc
 node scripts/verify-sidecar.mjs --root src-tauri/engine --target x86_64-pc-windows-msvc --write
 npm run tauri build -- --bundles nsis
 npm run package:portable
@@ -271,10 +328,10 @@ its `.sha256` sidecar under `release/`.
 For Linux or macOS, use the matching target and bundle set, for example:
 
 ```bash
-python scripts/build-sidecar.py --engine-version 0.5.2 --target x86_64-unknown-linux-gnu
+python scripts/build-sidecar.py --engine-version 0.11.0 --target x86_64-unknown-linux-gnu
 npm run tauri build -- --target x86_64-unknown-linux-gnu --bundles appimage,deb,rpm
 
-python scripts/build-sidecar.py --engine-version 0.5.2 --target aarch64-apple-darwin
+python scripts/build-sidecar.py --engine-version 0.11.0 --target aarch64-apple-darwin
 npm run tauri build -- --target aarch64-apple-darwin --bundles dmg
 ```
 
@@ -288,10 +345,15 @@ updater artifacts, while CI enables them only when the key secret exists.
 ```bash
 npm run typecheck
 npm test
+npm run test:release       # release scripts: latest.json schema, allowlist, checksums
 npm run build
 npm run contract:check     # regenerate contracts and fail on drift
 cd src-tauri && cargo fmt --check && cargo clippy --all-targets -- -D warnings && cargo test
 ```
+
+CI adds `npm audit --audit-level=high` and `cargo audit`, and builds the Rust matrix on linux-x64,
+windows-x64, macos-arm64 and macos-x64 with Rust `1.95.0`. See
+[`docs/release.md`](docs/release.md#pull-request-ci-gates).
 
 ## Supported providers
 
@@ -300,11 +362,11 @@ settings, health status and presentation; it does not add provider adapters.
 
 | Provider | Free tier | Used for | Write actions |
 |---|---|---|---|
-| Google Search Console | yes (OAuth token today) | queries, pages, countries, devices, URL inspection | sitemap submit is disabled in the engine |
-| Yandex Webmaster | yes (OAuth) | queries, indexing history, diagnostics | recrawl is disabled in the engine |
+| Google Search Console | yes (OAuth token or service-account file) | queries, pages, countries, devices, URL inspection | sitemap submit is disabled in the engine |
+| Yandex Webmaster | yes (OAuth) | queries, indexing history, diagnostics, richer indicators | recrawl is disabled in the engine |
 | Yandex Metrika | yes | sessions and users | none |
-| Bing Webmaster + IndexNow | yes | queries, crawl issues, instant URL ping | IndexNow submit, explicitly gated |
-| Chrome UX Report | yes (API key) | origin-level field Core Web Vitals | none |
+| Bing Webmaster + IndexNow | yes | queries, crawl issues, sitemap submit, IndexNow URL ping | Bing sitemap submit and IndexNow from sitemap, both two-phase and explicitly gated. Site Scan has no public API; the desktop only opens the official Bing page |
+| Chrome UX Report | yes (API key) | URL + device field Core Web Vitals (`cwv collect`) | none |
 | PageSpeed Insights | yes | lab audits per URL | none |
 | Your own site | — | crawl, robots, sitemap, JSON-LD, hreflang, links | none |
 | nginx access logs | — | Python analysis helpers (no desktop ingest yet) | none |
@@ -318,7 +380,7 @@ bring-your-own-key and are not part of the default path.
 ## Stats dashboard
 
 The dashboard renders the stats envelope; it is not a new metric engine. The contract is
-[`contracts/stats-v1.md`](contracts/stats-v1.md) and `lv24-seo 0.5.2` ships the command:
+[`contracts/stats-v1.md`](contracts/stats-v1.md) and `lv24-seo 0.11.0` ships the command:
 
 - one card per configured provider with the metrics the provider actually returned;
 - current values with deltas against the previous window, including CTR deltas in **percentage
@@ -344,6 +406,29 @@ your default browser through the Rust `open_path` command, which requires an abs
 approved root and an allowed extension (`.html` included). The desktop never renders the report HTML
 inside its own webview.
 
+## Diagnostics
+
+The Diagnostics screen is read-only and has five tabs over the same active workspace:
+
+| Tab | Commands | What it shows |
+|---|---|---|
+| Google | `gsc_inspect`, `gsc_sitemaps` | URL verdict, coverage, canonical, crawled-as, last crawl, rich results, referring URLs and the property sitemap list with submitted contents |
+| Yandex | `yandex_indexing`, `yandex_sitemaps`, `yandex_queue` | Daily appeared/removed events, HTTP 2xx–5xx buckets, summary counters, sitemap URL/error counts and the recrawl queue with `meta.total` |
+| Bing | `bing_pages`, `bing_traffic`, `bing_crawl`, `bing_urlinfo`, `bing_joins` | Page and daily traffic rows, six-month crawl buckets, URL index details and query/page joins |
+| Metrika | `metrika_pages`, `metrika_goals`, `metrika_devices`, `metrika_countries`, `metrika_engagement`, `metrika_bytime` | Organic pages, goal reaches/visits/users/conversion, device and country breakdowns, engagement totals and visits over time |
+| Core Web Vitals | `cwv_audits`, `cwv_history` | Lighthouse lab audit rows with scores and savings, and weekly CrUX p75 history for a URL or origin |
+
+Every card renders `meta.total`, `meta.truncated`, `meta.data_age_days` and `meta.limitations`.
+Metrika cards also show `meta.organic_only` and the sampling fields. A provider-empty answer is an
+explicit `no_rows_for_window`, `provider_returned_no_rows` or `low_traffic` state, not a zero row.
+The webview cannot pass `--site` to Bing, `--allow-write` to any of these commands, or an unknown
+`group`, `strategy`, `device` or `category` value; the Rust shell rejects them before spawning the
+engine. Sitemap submission, recrawl requests and URL submission remain on the Indexing screen behind
+their own confirmation dialogs.
+
+These reads ship in engine `lv24-seo 0.11.0`. With an older bundled sidecar the screen shows the
+standard engine-update hint instead of pretending the provider returned nothing.
+
 ## Settings and configuration outputs
 
 Settings are grouped by project, providers, report/delivery, crawl, storage and desktop preferences.
@@ -352,8 +437,11 @@ Every field has a label, help text, a visible default and validation. Reserved e
 `report.telegram.severity`, `providers.yandex_metrika.goals`) are labelled **no effect**, never
 presented as working controls.
 
-The **Settings** screen is the editable form. The **Configuration** screen is the read-only output
-and diagnostics view with seven tabs:
+The **Settings** screen is the editable form. The workspace file is chosen with the native dialog
+owned by the shell (`pick_config`), which also records the selection as approved; the webview cannot
+persist an arbitrary path (`PATH_NOT_APPROVED`). If the saved workspace was moved or deleted, the
+dashboard says so and offers **Choose config** instead of failing every stats call. The
+**Configuration** screen is the read-only output and diagnostics view with seven tabs:
 
 1. **Overview** — config path, resolved path, data directory, engine version, last load/validation,
    backups and a copyable diagnostics summary.
@@ -370,7 +458,10 @@ before a patch is written.
 
 Saving applies field-level `config_patch` operations, so comments and key order survive. The shell
 revalidates with the engine, creates a timestamped backup (last five kept) and atomically replaces
-the file. Token values are never persisted by the webview, logged or shown back; the password field
+the file. Edits typed while the engine was writing are kept: the returned snapshot never overwrites a
+newer draft, and validation is cleared so the diff shows what is still unsaved. Provider blocks have
+an explicit enable/disable toggle, so disabling one removes it on save instead of it silently
+returning. Token values are never persisted by the webview, logged or shown back; the password field
 is sent once over IPC. See [`docs/configuration.md`](docs/configuration.md).
 
 ## Recommendations to an agent
@@ -396,7 +487,15 @@ action. The desktop does not apply site edits itself.
 - **No secrets in the webview.** Token input is a password field sent once over IPC; the Rust layer
   pipes it to `lv24-seo auth set --stdin`. Values are not stored in MobX, logs or diagnostics. On
   Linux the CLI runner inherits the session-bus/XDG variables Secret Service needs; the value itself
-  still travels only over stdin.
+  still travels only over stdin. Every engine `stderr` and every bounded output preview is redacted
+  (`token = "…"`, `--token …`, `Bearer …` → `***`) before truncation and before IPC, and a TOML syntax
+  error is redacted too, because the parser quotes the offending line.
+- **In-memory write secret.** The desktop generates a fresh 32-byte hex `LV24_SEO_WRITE_SECRET` at
+  startup with the OS CSPRNG, keeps it only in Rust memory and passes it to every engine child as an
+  environment variable after `env_clear()`. It is never written to settings, argv, logs, diagnostics
+  or the webview. A new app session gets a new secret, so old plan tokens fail and the UI re-plans.
+  The engine requires this secret for the write gate even when only minting a plan; CLI users set
+  `LV24_SEO_WRITE_SECRET` themselves.
 - **One shared secret store with the CLI.** The desktop runs the same engine under the same OS user,
   so a token stored by `lv24-seo auth set` in a terminal is visible in the desktop's `auth status`
   and vice versa. The OS keychain entry uses service `lv24-seo` and the same secret name on every
@@ -410,13 +509,31 @@ action. The desktop does not apply site edits itself.
   `latest.json`; diagnostics copies are user-triggered and redacted.
 - **Strict CSP.** Production builds allow only local assets and Tauri IPC; the development CSP is
   limited to the Vite origin.
-- **Command and path allow-lists.** No shell strings, no arbitrary executables. Config paths are
-  absolute and chosen through the native dialog; open/export paths are restricted to approved roots.
-  Windows reserved device names are rejected in every path component.
+- **Command and path allow-lists.** No shell strings, no arbitrary executables. A new config path can
+  only come from the native `pick_config` dialog; `settings_set` rejects anything else with
+  `PATH_NOT_APPROVED`, so a workspace file cannot redirect a config write. `storage.data_dir` rejects
+  UNC, verbatim and device paths (`INVALID_PATH`) before they are resolved, which avoids an outbound
+  SMB authentication. Open/export paths are restricted to approved roots and `open_path` opens the
+  canonical path that passed the check, not the raw request. Windows reserved device names are
+  rejected in every path component.
+- **One external URL allow-list.** `open_bing_sitescan` can open exactly
+  `https://www.bing.com/webmasters/sitescan?siteUrl=<encoded>`; the host and path are hard-coded and
+  the webview supplies only an absolute `https://` site URL, percent-encoded into the single query
+  parameter. It cannot open an arbitrary URL, and because Bing has no API for starting a Site Scan
+  the UI never reports that one was started.
 - **Durable, private writes.** Config and settings writes are atomic and fsynced (file and parent
-  directory); temp drafts and backups are mode `0600`; config reads are bounded at 8 MiB.
+  directory); temp drafts and backups are `0600` on POSIX and get an owner-only DACL on Windows
+  before any bytes are written; config reads are bounded at 8 MiB. Backup retention only deletes
+  files this app created. Blocking file work runs off the UI thread with a deadline
+  (`PATH_TIMEOUT`), so a dead network share cannot freeze the window.
 - **Signed updates.** The updater verifies a minisign/Ed25519 signature, binds the version to the
-  signed package and refuses downgrades. A signature failure blocks the artifact.
+  signed package and refuses downgrades. A signature failure blocks the artifact. The install itself
+  runs in Rust with a version re-check and a cancellable download; the webview cannot start an
+  install.
+- **Exact-process cancellation.** `run_cancel` accepts a bounded run id and signals only the exact
+  child PID registered for that run (and, on Unix, its process group). It never matches an image
+  name, so another installed copy, a portable build or an unrelated process is never killed. A PID
+  that no longer names the engine is left alone, and a run that already finished returns `false`.
 - **Sidecar integrity.** Release builds use a PyInstaller onedir tree with a reviewed local pin
   where available and rebuild-aware CI checksum reports. See [`docs/security.md`](docs/security.md).
 
@@ -445,18 +562,22 @@ build from source and sign it with your own certificate. See [`docs/release.md`]
 
 | Area | Status |
 |---|---|
-| Contracts (`config.schema.json`, CLI fixtures incl. `stats`) | generated from `lv24-seo 0.5.2`; drift check in CI |
+| Contracts (`config.schema.json`, CLI fixtures incl. `stats`) | generated from `lv24-seo 0.11.0`; drift check in CI |
 | CI (web, Rust matrix, contract check) | active on pull requests and `main`; standard runners only |
 | Manual desktop build workflow (NSIS, DMG, AppImage, deb, rpm) | available; owner-triggered; publish requires the updater key |
-| Tauri command bridge (config read/validate/write/patch, CLI runner, secrets, diagnostics) | implemented |
-| React screens (dashboard, settings, configuration, reports, recommendations) | implemented |
-| Bundled onedir sidecar | all four targets built in CI; Windows x64 has a reviewed local pin, Linux/macOS pins are pending, CI records rebuild-aware hashes |
-| Published installers | `0.2.2`: Windows x64, Linux x64, macOS arm64/x64 |
-| Install checks | macOS 27.2 arm64 DMG installed and launched with engine `0.5.2`; deb and AppImage (FUSE mount and extract-and-run fallback) on Ubuntu 24.04 and rpm on Fedora 45 installed and launched with engine `0.5.2`; Linux updater signatures verified against the embedded key |
-| Auto-update | Windows NSIS, macOS `.app`, Linux AppImage; `0.2.0 → 0.2.1` verified end-to-end on Windows NSIS, `0.2.1 → 0.2.2` is the next in-app update; deb/rpm/MSI/portable ZIP are manual |
-| `lv24-seo stats --json` engine command | shipped in `lv24-seo 0.5.2`; fixture committed |
+| Tauri command bridge (config read/validate/write/patch, CLI runner incl. `init`, `schedule_print`, `logs_analyze`, `tasks_*`, `backup_create`, `backup_restore`, `portfolio_list`, `schedule_install`, `sitemap_submit`, `indexnow_submit`, `bing_submit`, `bing_sitemaps`, `bing_issues`, `bing_quota`, the 18 read-only diagnostics commands, file and directory pickers, known configs, secrets, diagnostics, `open_bing_sitescan`) | implemented |
+| Bing indexing actions (sitemap submit, IndexNow from sitemap, Site Scan opener) | implemented in `0.7.0`; requires engine `0.9.0`; Site Scan only opens the official page |
+| Bing URL submission and read-only sitemap/issue/quota views | implemented in `0.8.0`; requires engine `0.10.0`; accepted is not indexed |
+| Read-only Diagnostics screen (Google, Yandex, Bing, Metrika, Core Web Vitals) | implemented in `0.9.0`; requires engine `0.11.0`; 18 allow-listed read commands, no writes |
+| Cancellable background runs (`run_cancel`, run banner) | implemented in `0.6.0` |
+| React screens (onboarding, dashboard, crawl, logs, tasks, portfolio, settings, configuration, reports, recommendations, integrations, diagnostics, backup) | implemented |
+| Bundled onedir sidecar | all four targets built in CI and by the release workflow; the Windows x64 pin records the reviewed `0.11.0` build, Linux/macOS reviewed pins remain `null` and are covered by rebuild-aware CI checksum reports |
+| Published installers | `0.9.0`: Windows x64, Linux x64, macOS arm64/x64; `0.8.0`, `0.7.0`, `0.6.0`, `0.5.0`, `0.4.0` and `0.3.0` remain available for rollback |
+| Install checks | `0.2.2`: macOS 27.2 arm64 DMG installed and launched with engine `0.5.2`; deb and AppImage (FUSE mount and extract-and-run fallback) on Ubuntu 24.04 and rpm on Fedora 45 installed and launched with engine `0.5.2`; Linux updater signatures verified against the embedded key |
+| Auto-update | Windows NSIS, macOS `.app`, Linux AppImage; `0.2.0 → 0.2.1` through `0.7.0 → 0.8.0` verified end-to-end on Windows NSIS; `0.8.0 → 0.9.0` is the next in-app update; the macOS/Linux `0.9.0` update paths still need a re-run on a machine with the previous release installed; deb/rpm/MSI/portable ZIP are manual |
+| `lv24-seo stats --json` engine command | shipped since `lv24-seo 0.5.2`; bundled `0.11.0`; fixture committed |
 
-`0.1.0` remains available as a Windows-only preview. It has no updater; install `0.2.2` manually
+`0.1.0` remains available as a Windows-only preview. It has no updater; install `0.9.0` manually
 once. Follow the [issues](https://github.com/LevapVeeskela/lv24-seo-optimizer-desktop/issues) for
 progress, or read the implementation plan in the engine repository:
 [`docs/plans/2026-11-14-seo-desktop.md`](https://github.com/LevapVeeskela/lv24-seo-optimizer/blob/main/docs/plans/2026-11-14-seo-desktop.md).

@@ -5,7 +5,7 @@ description: Модель угроз, хранение секретов, write-�
 
 # Безопасность и приватность
 
-LV24 SEO Optimizer работает локально. Движок (`lv24-seo 0.5.3`) выполняет работу с
+LV24 SEO Optimizer работает локально. Движок (`lv24-seo 0.11.0`) выполняет работу с
 провайдерами, обход, хранение и отчёты. Приложение (`0.3.0`) — это UI и оболочка
 процессов вокруг движка; оно не переписывает провайдерские клиенты и не проксирует
 трафик.
@@ -112,12 +112,15 @@ CLI подключает SQLite-журнал идемпотентности, п�
 | Действие | Состояние в этой сборке |
 |---|---|
 | IndexNow submit | Подключён; нужны `--allow-write`, confirm-токен и `LV24_SEO_WRITE_SECRET` |
-| GSC sitemap submit | `WRITE_DISABLED` — адаптер не подключён |
-| Yandex recrawl | `WRITE_DISABLED` — адаптер не подключён |
-| MCP write-инструменты | Двухфазный контракт `plan_hash` + `confirm_token` реализован; `WRITE_DISABLED`, пока адаптер провайдера не подключён |
+| Bing sitemap submit | Подключён через `SubmitFeed`; те же двухфазные ворота |
+| Bing URL submission | Подключён через `SubmitUrlbatch`; accepted, но не indexed |
+| Yandex recrawl | Подключён; один POST на URL, с ограничением по остатку дневной квоты |
+| GSC sitemap submit | `WRITE_DISABLED` — нужен полный scope `webmasters`, который движок не запрашивает |
+| MCP write-инструменты | Двухфазный контракт `plan_hash` + `confirm_token`; отправка Bing и переобход Яндекса подключены, GSC submit и Bing delete возвращают `WRITE_DISABLED` |
 
-В этой сборке запись у провайдера умеет выполнять только CLI, и только IndexNow доходит до
-провайдера. MCP write-инструменты (`seo_recrawl_request`, `seo_sitemap_submit`) несут
+Запись у провайдера умеют выполнять CLI и MCP-сервер. IndexNow, отправка sitemap в Bing, отправка URL
+в Bing и переобход Яндекса доходят до провайдера; отправка sitemap в GSC и удаление sitemap в Bing —
+нет. MCP write-инструменты (`seo_recrawl_request`, `seo_sitemap_submit`) несут
 `destructiveHint: true` и по умолчанию `allow_write: false`. Они читают `LV24_SEO_WRITE_SECRET`
 из окружения сервера; пустой секрет — это `WRITE_DISABLED`, а не слабое значение по умолчанию.
 Вызов без `confirm_token` — это dry run, возвращающий `plan_hash`, `confirm_token` и
@@ -305,4 +308,4 @@ Sidecar — это дерево PyInstaller **onedir**, а не onefile. `script
 
 См. [Архитектура](/ru/architecture/) для границ доверия и [Релизы и обновление](/ru/release/) для матрицы подписанных обновлений.
 
-Source: `_source/engine-security.md`, `_source/desktop-security.md`, `_source/engine-architecture.md`, `_source/desktop-architecture.md`, `_source/engine-releases-0.5.2.md`, `_source/engine-releases-0.5.3.md`, `_source/desktop-releases-0.2.2.md`, `_source/desktop-releases-0.2.3.md`.
+Source: `_source/engine-security.md`, `_source/desktop-security.md`, `_source/engine-architecture.md`, `_source/desktop-architecture.md`, `_source/engine-releases-0.11.0.md`, `_source/engine-releases-0.5.3.md`, `_source/desktop-releases-0.9.0.md`, `_source/desktop-releases-0.2.2.md`, `_source/desktop-releases-0.2.3.md`.
