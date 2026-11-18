@@ -9,10 +9,41 @@ description: 引擎 0.14.0 与桌面 0.9.2 发行说明、OAuth 就绪诊断和�
 
 | 产品 | 版本 | 发布日期 | 说明 |
 |---|---|---|---|
-| 引擎 | `lv24-seo 0.14.0` | 2026-11-18 | `auth status` 与 `doctor` 的 OAuth 就绪诊断、八个稳定代码和记录的作用域；保留 0.13.0 连接器、25 个 CLI 命令、12 个 MCP 工具和模式 v5 |
-| 桌面 | `0.9.3` | 2026-11-18 | Connect 卡片中的 OAuth 就绪状态，捆绑引擎 0.14.0 和 `MIN_ENGINE_VERSION` 0.14.0 不变 |
+| 引擎 | `lv24-seo 0.14.1` | 2026-11-18 | 通过生成的 `.vbs` 启动器和 `wscript.exe //B //Nologo` 隐藏 Windows 计划任务；保留 25 个 CLI 命令、12 个 MCP 工具和模式 v5 |
+| 桌面 | `0.9.4` | 2026-11-18 | 捆绑引擎 0.14.1 和 `MIN_ENGINE_VERSION` 0.14.1；04:00 任务不再打开控制台窗口 |
 
-桌面版本与引擎版本相互独立，但桌面固定精确引擎，并拒绝低于最低版本的引擎。`0.9.3` 捆绑 `0.14.0` 并要求至少 `0.14.0`，因此已安装的 `0.13.x` 引擎会被报告为不兼容。`0.9.2` 是上一个版本。Connect 卡片现在展示引擎的 OAuth 就绪状态；只有 `oauth_ready` 显示为成功。OAuth 令牌由引擎存入系统钥匙串；桌面从不接收或渲染。Indexing automation 卡片为只读：渲染 `indexing status`、`indexing history` 和 `schedule status`，没有写入、确认或 `--allow-write` 控件。
+桌面版本与引擎版本相互独立，但桌面固定精确引擎，并拒绝低于最低版本的引擎。`0.9.4` 捆绑 `0.14.1` 并要求至少 `0.14.1`，因此已安装的 `0.14.0` 引擎会被报告为不兼容。`0.9.3` 是上一个版本，加入了 Connect 就绪状态；`0.9.4` 隐藏 Windows 计划任务，卡片不变。OAuth 令牌由引擎存入系统钥匙串；桌面从不接收或渲染。Indexing automation 卡片为只读：渲染 `indexing status`、`indexing history` 和 `schedule status`，没有写入、确认或 `--allow-write` 控件。
+
+## 引擎 0.14.1
+
+2026-11-18 发布。补丁版本：Windows 任务计划程序任务不再在登录会话中打开控制台窗口。CLI 仍为
+25 个顶层命令，MCP 仍为 12 个工具，SQLite 模式仍为 v5。
+
+### 隐藏的 Windows 计划任务
+
+变更：
+
+- **生成的 WScript 启动器。** `schedule install --target windows` 现在写入 `<name>.xml` 和 `<name>.vbs` 到 `~/.config/lv24-seo/schedule/`，并注册 `C:\Windows\System32\wscript.exe //B //Nologo "<name>.vbs"`。启动器以带 BOM 的 UTF-16 写入，让 Windows Script Host 能读取非 ASCII 路径。
+- **隐藏运行与退出码。** 启动器通过 `WScript.Shell.Run(command, 0, True)` 运行真实命令：不创建窗口，引擎仍获得任务工作目录，进程会被等待。`WScript.Quit code` 把引擎退出码传给任务计划程序。
+- **三个状态产物。** `schedule status --target windows` 列出已注册的 `task`、`xml` 和 `vbs` 启动器。缺失或变更的启动器会让任务显示 `outdated`（任务未注册时为 `partial`）；`schedule uninstall` 会连同 XML 和 task 一起删除启动器。cron 和 systemd 不变。
+- **一次性重装。** 由引擎 `0.14.0` 或更早版本安装的任务会保留控制台动作，直到重新安装一次：`lv24-seo schedule install --kind indexing --target windows --allow-write`。在此之前 `schedule status` 显示 `outdated`。
+- **未改变。** 没有新的必需依赖、数据源调用，也没有写入门控或写入密钥变更。MCP、模式和 CLI 数量不变。
+
+本版本记录的验证：
+
+| 检查 | 结果 |
+|---|---|
+| PyPI / npm / MCP Registry | `lv24-seo 0.14.1` 已发布 |
+| GitHub Release | `v0.14.1`；发布工作流运行 `44330203996` |
+| 本地门禁 | 发布提交上 `ruff check`、`ruff format --check`、`mypy src`、registry `--check` 和完整离线 `pytest -q` 通过 |
+| 计划任务测试 | 生成的启动器（隐藏 `Run`、等待退出码、路径引号）、XML 动作、三个状态产物、两个文件的 install/uninstall、命令和周期变更场景 |
+| Windows 主机 | 任务已重新安装并在 Windows 11 上运行，没有控制台窗口 |
+
+0.14.1 的已知限制：
+
+- 启动器依赖 Windows Script Host（`wscript.exe`），受支持的 Windows 版本均自带。它是生成文件；请重新安装计划，而不是编辑它。
+- 由旧引擎安装的任务会显示为 `outdated`，需要重新安装一次。
+- 任务计划程序的 “Last Run Result” 现在反映引擎退出码；数据源层失败仍记录在 `indexing history`，而不是任务结果。
 
 ## 引擎 0.14.0
 
@@ -117,6 +148,36 @@ OAuth 连接器，随后加入桌面 Connect 卡片所需的 Yandex URL-only 模
 - `--url-only` 不会在分开的 URL 和代码步骤之间验证 `state`；验证代码很短命，且仍需要 client secret。
 - 在配置真实的 Google Cloud Desktop client 和 Yandex OAuth 应用之前，实时同意仍未验证。
 - 相对 0.13.0 没有 API、CLI 数量、MCP、模式或配置变更。
+
+## 桌面 0.9.4
+
+2026-11-18 发布。捆绑 `lv24-seo 0.14.1` 并把 `MIN_ENGINE_VERSION` 提升到 `0.14.1`，因此已安装的
+`0.14.0` 引擎会被报告为不兼容。Indexing automation 和 Connect 卡片不变；04:00 的索引任务不再打开
+控制台窗口。
+
+变更：
+
+- **隐藏的 Windows 计划任务。** 从桌面安装的任务（`schedule install --kind indexing --target windows --allow-write`）现在通过 `wscript.exe //B //Nologo` 注册生成的 `<name>.vbs` 启动器；启动器隐藏运行引擎、等待并转发退出码。`schedule status` 列出 task、XML 和启动器；`schedule uninstall` 删除两个文件。
+- **一次性重装。** 由桌面 `0.9.3` 或更早版本安装的任务会保留控制台动作，直到重新安装一次；桌面通过引擎状态把任务显示为 outdated。
+- **引擎与契约。** 捆绑的 onedir sidecar 为 `lv24-seo 0.14.1`；契约（`config.schema.json`、CLI 夹具）从 `0.14.1` 重新生成。Windows x64 审核固定为 `2bdf0077…0503`（14,582,464 字节）；Linux 和 macOS 固定仍为 `null`，由 rebuild-aware CI 报告覆盖。
+- **未改变。** 只读 Indexing automation 卡片、Connect 就绪状态、两阶段写入门控、12 个 MCP 工具和 SQLite 模式 v5。
+
+本版本记录的验证：
+
+| 检查 | 结果 |
+|---|---|
+| GitHub Release | [`v0.9.4`](https://github.com/LevapVeeskela/lv24-seo-optimizer-desktop/releases/tag/v0.9.4)；资产由手动 **Desktop build** 工作流以 `engine_version=0.14.1` 生成（请核对标签的 `latest.json` 和 `SHA256SUMS.txt`） |
+| 发布工作流 | 运行 `44334023386` 通过 |
+| 本地门禁 | 发布提交上 `npm run typecheck`、`npm test`、`npm run build`、`npm run contract:check`、`cargo fmt --check`、`cargo clippy --all-targets -- -D warnings` 和 `cargo test` 通过 |
+| 测试 | 完整 Vitest 和 Rust 测试集通过 |
+| 契约与固定 | 引擎 `0.14.1`；Windows x64 SHA-256 `2bdf0077887f3d0da29b9dce217ace6964d942469be5f3a03deaf336db3e0503`，14,582,464 字节 |
+
+0.9.4 的已知限制：
+
+- 现有 Windows 计划任务需要重新安装一次以替换控制台动作。
+- 启动器依赖 Windows Script Host（`wscript.exe`），受支持的 Windows 版本均自带。
+- Indexing 卡片仍为只读；安装或修改任务仍是单独的门控操作。
+- 低于 `0.14.1` 的引擎会被报告为不兼容。
 
 ## 桌面 0.9.3
 
@@ -930,7 +991,7 @@ Windows NSIS 路径现已完成九次端到端验证：`0.2.0 → 0.2.1`、`0.2.
 `0.2.2 → 0.2.3`、`0.2.3 → 0.3.0`、`0.3.0 → 0.4.0`、`0.4.0 → 0.5.0`、`0.5.0 → 0.6.0`、`0.6.0 → 0.7.0`
 和 `0.7.0 → 0.8.0`。第九次运行中，已安装的 `0.7.0` 通过 Rust 更新器升级，下载并验证已签名包，安装并重启后
 报告 **Desktop 0.8.0**、**Engine 0.10.0** 且引擎就绪；Bing URL 提交、站点地图、抓取问题和配额卡片已加载。
-`0.9.2 → 0.9.3` 是下一个应用内更新来源。任何带应用内更新器的 `0.2.x` 安装都可直接升级到 `0.9.3`；
+`0.9.3 → 0.9.4` 是下一个应用内更新来源。任何带应用内更新器的 `0.2.x` 安装都可直接升级到 `0.9.4`；
 `0.1.0` 没有更新器，需要一次手动安装。
 
 `0.2.1 → 0.2.2` 更新由旧的 `0.2.1` 更新器执行，其中没有新的受跟踪 PID 清理。如果首次更新期间
@@ -944,12 +1005,12 @@ Windows NSIS 路径现已完成九次端到端验证：`0.2.0 → 0.2.1`、`0.2.
 
 | 输入 | 默认值 | 含义 |
 |---|---|---|
-| `engine_version` | `0.14.0` | sidecar 中捆绑的精确引擎版本 |
+| `engine_version` | `0.14.1` | sidecar 中捆绑的精确引擎版本 |
 | `signed` | `false` | 请求操作系统签名/公证；此零支出仓库未配置 |
 | `publish` | `false` | 所有矩阵构建通过后创建 GitHub release |
 | `tag` | 空 | `vX.Y.Z` 发布标签；`publish=true` 时必填 |
 
-默认值与 `0.9.3` 固定版本一致。如果传入不同版本，发布门控会拒绝清单不匹配。
+默认值与 `0.9.4` 固定版本一致。如果传入不同版本，发布门控会拒绝清单不匹配。
 
 | Runner | Target | 包 |
 |---|---|---|
@@ -964,8 +1025,8 @@ Windows NSIS 路径现已完成九次端到端验证：`0.2.0 → 0.2.1`、`0.2.
 ## Sidecar 固定与校验和
 
 发布 sidecar 是 PyInstaller **onedir** 树，在匹配的主机上构建；PyInstaller 不交叉编译。引擎、
-Python、Pydantic、Typer 和 PyInstaller 版本固定在 `scripts/cli-checksums.json`。`0.9.3` 保持
-引擎 `0.14.0`（与 `0.9.2` 相同）、Python `3.12`、Pydantic `2.14.3`、Typer `0.29.0` 和 PyInstaller `6.22.3`。
+Python、Pydantic、Typer 和 PyInstaller 版本固定在 `scripts/cli-checksums.json`。`0.9.4` 捆绑
+引擎 `0.14.1`（高于 `0.14.0`）、Python `3.12`、Pydantic `2.14.3`、Typer `0.29.0` 和 PyInstaller `6.22.3`。
 
 PyInstaller onedir 输出不是字节可复现的。因此校验和政策分为三部分：
 
@@ -976,8 +1037,8 @@ PyInstaller onedir 输出不是字节可复现的。因此校验和政策分为�
 - **发布门控 — 基于报告。** 发布 job 要求每个交付 target 都有有效报告：target 名称匹配、
   `hashPolicy: "rebuild"`、`ok: true`、64 位十六进制哈希、正大小和精确引擎版本。
 
-对于 `0.9.2`，Windows x64 有已审查的本地固定值（`33d2611c…02d0`，14,580,661 字节）；Linux 和 macOS sidecar 由发布 workflow 重新构建并通过
-rebuild-aware 报告，其已审查固定值仍为 `null`，直到在这些主机上审查本地构建。`0.9.1` 的 Windows 固定值没有沿用，因为可执行文件随引擎变化。校验和报告是 CI 证据，不是发布产物。
+对于 `0.9.4`，Windows x64 有已审查的本地固定值（`2bdf0077…0503`，14,582,464 字节）；Linux 和 macOS sidecar 由发布 workflow 重新构建并通过
+rebuild-aware 报告，其已审查固定值仍为 `null`，直到在这些主机上审查本地构建。`0.9.3` 的 Windows 固定值没有沿用，因为可执行文件随引擎变化。校验和报告是 CI 证据，不是发布产物。
 `SHA256SUMS.txt` 覆盖安装器、更新包、签名和 `latest.json`；sidecar 可执行文件位于这些包内，
 不单独列出。手动安装的用户应使用 `SHA256SUMS.txt` 校验下载的产物。
 
@@ -985,7 +1046,7 @@ rebuild-aware 报告，其已审查固定值仍为 `null`，直到在这些主�
 node scripts/verify-sidecar.mjs \
   --root src-tauri/engine \
   --target x86_64-pc-windows-msvc \
-  --engine-version 0.14.0
+  --engine-version 0.14.1
 ```
 
 ## `latest.json`、签名与发布
@@ -1017,7 +1078,7 @@ node scripts/verify-sidecar.mjs \
 和发布标题中一致。引擎固定值位于 `scripts/cli-checksums.json`；workflow 显式传入
 `engine_version`，发布门控要求它与清单一致。
 
-当前源码中 `src-tauri/src/commands.rs` 的 `MIN_ENGINE_VERSION` 为 `0.14.0`。`0.9.3` 捆绑引擎
+当前源码中 `src-tauri/src/commands.rs` 的 `MIN_ENGINE_VERSION` 为 `0.14.1`。`0.9.4` 捆绑引擎
 `0.14.0`，因此最低版本与捆绑引擎一致，`0.13.x` 引擎会被视为不兼容。外壳接受不低于该
 版本的引擎，并把更旧版本标记为离线并显示通知。更新的引擎会通过门控，但不是发布测试过的固定
 版本。开发构建可通过 `LV24_SEO_BIN` 使用其他版本；UI 会将其标记为外部并仍检查最低版本。只有
@@ -1025,12 +1086,14 @@ node scripts/verify-sidecar.mjs \
 
 ## 从 0.1.0 一次性升级
 
-`0.1.0` 没有更新器、端点和公钥。它无法发现或安装 `0.9.3`。请手动下载并安装一次 `0.9.3`
-（Windows 上的 NSIS 安装器或便携 ZIP）。之后，`0.9.3` 安装在使用支持自动更新的包类型时，
+`0.1.0` 没有更新器、端点和公钥。它无法发现或安装 `0.9.4`。请手动下载并安装一次 `0.9.4`
+（Windows 上的 NSIS 安装器或便携 ZIP）。之后，`0.9.4` 安装在使用支持自动更新的包类型时，
 可以自动更新到后续版本。
 
 ## 更早的版本
 
+- **引擎 0.14.1** 通过生成的 `.vbs` 启动器和 `wscript.exe //B //Nologo` 隐藏 Windows 计划任务，提供三个状态产物和一次性重装。
+- **桌面 0.9.4** 捆绑引擎 `0.14.1` 和 `MIN_ENGINE_VERSION` `0.14.1`；04:00 任务不再打开控制台窗口，卡片不变。
 - **桌面 0.9.3** 在 Connect 卡片中加入 OAuth 就绪状态、中性 unavailable 后备，并且不渲染任何令牌或密钥；引擎 `0.14.0` 和 sidecar 固定不变。
 - **引擎 0.14.0** 加入 OAuth 就绪诊断：`auth status` 的 `oauth` 对象、`doctor` 检查、八个稳定代码和记录的作用域，不调用数据源。
 - **桌面 0.9.2** 加入只读 Indexing automation 卡片，捆绑引擎 `0.14.0` 并把 `MIN_ENGINE_VERSION` 提升到 `0.14.0`。
@@ -1094,4 +1157,4 @@ sha256sum -c SHA256SUMS.txt --ignore-missing
 
 更新信任见[安全与隐私](/zh/security/)，sidecar 布局见[架构](/zh/architecture/)。
 
-Source: `_source/engine-releases-0.14.0.md`, `_source/engine-CHANGELOG.md`, `_source/engine-releases-0.13.1.md`, `_source/engine-releases-0.13.0.md`, `_source/engine-releases-0.12.2.md`, `_source/engine-releases-0.12.1.md`, `_source/engine-releases-0.12.0.md`, `_source/engine-releases-0.11.0.md`, `_source/engine-releases-0.10.0.md`, `_source/engine-releases-0.9.0.md`, `_source/engine-releases-0.8.0.md`, `_source/engine-releases-0.7.0.md`, `_source/engine-releases-0.6.0.md`, `_source/engine-releases-0.5.3.md`, `_source/engine-releases-0.5.2.md`, `_source/desktop-releases-0.9.3.md`, `_source/desktop-releases-0.9.3-update.md`, `_source/desktop-releases-0.9.2.md`, `_source/desktop-releases-0.9.1.md`, `_source/desktop-releases-0.9.0.md`, `_source/desktop-releases-0.8.0.md`, `_source/desktop-releases-0.7.0.md`, `_source/desktop-releases-0.6.0.md`, `_source/desktop-releases-0.5.0.md`, `_source/desktop-releases-0.4.0.md`, `_source/desktop-releases-0.3.0.md`, `_source/desktop-releases-0.2.3.md`, `_source/desktop-releases-0.2.2.md`, `_source/desktop-releases-0.2.1.md`, `_source/desktop-releases-0.2.0.md`, `_source/desktop-release.md`, `_source/desktop-security.md`.
+Source: `_source/engine-releases-0.14.1.md`, `_source/engine-releases-0.14.0.md`, `_source/engine-CHANGELOG.md`, `_source/engine-releases-0.13.1.md`, `_source/engine-releases-0.13.0.md`, `_source/engine-releases-0.12.2.md`, `_source/engine-releases-0.12.1.md`, `_source/engine-releases-0.12.0.md`, `_source/engine-releases-0.11.0.md`, `_source/engine-releases-0.10.0.md`, `_source/engine-releases-0.9.0.md`, `_source/engine-releases-0.8.0.md`, `_source/engine-releases-0.7.0.md`, `_source/engine-releases-0.6.0.md`, `_source/engine-releases-0.5.3.md`, `_source/engine-releases-0.5.2.md`, `_source/desktop-releases-0.9.4.md`, `_source/desktop-releases-0.9.4-update.md`, `_source/desktop-releases-0.9.3.md`, `_source/desktop-releases-0.9.3-update.md`, `_source/desktop-releases-0.9.2.md`, `_source/desktop-releases-0.9.1.md`, `_source/desktop-releases-0.9.0.md`, `_source/desktop-releases-0.8.0.md`, `_source/desktop-releases-0.7.0.md`, `_source/desktop-releases-0.6.0.md`, `_source/desktop-releases-0.5.0.md`, `_source/desktop-releases-0.4.0.md`, `_source/desktop-releases-0.3.0.md`, `_source/desktop-releases-0.2.3.md`, `_source/desktop-releases-0.2.2.md`, `_source/desktop-releases-0.2.1.md`, `_source/desktop-releases-0.2.0.md`, `_source/desktop-release.md`, `_source/desktop-security.md`.

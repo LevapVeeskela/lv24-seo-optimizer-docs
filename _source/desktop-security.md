@@ -14,7 +14,9 @@ allow-list, rejects `allowWrite`, a confirm token and every field owned by anoth
 requires the active project config. They never write provider or local state. They are implemented in `0.9.0` and require engine `0.11.0`; they are not part of the published
 `0.8.0` feature set. The OAuth Connect card is implemented in `0.9.1` and requires engine `0.13.1`;
 the read-only Indexing automation card is implemented in `0.9.2` and requires engine `0.13.1`; the
-Connect card shows engine `0.14.0` OAuth readiness in `0.9.3` and never renders a token.
+Connect card shows engine `0.14.0` OAuth readiness in `0.9.3` and never renders a token. `0.9.4`
+bundles engine `0.14.1`, which registers Windows scheduled jobs through a hidden `.vbs` launcher
+(`wscript.exe //B //Nologo`), so no console window appears; the launcher contains no secret.
 `0.7.0` added the gated `sitemap_submit` and `indexnow_submit` commands (engine `0.9.0`), one
 external-URL allow-list for `open_bing_sitescan`, and a per-session in-memory write secret.
 `0.6.0` added exact-process cancellation for the six long local jobs (`run_cancel`) and made

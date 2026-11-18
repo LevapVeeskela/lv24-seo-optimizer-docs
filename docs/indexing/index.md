@@ -6,7 +6,7 @@ description: Quota-aware indexing status, runs and history in the CLI and the re
 # Indexing automation
 
 Indexing automation keeps a local queue of sitemap URLs, submits what is allowed within fresh provider
-quotas and records what happened. It is a CLI and scheduler feature; the desktop `0.9.2` card renders
+quotas and records what happened. It is a CLI and scheduler feature; the desktop `0.9.4` card renders
 the same data read-only.
 
 ## What it does
@@ -72,7 +72,7 @@ opens the official page and never claims to start, monitor or import a scan.
 
 ## Desktop Indexing automation card
 
-Desktop `0.9.2` adds a read-only card to Integrations. It renders `indexing status`,
+Desktop `0.9.2` added a read-only card to Integrations; `0.9.4` keeps it. It renders `indexing status`,
 `indexing history` and `schedule status`; there are no write, confirm or `--allow-write` controls.
 
 - **Schedule.** `Scheduled`/host state and the documented **Daily 04:00** cadence for `lv24-seo-indexing`.
@@ -85,7 +85,7 @@ Desktop `0.9.2` adds a read-only card to Integrations. It renders `indexing stat
 - **Honesty.** Every render includes `data_age_days` and `limitations`; the deprecated GSC aggregate is
   labelled and kept separate. Bing/Yandex/IndexNow show no per-URL count instead of inventing one.
 - **Compatibility.** If the engine answers `INVALID_COMMAND`, the card shows "Indexing status needs
-  engine >= 0.13.1" and hides the tables. An engine older than `0.14.0` is reported as incompatible by
+  engine >= 0.13.1" and hides the tables. An engine older than `0.14.1` is reported as incompatible by
   the shell.
 - **Bridge.** `indexing_status` (`provider`, `limit`, `live`), `indexing_history` (`limit`) and
   `schedule_status` (`kind`, `target`) are allow-listed; the Rust layer validates every value, rejects
@@ -115,4 +115,4 @@ a read-only plan. `providers` selects the engines, and `max_submit_per_run` (500
 - [Automation and delivery](/automation/)
 - [Desktop app](/desktop/)
 
-Source: `_source/engine-releases-0.12.0.md`, `_source/engine-releases-0.13.1.md`, `_source/engine-releases-0.14.0.md`, `_source/desktop-releases-0.9.2.md`, `_source/desktop-releases-0.9.2-update.md`, `_source/engine-cli.md`, `_source/engine-config.md`.
+Source: `_source/engine-releases-0.12.0.md`, `_source/engine-releases-0.13.1.md`, `_source/engine-releases-0.14.1.md`, `_source/engine-releases-0.14.0.md`, `_source/desktop-releases-0.9.4.md`, `_source/desktop-releases-0.9.2.md`, `_source/desktop-releases-0.9.2-update.md`, `_source/engine-cli.md`, `_source/engine-config.md`.

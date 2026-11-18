@@ -9,10 +9,42 @@ The current releases are:
 
 | Product | Version | Released | Notes |
 |---|---|---|---|
-| Engine | `lv24-seo 0.14.0` | 2026-11-18 | OAuth readiness diagnostics in `auth status` and `doctor`, eight stable codes and recorded scopes; keeps the 0.13.0 connectors, 25 CLI commands, 12 MCP tools and schema v5 |
-| Desktop | `0.9.3` | 2026-11-18 | OAuth readiness in the Connect card, same bundled engine 0.14.0 and `MIN_ENGINE_VERSION` 0.14.0 |
+| Engine | `lv24-seo 0.14.1` | 2026-11-18 | Hidden Windows scheduled jobs through a generated `.vbs` launcher and `wscript.exe //B //Nologo`; keeps 25 CLI commands, 12 MCP tools and schema v5 |
+| Desktop | `0.9.4` | 2026-11-18 | Bundles engine 0.14.1 and `MIN_ENGINE_VERSION` 0.14.1; the 04:00 job no longer opens a console window |
 
-The desktop version and the engine version are independent, but the desktop pins an exact engine and refuses one below its minimum. `0.9.3` bundles `0.14.0` and requires at least `0.14.0`, so an installed `0.13.x` engine is reported as incompatible. `0.9.2` is the previous release. The Connect card now renders the engine's OAuth readiness states; only `oauth_ready` is shown as success. OAuth tokens are stored by the engine in the OS keychain; the desktop never receives or renders one. The Indexing automation card is read-only: it renders `indexing status`, `indexing history` and `schedule status` and has no write, confirm or `--allow-write` control.
+The desktop version and the engine version are independent, but the desktop pins an exact engine and refuses one below its minimum. `0.9.4` bundles `0.14.1` and requires at least `0.14.1`, so an installed `0.14.0` engine is reported as incompatible. `0.9.3` is the previous release and added the Connect card readiness states; `0.9.4` hides Windows scheduled jobs and leaves the cards unchanged. OAuth tokens are stored by the engine in the OS keychain; the desktop never receives or renders one. The Indexing automation card is read-only: it renders `indexing status`, `indexing history` and `schedule status` and has no write, confirm or `--allow-write` control.
+
+## Engine 0.14.1
+
+Released on 2026-11-18. A patch release: Windows Task Scheduler jobs no longer open a console window
+in the signed-in session. The CLI stays at 25 top-level commands, MCP at 12 tools and SQLite at
+schema v5.
+
+### Hidden Windows scheduled jobs
+
+What changed:
+
+- **Generated WScript launcher.** `schedule install --target windows` now writes `<name>.xml` plus `<name>.vbs` in `~/.config/lv24-seo/schedule/` and registers `C:\Windows\System32\wscript.exe //B //Nologo "<name>.vbs"`. The launcher is UTF-16 with a BOM so Windows Script Host reads non-ASCII paths.
+- **Hidden run and exit code.** The launcher runs the real command with `WScript.Shell.Run(command, 0, True)`: no window is created, the engine still gets the task working directory, and the process is awaited. `WScript.Quit code` forwards the engine exit code to Task Scheduler.
+- **Three status artefacts.** `schedule status --target windows` lists the registered `task`, the `xml` and the `vbs` launcher. A missing or changed launcher makes the job `outdated` (or `partial` when the task is not registered); `schedule uninstall` removes the launcher together with the XML and the task. Cron and systemd are unchanged.
+- **One-time reinstall.** A task installed by engine `0.14.0` or older keeps the console action until it is reinstalled once: `lv24-seo schedule install --kind indexing --target windows --allow-write`. `schedule status` reports the old task as `outdated` until then.
+- **Not changed.** No new required dependency, no provider call, no change to the write gate or write secret. MCP, schema and the CLI count are unchanged.
+
+Verification recorded for this release:
+
+| Check | Result |
+|---|---|
+| PyPI / npm / MCP Registry | `lv24-seo 0.14.1` published |
+| GitHub Release | `v0.14.1`; release workflow run `44330203996` |
+| Local gate | `ruff check`, `ruff format --check`, `mypy src`, MCP registry `--check` and full offline `pytest -q` green on the release commit |
+| Scheduler tests | generated launcher (hidden `Run`, awaited exit code, quoted paths), XML action, three status artefacts, install/uninstall of both files, changed-command and changed-cadence cases |
+| Windows host | the task was reinstalled and run on Windows 11 without a console window |
+
+Known limits in 0.14.1:
+
+- The launcher relies on Windows Script Host (`wscript.exe`), present on supported Windows versions. It is a generated file; reinstall the schedule instead of editing it.
+- A task installed by an older engine is reported as `outdated` and must be reinstalled once.
+- Task Scheduler's own "Last Run Result" now reflects the engine exit code; provider-level failures are still recorded in `indexing history`, not in the task result.
 
 ## Engine 0.14.0
 
@@ -118,6 +150,36 @@ Known limits in 0.13.1:
 - `--url-only` does not verify `state` across the separate URL and code steps; the verification code is short-lived and the client secret is still required.
 - Live consent remains unverified until a real Google Cloud Desktop client and Yandex OAuth app are configured.
 - No API, CLI count, MCP, schema or config change from 0.13.0.
+
+## Desktop 0.9.4
+
+Released on 2026-11-18. It bundles `lv24-seo 0.14.1` and raises `MIN_ENGINE_VERSION` to `0.14.1`, so
+an installed `0.14.0` engine is reported as incompatible. The Indexing automation and Connect cards
+are unchanged; the 04:00 indexing job no longer opens a console window.
+
+What changed:
+
+- **Hidden Windows scheduled jobs.** A task installed from the desktop (`schedule install --kind indexing --target windows --allow-write`) now registers a generated `<name>.vbs` launcher through `wscript.exe //B //Nologo`; the launcher runs the engine hidden, waits for it and forwards its exit code. `schedule status` lists the task, XML and launcher; `schedule uninstall` removes both files.
+- **One-time reinstall.** A task installed by desktop `0.9.3` or older keeps the old console action until it is reinstalled once; the desktop reports the task as outdated through the engine status.
+- **Engine and contracts.** The bundled onedir sidecar is `lv24-seo 0.14.1`; contracts (`config.schema.json`, CLI fixtures) are regenerated from `0.14.1`. The Windows x64 reviewed pin is `2bdf0077…0503` (14,582,464 bytes); Linux and macOS pins remain `null` and are covered by rebuild-aware CI checksum reports.
+- **Not changed.** The read-only Indexing automation card, the Connect card readiness states, the two-phase write gates, MCP at 12 tools and SQLite schema v5.
+
+Verification recorded for this release:
+
+| Check | Result |
+|---|---|
+| GitHub Release | [`v0.9.4`](https://github.com/LevapVeeskela/lv24-seo-optimizer-desktop/releases/tag/v0.9.4); assets are produced by the manual **Desktop build** workflow with `engine_version=0.14.1` (verify the tag's `latest.json` and `SHA256SUMS.txt`) |
+| Release workflow | run `44334023386` green |
+| Local gate | `npm run typecheck`, `npm test`, `npm run build`, `npm run contract:check`, `cargo fmt --check`, `cargo clippy --all-targets -- -D warnings` and `cargo test` green on the release commit |
+| Tests | full Vitest and Rust suites passed |
+| Contracts and pin | engine `0.14.1`; Windows x64 SHA-256 `2bdf0077887f3d0da29b9dce217ace6964d942469be5f3a03deaf336db3e0503`, 14,582,464 bytes |
+
+Known limits in 0.9.4:
+
+- Existing Windows scheduled tasks need one reinstall to replace the console action.
+- The launcher relies on Windows Script Host (`wscript.exe`), present on supported Windows versions.
+- The Indexing card stays read-only; installing or changing the job remains a separate gated action.
+- An engine older than `0.14.1` is reported as incompatible.
 
 ## Desktop 0.9.3
 
@@ -1098,8 +1160,8 @@ The Windows NSIS path has now been verified end-to-end nine times: `0.2.0 → 0.
 and `0.7.0 → 0.8.0`. For the ninth run, an installed `0.7.0` build updated through the Rust updater,
 downloaded and verified the signed package, installed it, relaunched, and reported **Desktop 0.8.0**
 with **Engine 0.10.0** and the engine ready; the Bing URL submission, sitemap, crawl-issue and quota
-cards loaded. `0.9.2 → 0.9.3` is the next in-app update source. Any `0.2.x` install with the in-app updater can jump straight to
-`0.9.3`; `0.1.0` has no updater and needs one manual install.
+cards loaded. `0.9.3 → 0.9.4` is the next in-app update source. Any `0.2.x` install with the in-app updater can jump straight to
+`0.9.4`; `0.1.0` has no updater and needs one manual install.
 
 The `0.2.1 → 0.2.2` update runs the old `0.2.1` updater, which does not include the new tracked-PID
 cleanup. If a sidecar is active during that first update, retry after it exits or install `0.2.2`
@@ -1113,12 +1175,12 @@ approves the `desktop-release` environment; a non-owner run is skipped.
 
 | Input | Default | Meaning |
 |---|---|---|
-| `engine_version` | `0.14.0` | Exact engine bundled in the sidecar |
+| `engine_version` | `0.14.1` | Exact engine bundled in the sidecar |
 | `signed` | `false` | Request OS signing/notarization; not configured in this zero-spend repository |
 | `publish` | `false` | Create a GitHub release after every matrix build passes |
 | `tag` | Empty | `vX.Y.Z` release tag; required when `publish=true` |
 
-The default matches the `0.9.3` pin. The release gate rejects a manifest mismatch if a different version is passed.
+The default matches the `0.9.4` pin. The release gate rejects a manifest mismatch if a different version is passed.
 
 | Runner | Target | Bundles |
 |---|---|---|
@@ -1133,7 +1195,7 @@ days; the GitHub release is the durable distribution channel.
 ## Sidecar pin and checksums
 
 The release sidecar is a PyInstaller **onedir** tree, built on the matching host; PyInstaller does not cross-compile. The engine, Python, Pydantic, Typer and
-PyInstaller versions are pinned in `scripts/cli-checksums.json`. `0.9.3` keeps engine `0.14.0` (unchanged from `0.9.2`), Python `3.12`, Pydantic `2.14.3`, Typer `0.29.0` and PyInstaller
+PyInstaller versions are pinned in `scripts/cli-checksums.json`. `0.9.4` bundles engine `0.14.1` (up from `0.14.0`), Python `3.12`, Pydantic `2.14.3`, Typer `0.29.0` and PyInstaller
 `6.22.3`.
 
 PyInstaller onedir output is not byte-reproducible. The checksum policy is therefore split:
@@ -1147,9 +1209,9 @@ PyInstaller onedir output is not byte-reproducible. The checksum policy is there
   shipped target: matching target name, `hashPolicy: "rebuild"`, `ok: true`, a 64-hex
   hash, a positive size and the exact engine version.
 
-For `0.9.2`, Windows x64 has a reviewed local pin (`33d2611c…02d0`, 14,580,661 bytes); Linux and macOS were rebuilt by the release workflow
+For `0.9.4`, Windows x64 has a reviewed local pin (`2bdf0077…0503`, 14,582,464 bytes); Linux and macOS were rebuilt by the release workflow
 with passing rebuild-aware checksum reports, and their reviewed pins remain `null` until a local build is
-reviewed on those hosts. The `0.9.1` Windows pin did not carry over because the executable changes with
+reviewed on those hosts. The `0.9.3` Windows pin did not carry over because the executable changes with
 the engine.
 The checksum reports are CI evidence, not release assets. `SHA256SUMS.txt` covers the installers,
 updater packages, signatures and `latest.json`; the sidecar executable is inside those packages and
@@ -1160,7 +1222,7 @@ is not listed separately. Users who install manually verify the downloaded asset
 node scripts/verify-sidecar.mjs \
   --root src-tauri/engine \
   --target x86_64-pc-windows-msvc \
-  --engine-version 0.14.0
+  --engine-version 0.14.1
 ```
 
 ## `latest.json`, signing and publishing
@@ -1192,18 +1254,20 @@ uploaded manifest. A rerun reuses an existing draft, clears its assets and refus
 The desktop version must agree in `package.json`, `src-tauri/tauri.conf.json`, `src-tauri/Cargo.toml`, the Git tag and the release title. The engine pin lives
 in `scripts/cli-checksums.json`; the workflow passes `engine_version` explicitly and the release gate requires it to match the manifest.
 
-`MIN_ENGINE_VERSION` in `src-tauri/src/commands.rs` is `0.14.0` in the current source. The `0.9.3` bundle ships engine `0.14.0`,
+`MIN_ENGINE_VERSION` in `src-tauri/src/commands.rs` is `0.14.1` in the current source. The `0.9.4` bundle ships engine `0.14.1`,
 so the minimum matches the bundled engine and a `0.13.x` engine is reported as incompatible. The shell accepts an engine at least that new and marks an older one
 offline with a notice. A newer engine passes the gate but is not the release-tested pin. A development build may use `LV24_SEO_BIN` with another version; the UI
 labels it external and still checks the minimum. A `PATH` engine is used only when `LV24_SEO_ALLOW_PATH_ENGINE=1`.
 
 ## One-time 0.1.0 upgrade
 
-`0.1.0` has no updater, endpoint or public key. It cannot discover or install `0.9.3`. Download and install `0.9.3` manually once (NSIS installer or portable
-ZIP on Windows). After that, the `0.9.3` installation can auto-update to later releases when it uses an auto-update-capable bundle.
+`0.1.0` has no updater, endpoint or public key. It cannot discover or install `0.9.4`. Download and install `0.9.4` manually once (NSIS installer or portable
+ZIP on Windows). After that, the `0.9.4` installation can auto-update to later releases when it uses an auto-update-capable bundle.
 
 ## Earlier releases
 
+- **Engine 0.14.1** hid Windows scheduled jobs behind a generated `.vbs` launcher and `wscript.exe //B //Nologo`, with three status artefacts and a one-time reinstall.
+- **Desktop 0.9.4** bundled engine `0.14.1` and `MIN_ENGINE_VERSION` `0.14.1`; the 04:00 job no longer opens a console window, and the cards are unchanged.
 - **Desktop 0.9.3** added OAuth readiness states to the Connect card, with a neutral unavailable fallback and no token or secret rendered; engine `0.14.0` and the sidecar pin are unchanged.
 - **Engine 0.14.0** added OAuth readiness diagnostics: the `auth status` `oauth` object, `doctor` OAuth checks and eight stable codes, with recorded scopes and no provider call.
 - **Desktop 0.9.2** added the read-only Indexing automation card, bundled engine `0.14.0` and raised `MIN_ENGINE_VERSION` to `0.14.0`.
@@ -1281,4 +1345,4 @@ those protections system-wide.
 
 See [Security and privacy](/security/) for updater trust and [Architecture](/architecture/) for the sidecar layout.
 
-Source: `_source/engine-releases-0.14.0.md`, `_source/engine-CHANGELOG.md`, `_source/engine-releases-0.13.1.md`, `_source/engine-releases-0.13.0.md`, `_source/engine-releases-0.12.2.md`, `_source/engine-releases-0.12.1.md`, `_source/engine-releases-0.12.0.md`, `_source/engine-releases-0.11.0.md`, `_source/engine-releases-0.10.0.md`, `_source/engine-releases-0.9.0.md`, `_source/engine-releases-0.8.0.md`, `_source/engine-releases-0.7.0.md`, `_source/engine-releases-0.6.0.md`, `_source/engine-releases-0.5.3.md`, `_source/engine-releases-0.5.2.md`, `_source/desktop-releases-0.9.3.md`, `_source/desktop-releases-0.9.3-update.md`, `_source/desktop-releases-0.9.2.md`, `_source/desktop-releases-0.9.1.md`, `_source/desktop-releases-0.9.0.md`, `_source/desktop-releases-0.8.0.md`, `_source/desktop-releases-0.7.0.md`, `_source/desktop-releases-0.6.0.md`, `_source/desktop-releases-0.5.0.md`, `_source/desktop-releases-0.4.0.md`, `_source/desktop-releases-0.3.0.md`, `_source/desktop-releases-0.2.3.md`, `_source/desktop-releases-0.2.2.md`, `_source/desktop-releases-0.2.1.md`, `_source/desktop-releases-0.2.0.md`, `_source/desktop-release.md`, `_source/desktop-security.md`.
+Source: `_source/engine-releases-0.14.1.md`, `_source/engine-releases-0.14.0.md`, `_source/engine-CHANGELOG.md`, `_source/engine-releases-0.13.1.md`, `_source/engine-releases-0.13.0.md`, `_source/engine-releases-0.12.2.md`, `_source/engine-releases-0.12.1.md`, `_source/engine-releases-0.12.0.md`, `_source/engine-releases-0.11.0.md`, `_source/engine-releases-0.10.0.md`, `_source/engine-releases-0.9.0.md`, `_source/engine-releases-0.8.0.md`, `_source/engine-releases-0.7.0.md`, `_source/engine-releases-0.6.0.md`, `_source/engine-releases-0.5.3.md`, `_source/engine-releases-0.5.2.md`, `_source/desktop-releases-0.9.4.md`, `_source/desktop-releases-0.9.4-update.md`, `_source/desktop-releases-0.9.3.md`, `_source/desktop-releases-0.9.3-update.md`, `_source/desktop-releases-0.9.2.md`, `_source/desktop-releases-0.9.1.md`, `_source/desktop-releases-0.9.0.md`, `_source/desktop-releases-0.8.0.md`, `_source/desktop-releases-0.7.0.md`, `_source/desktop-releases-0.6.0.md`, `_source/desktop-releases-0.5.0.md`, `_source/desktop-releases-0.4.0.md`, `_source/desktop-releases-0.3.0.md`, `_source/desktop-releases-0.2.3.md`, `_source/desktop-releases-0.2.2.md`, `_source/desktop-releases-0.2.1.md`, `_source/desktop-releases-0.2.0.md`, `_source/desktop-release.md`, `_source/desktop-security.md`.

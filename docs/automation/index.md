@@ -29,13 +29,26 @@ Defaults are `weekly` at `0 6 * * 1`, `daily` at `0 6 * * *` and `indexing` at `
 |---|---|---|---|
 | `cron` | Managed crontab block with `CRON_TZ=<zone>` and a `cd` prefix | Current user's crontab | `CRON_TZ` is honoured by Vixie/ISC cron; other daemons use host time |
 | `systemd` | `lv24-seo-<kind>.service` and `.timer` user units | `~/.config/systemd/user` (XDG-aware) | `OnCalendar` includes the configured IANA zone |
-| `windows` | UTF-16 Task Scheduler XML | `%APPDATA%\lv24-seo\schedule` | `StartBoundary` carries the resolved UTC offset |
+| `windows` | UTF-16 Task Scheduler XML plus generated `.vbs` launcher | `%APPDATA%\lv24-seo\schedule` | `StartBoundary` carries the resolved UTC offset |
 
 The cron block is delimited by `# >>> lv24-seo:<name> >>>` and `# <<< lv24-seo:<name> <<<`. Re-installing replaces every managed block for that job. A damaged block with a missing end marker is treated as extending to the next managed marker or EOF, so `schedule install` repairs the file instead of appending a duplicate job.
 
 Only simple cron shapes (`M H * * *` and `M H * * DOW`) convert to systemd or Windows. Anything else is rejected instead of silently rescheduled. An unknown or unavailable timezone is rejected before installation.
 
 The install result always carries a `warnings` list with the backend limits: cron may ignore `CRON_TZ`, and Windows XML encodes a fixed offset rather than an IANA zone, so a seasonal DST change needs a review. Windows uses `tzdata` (included on Windows). Systemd enables the timer with `systemctl --user daemon-reload` and `systemctl --user enable --now`.
+
+### Windows hidden launcher
+
+`schedule install --target windows` writes `<name>.xml` plus `<name>.vbs` (UTF-16 with a BOM) in
+`%APPDATA%\lv24-seo\schedule` and registers
+`C:\Windows\System32\wscript.exe //B //Nologo "<name>.vbs"`. The launcher runs the real command with
+`WScript.Shell.Run(command, 0, True)`: no console window opens, the engine gets the task working
+directory, the process is awaited, and `WScript.Quit` forwards the exit code. `schedule status`
+lists the `task`, `xml` and `vbs` artefacts; a missing or changed launcher is `outdated` (or
+`partial` when the task is not registered), and `schedule uninstall` removes both files. A task
+installed by engine `0.14.0` or older keeps the console action until it is reinstalled once:
+`lv24-seo schedule install --kind indexing --target windows --allow-write`. The launcher is generated
+and contains no secret; `LV24_SEO_WRITE_SECRET` stays in the scheduler environment.
 
 ## Indexing automation job
 
@@ -107,7 +120,7 @@ Provider writes are separate from report delivery. The CLI uses a dry run follow
 
 The gate supports a pending-to-sent idempotency claim. With an initialised workspace the CLI attaches the SQLite ledger, so a failed provider call releases the claim and a retry is allowed; a completed or in-flight claim is a duplicate and returns `skipped`. Without a data directory the apply still runs, but the envelope warns that replay protection is off for the token's five-minute lifetime. A dry run opens no ledger and creates no database. A crash can leave a pending claim with no TTL, which is treated as in-flight until an operator releases it.
 
-In 0.14.0, IndexNow, Bing sitemap submit, Bing URL submission, Yandex recrawl and `indexing run --allow-write` actually submit; GSC sitemap submit and Bing sitemap delete refuse with `WRITE_DISABLED` instead of pretending. MCP write tools require `allow_write=true`; `seo_sitemap_submit` for Bing and `seo_recrawl_request` are wired, while GSC submit and Bing delete return `WRITE_DISABLED`. Indexing automation has no MCP tool: it is CLI and scheduler only. The desktop `0.9.3` card renders the same status, history and schedule data read-only; see [Indexing automation](/indexing/).
+In 0.14.1, IndexNow, Bing sitemap submit, Bing URL submission, Yandex recrawl and `indexing run --allow-write` actually submit; GSC sitemap submit and Bing sitemap delete refuse with `WRITE_DISABLED` instead of pretending. MCP write tools require `allow_write=true`; `seo_sitemap_submit` for Bing and `seo_recrawl_request` are wired, while GSC submit and Bing delete return `WRITE_DISABLED`. Indexing automation has no MCP tool: it is CLI and scheduler only. The desktop `0.9.4` card renders the same status, history and schedule data read-only; see [Indexing automation](/indexing/).
 
 ## GitHub Actions
 
@@ -138,4 +151,4 @@ Provider and delivery credentials come from repository secrets. Non-secret ident
 
 Scheduler backends apply the zone where they can and report a warning where they cannot. An invalid zone fails config validation with `CONFIG_INVALID`; it is never silently replaced. Review Windows tasks after a DST transition, and confirm that the installed cron daemon supports `CRON_TZ` before relying on it.
 
-Source: `_source/engine-scheduling.md`, `_source/engine-cli.md`, `_source/engine-config.md`, `_source/engine-auth.md`, `_source/engine-releases-0.14.0.md`, `_source/engine-releases-0.13.1.md`, `_source/engine-releases-0.13.0.md`, `_source/engine-releases-0.12.2.md`, `_source/engine-releases-0.12.0.md`, `_source/engine-releases-0.11.0.md`.
+Source: `_source/engine-scheduling.md`, `_source/engine-cli.md`, `_source/engine-config.md`, `_source/engine-auth.md`, `_source/engine-releases-0.14.1.md`, `_source/engine-releases-0.14.0.md`, `_source/engine-releases-0.13.1.md`, `_source/engine-releases-0.13.0.md`, `_source/engine-releases-0.12.2.md`, `_source/engine-releases-0.12.0.md`, `_source/engine-releases-0.11.0.md`.

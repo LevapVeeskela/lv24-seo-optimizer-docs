@@ -29,13 +29,26 @@ lv24-seo schedule status --kind indexing --config ./seo.toml --json
 |---|---|---|---|
 | `cron` | Управляемый блок crontab с `CRON_TZ=<zone>` и префиксом `cd` | Crontab текущего пользователя | `CRON_TZ` поддерживается Vixie/ISC cron; другие демоны используют время хоста |
 | `systemd` | Пользовательские юниты `lv24-seo-<kind>.service` и `.timer` | `~/.config/systemd/user` (с учётом XDG) | `OnCalendar` включает настроенную IANA-зону |
-| `windows` | XML Task Scheduler в UTF-16 | `%APPDATA%\lv24-seo\schedule` | `StartBoundary` несёт разрешённое смещение UTC |
+| `windows` | XML Task Scheduler в UTF-16 плюс сгенерированный `.vbs`-лаунчер | `%APPDATA%\lv24-seo\schedule` | `StartBoundary` несёт разрешённое смещение UTC |
 
 Блок cron ограничен строками `# >>> lv24-seo:<name> >>>` и `# <<< lv24-seo:<name> <<<`. Повторная установка заменяет все управляемые блоки этой задачи. Повреждённый блок без конечного маркера считается продолжающимся до следующего управляемого маркера или EOF, поэтому `schedule install` чинит файл, а не добавляет дубль.
 
 Только простые формы cron (`M H * * *` и `M H * * DOW`) конвертируются в systemd или Windows. Всё остальное отклоняется, а не переносится молча. Неизвестная или недоступная зона отклоняется до установки.
 
 Результат установки всегда несёт список `warnings` с ограничениями бэкенда: cron может игнорировать `CRON_TZ`, а XML Windows кодирует фиксированное смещение, а не IANA-зону, поэтому сезонный переход на летнее время требует проверки. В Windows используется `tzdata` (входит в Windows). Systemd включает таймер через `systemctl --user daemon-reload` и `systemctl --user enable --now`.
+
+### Скрытый лаунчер Windows
+
+`schedule install --target windows` пишет `<name>.xml` и `<name>.vbs` (UTF-16 с BOM) в
+`%APPDATA%\lv24-seo\schedule` и регистрирует
+`C:\Windows\System32\wscript.exe //B //Nologo "<name>.vbs"`. Лаунчер выполняет реальную команду через
+`WScript.Shell.Run(command, 0, True)`: окно консоли не открывается, движок получает рабочий каталог
+задания, процесс ожидается, а `WScript.Quit` передаёт код выхода. `schedule status` перечисляет
+артефакты `task`, `xml` и `vbs`; отсутствующий или изменённый лаунчер даёт `outdated` (или
+`partial`, если task не зарегистрирован), а `schedule uninstall` удаляет оба файла. Задание,
+установленное движком `0.14.0` или старше, сохраняет консольное действие, пока его один раз не
+переустановят: `lv24-seo schedule install --kind indexing --target windows --allow-write`. Лаунчер
+сгенерирован и не содержит секрет; `LV24_SEO_WRITE_SECRET` остаётся в окружении планировщика.
 
 ## Задача автоматизации индексации
 
@@ -107,7 +120,7 @@ Telegram отправляет тот же локализованный текс�
 
 Ворота поддерживают идемпотентную заявку pending-to-sent. При инициализированной рабочей области CLI подключает SQLite-журнал, поэтому сбой провайдера освобождает заявку и повтор разрешён; завершённая или выполняющаяся заявка считается дублем и возвращает `skipped`. Без каталога данных применение всё равно выполняется, но конверт предупреждает, что защита от повтора отключена на пять минут жизни токена. Dry run не открывает журнал и не создаёт базу. Падение может оставить pending-заявку без TTL в 0.5.2; она считается выполняющейся, пока оператор её не освободит.
 
-В 0.14.0 реально отправляют IndexNow, отправка sitemap в Bing, отправка URL в Bing, переобход Yandex и `indexing run --allow-write`; отправка карты сайта GSC и удаление sitemap в Bing отказывают с `WRITE_DISABLED`, а не делают вид, что запись произошла. Инструменты записи MCP требуют `allow_write=true`; `seo_sitemap_submit` для Bing и `seo_recrawl_request` подключены, а GSC submit и Bing delete возвращают `WRITE_DISABLED`. У автоматизации индексации нет MCP-инструмента: только CLI и планировщик. Карточка в приложении `0.9.3` показывает те же статус, историю и расписание только для чтения; см. [Автоматизация индексации](/ru/indexing/).
+В 0.14.1 реально отправляют IndexNow, отправка sitemap в Bing, отправка URL в Bing, переобход Yandex и `indexing run --allow-write`; отправка карты сайта GSC и удаление sitemap в Bing отказывают с `WRITE_DISABLED`, а не делают вид, что запись произошла. Инструменты записи MCP требуют `allow_write=true`; `seo_sitemap_submit` для Bing и `seo_recrawl_request` подключены, а GSC submit и Bing delete возвращают `WRITE_DISABLED`. У автоматизации индексации нет MCP-инструмента: только CLI и планировщик. Карточка в приложении `0.9.4` показывает те же статус, историю и расписание только для чтения; см. [Автоматизация индексации](/ru/indexing/).
 
 ## GitHub Actions
 
@@ -138,4 +151,4 @@ uvx --from lv24-seo lv24-seo report weekly --send --json
 
 Бэкенды расписаний применяют зону там, где могут, и сообщают предупреждение, где не могут. Неверная зона отклоняется при валидации конфигурации с `CONFIG_INVALID`; она никогда не подменяется молча. Проверяйте задачи Windows после перехода на летнее время и убедитесь, что установленный cron-демон поддерживает `CRON_TZ`, прежде чем на него полагаться.
 
-Source: `_source/engine-scheduling.md`, `_source/engine-cli.md`, `_source/engine-config.md`, `_source/engine-auth.md`, `_source/engine-releases-0.14.0.md`, `_source/engine-releases-0.13.1.md`, `_source/engine-releases-0.13.0.md`, `_source/engine-releases-0.12.2.md`, `_source/engine-releases-0.12.0.md`, `_source/engine-releases-0.11.0.md`.
+Source: `_source/engine-scheduling.md`, `_source/engine-cli.md`, `_source/engine-config.md`, `_source/engine-auth.md`, `_source/engine-releases-0.14.1.md`, `_source/engine-releases-0.14.0.md`, `_source/engine-releases-0.13.1.md`, `_source/engine-releases-0.13.0.md`, `_source/engine-releases-0.12.2.md`, `_source/engine-releases-0.12.0.md`, `_source/engine-releases-0.11.0.md`.

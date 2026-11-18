@@ -29,13 +29,25 @@ lv24-seo schedule status --kind indexing --config ./seo.toml --json
 |---|---|---|---|
 | `cron` | 带 `CRON_TZ=<zone>` 和 `cd` 前缀的受管 crontab 块 | 当前用户的 crontab | `CRON_TZ` 受 Vixie/ISC cron 支持；其他守护进程使用主机时间 |
 | `systemd` | 用户单元 `lv24-seo-<kind>.service` 和 `.timer` | `~/.config/systemd/user`（感知 XDG） | `OnCalendar` 包含配置的 IANA 时区 |
-| `windows` | UTF-16 Task Scheduler XML | `%APPDATA%\lv24-seo\schedule` | `StartBoundary` 携带解析后的 UTC 偏移 |
+| `windows` | UTF-16 Task Scheduler XML 加生成的 `.vbs` 启动器 | `%APPDATA%\lv24-seo\schedule` | `StartBoundary` 携带解析后的 UTC 偏移 |
 
 cron 块由 `# >>> lv24-seo:<name> >>>` 和 `# <<< lv24-seo:<name> <<<` 界定。重新安装会替换该任务的所有受管块。缺少结束标记的损坏块会被视为延伸到下一个受管标记或 EOF，因此 `schedule install` 会修复文件，而不是追加重复任务。
 
 只有简单的 cron 形式（`M H * * *` 和 `M H * * DOW`）能转换为 systemd 或 Windows。其他形式会被拒绝，而不是静默改期。未知或不可用的时区会在安装前被拒绝。
 
 安装结果始终带有 `warnings` 列表说明后端限制：cron 可能忽略 `CRON_TZ`，Windows XML 编码固定偏移而非 IANA 时区，因此季节性 DST 变化需要复核。Windows 使用 `tzdata`（Windows 自带）。systemd 通过 `systemctl --user daemon-reload` 和 `systemctl --user enable --now` 启用计时器。
+
+### Windows 隐藏启动器
+
+`schedule install --target windows` 在 `%APPDATA%\lv24-seo\schedule` 中写入 `<name>.xml` 和
+`<name>.vbs`（带 BOM 的 UTF-16），并注册
+`C:\Windows\System32\wscript.exe //B //Nologo "<name>.vbs"`。启动器通过
+`WScript.Shell.Run(command, 0, True)` 运行真实命令：不打开控制台窗口，引擎获得任务工作目录，
+进程会被等待，`WScript.Quit` 转发退出码。`schedule status` 列出 `task`、`xml` 和 `vbs` 三个
+产物；缺失或变更的启动器为 `outdated`（任务未注册时为 `partial`），`schedule uninstall` 删除
+两个文件。由引擎 `0.14.0` 或更早版本安装的任务会保留控制台动作，直到重新安装一次：
+`lv24-seo schedule install --kind indexing --target windows --allow-write`。启动器是生成的，不包含
+密钥；`LV24_SEO_WRITE_SECRET` 仍留在调度器环境中。
 
 ## 索引自动化任务
 
@@ -102,7 +114,7 @@ Telegram 通过 Bot API `sendMessage` 发送相同的 78 列本地化文本。HT
 
 工作区初始化后，闸门支持 pending-to-sent 幂等声明：CLI 附加 SQLite 账本，提供商调用失败会释放声明并允许重试；已完成或仍在进行中的声明视为重复并返回 `skipped`。没有数据目录时仍会应用，但信封会警告：在令牌五分钟有效期内没有重放保护。试运行不打开账本，也不创建数据库。崩溃可能留下没有 TTL 的 pending 声明（0.5.2），在操作员释放前会被视为进行中。
 
-0.14.0 中只有 IndexNow、Bing 站点地图提交、Bing URL 提交、Yandex 重新抓取和 `indexing run --allow-write` 真正提交；GSC 站点地图提交和 Bing 站点地图删除会以 `WRITE_DISABLED` 拒绝，而不是假装成功。MCP 写入工具要求 `allow_write=true`；Bing 的 `seo_sitemap_submit` 和 `seo_recrawl_request` 已接通，而 GSC 提交和 Bing 删除返回 `WRITE_DISABLED`。索引自动化没有 MCP 工具：仅限 CLI 和调度器。桌面 `0.9.3` 卡片以只读方式展示相同的状态、历史和计划；见[索引自动化](/zh/indexing/)。
+0.14.1 中只有 IndexNow、Bing 站点地图提交、Bing URL 提交、Yandex 重新抓取和 `indexing run --allow-write` 真正提交；GSC 站点地图提交和 Bing 站点地图删除会以 `WRITE_DISABLED` 拒绝，而不是假装成功。MCP 写入工具要求 `allow_write=true`；Bing 的 `seo_sitemap_submit` 和 `seo_recrawl_request` 已接通，而 GSC 提交和 Bing 删除返回 `WRITE_DISABLED`。索引自动化没有 MCP 工具：仅限 CLI 和调度器。桌面 `0.9.4` 卡片以只读方式展示相同的状态、历史和计划；见[索引自动化](/zh/indexing/)。
 
 ## GitHub Actions
 
@@ -133,4 +145,4 @@ uvx --from lv24-seo lv24-seo report weekly --send --json
 
 调度后端在支持时应用该时区，不支持时给出警告。无效时区会在配置校验时以 `CONFIG_INVALID` 失败，绝不会被静默替换。DST 转换后要复核 Windows 任务，并在依赖 `CRON_TZ` 前确认已安装的 cron 守护进程支持它。
 
-Source: `_source/engine-scheduling.md`, `_source/engine-cli.md`, `_source/engine-config.md`, `_source/engine-auth.md`, `_source/engine-releases-0.14.0.md`, `_source/engine-releases-0.13.1.md`, `_source/engine-releases-0.13.0.md`, `_source/engine-releases-0.12.2.md`, `_source/engine-releases-0.12.0.md`, `_source/engine-releases-0.11.0.md`.
+Source: `_source/engine-scheduling.md`, `_source/engine-cli.md`, `_source/engine-config.md`, `_source/engine-auth.md`, `_source/engine-releases-0.14.1.md`, `_source/engine-releases-0.14.0.md`, `_source/engine-releases-0.13.1.md`, `_source/engine-releases-0.13.0.md`, `_source/engine-releases-0.12.2.md`, `_source/engine-releases-0.12.0.md`, `_source/engine-releases-0.11.0.md`.
