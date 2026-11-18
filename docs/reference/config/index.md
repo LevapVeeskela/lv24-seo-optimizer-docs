@@ -27,6 +27,10 @@ the scheduler environment that runs the command.
 |---|---|
 | `LV24_SEO_DATA_DIR` | `storage.data_dir` |
 | `LV24_SEO_GSC_PROPERTY` | `providers.gsc.property` |
+| `LV24_SEO_GSC_CLIENT_ID` | `auth.gsc.client_id` |
+| `LV24_SEO_GSC_REDIRECT_URI` | `auth.gsc.redirect_uri` |
+| `LV24_SEO_YANDEX_CLIENT_ID` | `auth.yandex.client_id` |
+| `LV24_SEO_YANDEX_REDIRECT_URI` | `auth.yandex.redirect_uri` |
 | `LV24_SEO_YANDEX_HOST_ID` | `providers.yandex_webmaster.host_id` |
 | `LV24_SEO_YANDEX_METRIKA_COUNTER` | `providers.yandex_metrika.counter` |
 | `LV24_SEO_REPORT_LOCALE` | `report.locale` |
@@ -64,6 +68,28 @@ Every key below is optional. An absent provider block means "not configured", no
 |---|---|---|---|
 | `property` | string | `""` | `sc-domain:example.com` or `https://example.com/`. |
 | `auth` | string | `"keychain"` | Reserved label. Accepted but ignored: credentials resolve from environment, then the OS keychain, then the opt-in file fallback. |
+
+### `[auth.gsc]`
+
+Public client configuration for the Google Search Console OAuth connector. The client secret is
+never stored here.
+
+| Key | Type | Default | Notes |
+|---|---|---|---|
+| `client_id` | string | `""` | Google Cloud **Desktop app** client id. `LV24_SEO_GSC_CLIENT_ID` overrides it. |
+| `scopes` | list of strings | `["https://www.googleapis.com/auth/webmasters.readonly"]` | Read-only by default; no Search Console write scope is requested. |
+| `redirect_uri` | string | `""` | Optional fixed loopback URI such as `http://127.0.0.1:8123/callback`; needed when a manual `--code` exchange must repeat the redirect exactly. |
+
+### `[auth.yandex]`
+
+Public client configuration for the Yandex Webmaster and Metrika OAuth connectors. One app can carry
+both scopes; the engines keep separate token slots.
+
+| Key | Type | Default | Notes |
+|---|---|---|---|
+| `client_id` | string | `""` | Yandex OAuth app ClientID. `LV24_SEO_YANDEX_CLIENT_ID` overrides it. |
+| `scopes` | list of strings | `["webmaster:hostinfo", "metrika:read"]` | Request only the scopes the app is allowed to use. |
+| `redirect_uri` | string | `"https://oauth.yandex.ru/verification_code"` | API-access apps show a short verification code here; no loopback server is needed. |
 
 ### `[providers.yandex_webmaster]`
 
@@ -214,8 +240,13 @@ then the OS keychain, then an explicitly enabled file fallback.
 | Provider | `auth set --provider` | Environment variable |
 |---|---|---|
 | Google Search Console | `gsc` | `LV24_SEO_GSC_TOKEN` |
+| Google OAuth client secret | `gsc_oauth_secret` | — |
 | Yandex Webmaster | `yandex` | `LV24_SEO_YANDEX_WEBMASTER_TOKEN` |
 | Yandex Metrika | `metrika` | `LV24_SEO_YANDEX_METRIKA_TOKEN` |
+| Yandex OAuth client secret | `yandex_oauth_secret` | — |
+| GSC recorded scopes | `gsc_token_scopes` | — |
+| Yandex Webmaster recorded scopes | `yandex_token_scopes` | — |
+| Yandex Metrika recorded scopes | `yandex_metrika_token_scopes` | — |
 | Bing Webmaster | `bing` | `LV24_SEO_BING_API_KEY` |
 | Chrome UX Report | `crux` | `LV24_SEO_CRUX_API_KEY` |
 | PageSpeed Insights | `psi` | `LV24_SEO_PSI_API_KEY` |
@@ -226,7 +257,10 @@ Gated writes also need `LV24_SEO_WRITE_SECRET`, a long random value kept in the 
 apply command. A scheduled `indexing run --allow-write` needs it in the scheduler environment, not on
 the command line; the generated crontab/unit/XML never contains the value. `auth status` reports
 presence and source, never a value, and does not verify permissions or make a network call. `auth
-login` prints manual instructions only.
+login` runs the Google or Yandex OAuth connector when the client id is configured; without one it
+prints manual instructions only. OAuth access tokens, refresh tokens and expiry are stored under the
+provider names (`gsc_access_token`, `gsc_refresh_token`, `gsc_token_expires_at`, `yandex_*`,
+`yandex_metrika_*`); `auth logout` removes them and keeps the client secret.
 
 ## Timezone and locale
 
@@ -354,4 +388,4 @@ Telegram bot token in the secret store, not in this file.
 - [Automation and delivery](/automation/)
 - [Troubleshooting](/troubleshooting/)
 
-Source: `_source/engine-config.md`, `_source/engine-data-sources.md`, `_source/engine-releases-0.12.0.md`, `_source/engine-releases-0.5.2.md`; 0.12.2 config model in the engine repository.
+Source: `_source/engine-config.md`, `_source/engine-data-sources.md`, `_source/engine-auth.md`, `_source/engine-auth-google.md`, `_source/engine-auth-yandex.md`, `_source/engine-releases-0.14.0.md`, `_source/engine-releases-0.13.0.md`, `_source/engine-releases-0.12.0.md`, `_source/engine-releases-0.5.2.md`; 0.14.0 config model in the engine repository.

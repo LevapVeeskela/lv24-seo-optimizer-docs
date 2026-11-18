@@ -54,7 +54,7 @@ The contract is implemented in the server. `seo_sitemap_submit` with `provider: 
 
 | Tool | Inputs | Returns |
 |---|---|---|
-| `seo_properties` | None | Configured providers, their target, token presence and `token_source` (`service_account_file`, `secret` or `missing`) |
+| `seo_properties` | None | Configured providers, their target, token presence and `token_source` (`oauth_refresh_token`, `service_account_file`, `secret` or `missing`) |
 | `gsc_search_analytics` | `property`, `start_date`, `end_date`, `dimensions`, `limit` 1–500 (default 50) | Query, page, country or device rows with clicks, impressions, CTR and position |
 | `yandex_query_stats` | `host_id`, `limit` 1–500, `order_by` `TOTAL_SHOWS` or `TOTAL_CLICKS` | Top queries with shows, clicks, position, `avg_click_position`, `query_id` and `extra_indicators` |
 | `yandex_indexing_state` | None beyond the configured host | Indexing history, in-search counts, diagnostics, merged `http_2xx` … `other` series and `site_problems`; persists per-URL events in `indexing_events` (schema v4) when a workspace store exists |
@@ -87,7 +87,7 @@ Engine 0.12.x keeps the 12-tool surface. Quota-aware indexing automation (`index
 
 `cwv collect` is a CLI writer, not a thirteenth tool: the MCP surface stays at 12. `seo_weekly_report` reads whatever field rows the CLI has persisted and adds the `cwv` section grouped by URL template and device, with at most five templates. PSI lab rows are never stored, so `--source psi` alone cannot populate that section.
 
-GSC can authenticate with a service account instead of a pasted OAuth token. Set `providers.gsc.service_account_file` (absolute path) or `LV24_SEO_GSC_SERVICE_ACCOUNT_FILE`; the file wins over a stored `gsc_token`, and the environment wins over the file. The adapter signs an RS256 JWT, exchanges it at the key's `token_uri` and refreshes it before expiry, so a long-lived MCP process survives token expiry. `seo_properties` reports `token_source`, and `doctor` adds a non-fatal `gsc_auth` check; neither prints the JSON or the private key.
+GSC can authenticate with an OAuth grant, a service account or a static token. `auth login --provider gsc` stores a refreshable grant in the keychain; a complete grant wins over `providers.gsc.service_account_file` (absolute path, or `LV24_SEO_GSC_SERVICE_ACCOUNT_FILE`), which wins over a stored `gsc_token`. The adapter signs an RS256 JWT, exchanges it at the key's `token_uri` and refreshes it before expiry, so a long-lived MCP process survives token expiry; an OAuth token is refreshed within 60 seconds of expiry on the next client build. `seo_properties` reports `token_source`, and `doctor` adds a non-fatal `gsc_auth` check; neither prints the JSON, the private key or a token.
 
 ## Resources
 
@@ -199,4 +199,4 @@ Codes: `AUTH_REQUIRED`, `AUTH_INVALID`, `PROPERTY_NOT_FOUND`, `QUOTA_EXCEEDED`, 
 - **Technical audit.** Crawl up to 500 URLs with `seo_crawl_site` and summarise critical and high issues by rule id. Do not describe an unvisited URL as broken.
 - **Write request.** Prepare a recrawl plan for these URLs and show the quota first. Do not write anything until I approve the plan.
 
-Source: `_source/engine-mcp.md`, `_source/engine-skills.md`, `_source/engine-cli.md`, `_source/engine-releases-0.12.2.md`, `_source/engine-releases-0.12.0.md`, `_source/engine-releases-0.11.0.md`, `_source/engine-releases-0.10.0.md`, `_source/engine-releases-0.9.0.md`, `_source/engine-releases-0.8.0.md`, `_source/engine-releases-0.7.0.md`, `_source/engine-releases-0.6.0.md`, `_source/engine-releases-0.5.3.md`.
+Source: `_source/engine-mcp.md`, `_source/engine-skills.md`, `_source/engine-cli.md`, `_source/engine-auth.md`, `_source/engine-releases-0.14.0.md`, `_source/engine-releases-0.13.1.md`, `_source/engine-releases-0.13.0.md`, `_source/engine-releases-0.12.2.md`, `_source/engine-releases-0.12.0.md`, `_source/engine-releases-0.11.0.md`, `_source/engine-releases-0.10.0.md`, `_source/engine-releases-0.9.0.md`, `_source/engine-releases-0.8.0.md`, `_source/engine-releases-0.7.0.md`, `_source/engine-releases-0.6.0.md`, `_source/engine-releases-0.5.3.md`.

@@ -26,13 +26,13 @@ version.
 With `--json`, a command prints exactly one JSON document and nothing else:
 
 ```json
-{ "ok": true, "data": {}, "meta": { "version": "0.12.2", "duration_ms": 812 }, "warnings": [] }
+{ "ok": true, "data": {}, "meta": { "version": "0.14.0", "duration_ms": 812 }, "warnings": [] }
 ```
 
 A failed command uses the same shape with `ok: false` and an `error` object instead of `data`:
 
 ```json
-{ "ok": false, "error": { "code": "AUTH_REQUIRED", "message": "Google Search Console token is missing", "retryable": false, "next_action": "lv24-seo auth login --provider gsc" }, "meta": { "version": "0.12.2" }, "warnings": ["gsc: token missing"] }
+{ "ok": false, "error": { "code": "AUTH_REQUIRED", "message": "Google Search Console token is missing", "retryable": false, "next_action": "lv24-seo auth login --provider gsc" }, "meta": { "version": "0.14.0" }, "warnings": ["gsc: token missing"] }
 ```
 
 - `data` is command-specific. `meta` always carries `version` and often adds `duration_ms`,
@@ -150,7 +150,7 @@ envelope remains the stable diagnostic interface.
 | Group | Commands | What it touches |
 |---|---|---|
 | Start | `version`, `doctor`, `init`, `properties`, `stats` | Local files and the environment; `stats` reads provider KPIs without writing. |
-| Authentication | `auth status`, `auth set`, `auth login`, `auth logout` | The local secret store; `login` only prints instructions. |
+| Authentication | `auth status`, `auth set`, `auth login`, `auth logout` | The local secret store; `login` runs the Google or Yandex OAuth connector and stores tokens in the keychain. |
 | Configuration | `config show` | The effective config, with credentials redacted. |
 | Google Search Console | `gsc query`, `gsc inspect`, `gsc sitemaps`, `gsc sitemap` | Read-only search analytics with filters, URL Inspection and sitemap reads. |
 | Sitemap | `sitemap submit` | Gated write; Bing `SubmitFeed` is wired, GSC submit still returns `WRITE_DISABLED`. |
@@ -309,6 +309,13 @@ lv24-seo indexing history --limit 20 --json
 use local UTC-day counters because neither provider exposes a remaining-count endpoint. Each provider
 entry carries `urls`, `submitted`, `inspected`, `indexed`, `not_indexed`, `crawled`, `queued`,
 `pending`, `stale`, `quota` and `limitations`, plus `write_secret_present`.
+
+| Engine | Remaining quota source | Per-run bound |
+|---|---|---|
+| Bing | `GetUrlSubmissionQuota` daily and monthly remaining values | 500 URLs per `SubmitUrlbatch`; the plan is capped to the smaller remaining window |
+| Yandex | `recrawl/quota` `quota_remainder` | One POST per URL; no batch endpoint |
+| GSC | No remaining-count API; local UTC-day `quota_usage` counter | 2,000 inspections/day/site by default, `max_inspect_per_run` 20 |
+| IndexNow | No status or quota API; local UTC-day counter | 1,000 submissions/day by default, 10,000 URLs per POST |
 
 `indexing run` builds a same-host queue from `<project.base_url>/sitemap.xml` (10,000 URLs and six
 sitemap documents) and/or repeatable `--url`, then plans in priority order: never submitted, `lastmod`
@@ -476,18 +483,78 @@ lv24-seo mcp serve --transport http --port 8765
 ```bash
 lv24-seo auth status --json
 lv24-seo auth set --provider gsc --stdin
+lv24-seo auth set --provider gsc_oauth_secret --stdin
+lv24-seo auth login --provider gsc
+lv24-seo auth login --provider yandex --no-browser
+lv24-seo auth login --provider yandex --code <code>
+lv24-seo auth login --provider yandex --url-only --json
 ```
 
 `auth set` reads the secret from stdin or a hidden prompt and stores it in the OS keychain, or in the
 opt-in `0600` file fallback. It prints only `{provider, stored, source}`. `auth status` reports
 presence and source (`env`, `keyring`, `file`, `missing`), never a value.
 
+### OAuth connectors
+
+`auth login` authorizes Google Search Console, Yandex Webmaster or Yandex Metrika with OAuth instead
+of a pasted token. It needs a client id in `[auth.gsc]` or `[auth.yandex]` (or
+`LV24_SEO_GSC_CLIENT_ID` / `LV24_SEO_YANDEX_CLIENT_ID`) and a client secret stored with
+`auth set --provider gsc_oauth_secret|yandex_oauth_secret --stdin`. Client secrets never belong in
+`seo.toml`.
+
+- **Google Search Console.** `auth login --provider gsc` uses a Desktop-app client, binds
+  `127.0.0.1` on an ephemeral port, opens the consent page and exchanges the code with S256 PKCE and
+  a random `state`. `--no-browser` prints the URL and waits; `--port 8123` pins the callback; `--code`
+  reuses the stored PKCE verifier and needs `--port` or `[auth.gsc].redirect_uri` to repeat the
+  redirect exactly. Access token, refresh token and expiry are stored in the keychain and refreshed
+  within 60 seconds of expiry.
+- **Yandex Webmaster and Metrika.** `auth login --provider yandex|metrika` uses the
+  `https://oauth.yandex.ru/verification_code` redirect: approve access, copy the short code, pass it
+  with `--code`, or let the interactive prompt read it. One app can carry `webmaster:hostinfo` and
+  `metrika:read`, but the engines keep separate token slots. `--url-only` is Yandex-only and returns
+  `{provider, flow, authorization_url, scopes, target}` without opening a browser, prompting,
+  exchanging a code or writing a token; the desktop shows the URL and completes the grant with a
+  second `--code` call.
+- **Precedence and fallbacks.** GSC picks an OAuth grant, then the service-account file, then the
+  static `gsc_token`. Yandex keeps the static `yandex_webmaster_token` / `yandex_metrika_token` path
+  and refreshes when a refresh token and expiry are stored. Bing, IndexNow, CrUX and PSI have no
+  OAuth connector by design.
+- **Testing-mode caveat.** A Google OAuth app in **Testing** issues refresh tokens that expire after
+  7 days, so a daily job stops with `invalid_grant` after a week. Publish the app, re-login weekly or
+  use a service account for unattended runs.
+
+### OAuth readiness diagnostics
+
+`auth status --json` adds an `oauth` object for `gsc`, `yandex` and `metrika` with `state`, `detail`,
+`client_id_present`, `client_secret_present`, `access_token_present`, `refresh_token_present`,
+`expires_at`, `scopes_recorded`, `next_action` and `limitations`. `doctor --json` adds `gsc_oauth`,
+`yandex_oauth` and `metrika_oauth` checks with `id`, `ok`, `detail`, `code` and `next_action`; they
+are non-fatal and never print a token. Both surfaces are offline.
+
+| Code | Meaning | Fix |
+|---|---|---|
+| `oauth_client_missing` | Client id is empty or a documented placeholder | Register an app and set `[auth.gsc].client_id` or `[auth.yandex].client_id` |
+| `oauth_client_secret_missing` | Client id is set but the secret is absent | `auth set --provider gsc_oauth_secret\|yandex_oauth_secret --stdin` |
+| `oauth_token_missing` | Client id and secret exist, but no access or refresh token | `auth login --provider gsc\|yandex\|metrika` |
+| `oauth_token_expired` | Stored expiry is in the past; says whether refresh is available | Run a read command, or log in again when no refresh token exists |
+| `oauth_scope_missing` | Recorded scopes do not include the configured scopes | Log in again and grant the scope, or remove it from `[auth.*].scopes` |
+| `oauth_scope_unknown` | No scopes were recorded; a warning, never a false pass | Run a login or refresh once |
+| `oauth_redirect_invalid` | Google redirect is not loopback, or Yandex is not `verification_code` | Clear `[auth.*].redirect_uri` or set a valid value |
+| `oauth_ready` | Client id, secret, token, scopes and redirect check out | Nothing to do |
+
+Precedence is redirect, client id, client secret, token, then scope. Granted scopes are stored in
+`gsc_token_scopes`, `yandex_token_scopes` and `yandex_metrika_token_scopes` (in `OAUTH_SECRET_NAMES`,
+not the stable `SECRET_NAMES` tuple); `auth logout` deletes them.
+
+`--json` output carries `provider`, `flow`, `scopes`, `expires_at`, `target` and `next`; it never
+carries a token. A failed refresh returns `AUTH_INVALID` with the exact `auth login` next action.
+
 GSC can also use a service account. Set `providers.gsc.service_account_file` to an absolute path or
 export `LV24_SEO_GSC_SERVICE_ACCOUNT_FILE`; the file wins over a stored `gsc_token`, and the
 environment wins over the file. A `gsc_token` that is a service-account JSON object is accepted too.
 The engine signs an RS256 JWT, exchanges it at the key's `token_uri` and refreshes it before expiry.
-`properties` reports `token_source: service_account_file|secret|missing`, and `doctor` adds a
-non-fatal `gsc_auth` check; neither prints the JSON or the private key.
+`properties` reports `token_source: oauth_refresh_token|service_account_file|secret|missing`, and
+`doctor` adds a non-fatal `gsc_auth` check; neither prints the JSON or the private key.
 
 ### Export
 
@@ -506,4 +573,4 @@ packaged `SKILL.md` files and their manifest. Both write local files only.
 - [MCP and agent skills](/mcp/)
 - [Troubleshooting](/troubleshooting/)
 
-Source: `_source/engine-cli.md`, `_source/engine-mcp.md`, `_source/engine-releases-0.12.2.md`, `_source/engine-releases-0.12.0.md`, `_source/engine-releases-0.11.0.md`, `_source/engine-releases-0.10.0.md`, `_source/engine-releases-0.9.0.md`, `_source/engine-releases-0.8.0.md`, `_source/engine-releases-0.7.0.md`, `_source/engine-releases-0.6.0.md`, `_source/engine-releases-0.5.3.md`; 0.12.2 `--help` output in the engine repository.
+Source: `_source/engine-cli.md`, `_source/engine-auth.md`, `_source/engine-auth-google.md`, `_source/engine-auth-yandex.md`, `_source/engine-releases-0.14.0.md`, `_source/engine-releases-0.13.1.md`, `_source/engine-releases-0.13.0.md`, `_source/engine-mcp.md`, `_source/engine-releases-0.12.2.md`, `_source/engine-releases-0.12.0.md`, `_source/engine-releases-0.11.0.md`, `_source/engine-releases-0.10.0.md`, `_source/engine-releases-0.9.0.md`, `_source/engine-releases-0.8.0.md`, `_source/engine-releases-0.7.0.md`, `_source/engine-releases-0.6.0.md`, `_source/engine-releases-0.5.3.md`; 0.14.0 `--help` output in the engine repository.

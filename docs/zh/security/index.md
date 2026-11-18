@@ -5,8 +5,8 @@ description: LV24 SEO Optimizer 的威胁模型、密钥处理、写入门禁、
 
 # 安全与隐私
 
-LV24 SEO Optimizer 以本地为先。引擎（`lv24-seo 0.12.2`）负责数据源、抓取、存储和报告；
-桌面应用（`0.9.0`）只是引擎之上的界面和进程外壳，不重新实现数据源客户端，也不代理
+LV24 SEO Optimizer 以本地为先。引擎（`lv24-seo 0.14.0`）负责数据源、抓取、存储和报告；
+桌面应用（`0.9.2`）只是引擎之上的界面和进程外壳，不重新实现数据源客户端，也不代理
 数据源流量。
 
 本页区分两个产品和两种签名：
@@ -49,7 +49,10 @@ LV24 SEO Optimizer 以本地为先。引擎（`lv24-seo 0.12.2`）负责数据�
 ```bash
 lv24-seo auth status --json
 printf '%s' "$TOKEN" | lv24-seo auth set --provider gsc --stdin
+printf '%s' "$CLIENT_SECRET" | lv24-seo auth set --provider gsc_oauth_secret --stdin
 ```
+
+OAuth 连接器（`auth login --provider gsc|yandex|metrika`）把访问令牌、刷新令牌、到期时间和 client secret 存入同一密钥存储。Google 使用 `127.0.0.1` 回环回调、S256 PKCE 和随机 `state`；Yandex 使用 `verification_code` 页面。回调只接受一个请求、验证 `state`，并且从不记录携带代码的请求路径。PKCE verifier 在交换后删除。令牌绝不写入 `seo.toml`、信封、日志或 `repr()`；`auth status` 只报告存在性和来源，登录的 `--json` 输出不含令牌。
 
 `auth status` 只显示 `present`、来源（`env`、`keyring`、`file`、`missing`）和已知的
 过期时间，绝不显示值。环境变量中的令牌是只读的：只要它存在，`auth set` 和
@@ -72,7 +75,7 @@ stdout 保持协议输出。脱敏是纵深防御，调用方仍不得记录原�
 像密钥的键掩码为 `***`，桌面应用不得“还原”它。
 
 桌面应用不在 webview 中保存密钥。令牌输入是密码字段，值只通过 IPC 发送一次，并立即
-传给 `lv24-seo auth set --provider <p> --stdin`。子进程退出后 Rust 层会清零缓冲区。
+传给 `lv24-seo auth set --provider <p> --stdin`。OAuth Connect 卡片从不接收令牌：交换由引擎完成并把授权存入钥匙串，桌面只读取 `auth status`。`auth_login` 以 `provider`、`noBrowser`、`port`、`code` 和 `urlOnly` 进入白名单，`open_oauth_url` 只接受 Yandex 授权主机。子进程退出后 Rust 层会清零缓冲区。
 值不会写入日志、MobX store、localStorage、剪贴板、崩溃报告或支持包。Linux 上 CLI
 运行器继承 Secret Service 需要的会话总线和 XDG 变量，其他宿主变量仍被过滤；值本身
 仍然只通过 stdin 传输。
@@ -253,4 +256,4 @@ cookie、`Authorization` 头、`LV24_SEO_WRITE_SECRET`、`.env` 内容、`data/s
 
 信任边界见[架构](/zh/architecture/)，已签名更新的矩阵见[发布与更新](/zh/release/)。
 
-Source: `_source/engine-security.md`, `_source/desktop-security.md`, `_source/engine-architecture.md`, `_source/desktop-architecture.md`, `_source/engine-releases-0.12.2.md`, `_source/engine-releases-0.12.0.md`, `_source/engine-releases-0.11.0.md`, `_source/engine-releases-0.5.3.md`, `_source/desktop-releases-0.9.0.md`, `_source/desktop-releases-0.2.2.md`, `_source/desktop-releases-0.2.3.md`.
+Source: `_source/engine-security.md`, `_source/desktop-security.md`, `_source/engine-architecture.md`, `_source/desktop-architecture.md`, `_source/engine-auth.md`, `_source/engine-releases-0.14.0.md`, `_source/engine-releases-0.13.1.md`, `_source/engine-releases-0.13.0.md`, `_source/engine-releases-0.12.2.md`, `_source/engine-releases-0.12.0.md`, `_source/engine-releases-0.11.0.md`, `_source/engine-releases-0.5.3.md`, `_source/desktop-releases-0.9.2.md`, `_source/desktop-releases-0.9.1.md`, `_source/desktop-releases-0.9.0.md`, `_source/desktop-releases-0.2.2.md`, `_source/desktop-releases-0.2.3.md`.

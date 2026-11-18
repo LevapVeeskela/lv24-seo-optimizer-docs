@@ -74,23 +74,23 @@ lv24-seo auth set --provider gsc --stdin
 lv24-seo auth status --json
 ```
 
-`auth login` 打印提供商的专用手动步骤；它不会打开浏览器。`auth set` 从 stdin 或隐藏提示读取密钥，并存入操作系统钥匙串；在显式允许时，也可存入权限为 `0600` 的文件回退。绝不要把 token 放进 argv、shell 历史、仓库文件或截图。`auth status` 只报告是否存在及来源；它从不打印值，也不验证权限。
+`auth login` 在配置了 client id 时运行数据源 OAuth 连接器：GSC 使用 Desktop app 回环回调和 S256 PKCE，Yandex Webmaster/Metrika 使用 `verification_code` redirect。`--no-browser` 打印 URL，`--code` 完成外部流程，`--url-only`（仅 Yandex）返回授权 URL 且不写令牌——桌面用它实现 Connect 卡片。没有 client id 时，`auth login` 打印手动步骤。`auth set` 从 stdin 或隐藏提示读取密钥，并存入操作系统钥匙串；在显式允许时，也可存入权限为 `0600` 的文件回退；OAuth client secret 使用 `gsc_oauth_secret` 或 `yandex_oauth_secret`。绝不要把 token 放进 argv、shell 历史、仓库文件或截图。`auth status` 只报告是否存在及来源；它从不打印值，也不验证权限。
 
-支持的提供商名称有 `gsc`、`yandex`、`metrika`、`bing`、`crux`、`psi`、`smtp` 和 `telegram`。没有 `secrets` extra 时，请使用提供商专用的 `LV24_SEO_*` 环境变量，例如 `LV24_SEO_YANDEX_WEBMASTER_TOKEN`。无头环境的回退方式是 `LV24_SEO_ALLOW_FILE_SECRETS=1` 加上权限为 `0600` 的 `data/secrets.json`；该模式下引擎每次运行都会警告。
+支持的提供商名称有 `gsc`、`yandex`、`metrika`、`bing`、`crux`、`psi`、`smtp`、`telegram`、`gsc_oauth_secret` 和 `yandex_oauth_secret`。没有 `secrets` extra 时，请使用提供商专用的 `LV24_SEO_*` 环境变量，例如 `LV24_SEO_YANDEX_WEBMASTER_TOKEN`。无头环境的回退方式是 `LV24_SEO_ALLOW_FILE_SECRETS=1` 加上权限为 `0600` 的 `data/secrets.json`；该模式下引擎每次运行都会警告。
 
-GSC 也可以使用服务账号而不是粘贴 OAuth 令牌。把 `providers.gsc.service_account_file` 设为绝对路径，或导出 `LV24_SEO_GSC_SERVICE_ACCOUNT_FILE`；文件优先于已存储的 `gsc_token`，环境变量优先于文件。引擎签署 RS256 JWT，在密钥的 `token_uri` 交换并在过期前刷新，因此长期运行的 `mcp serve` 进程可以跨过令牌过期。`properties` 报告 `token_source: service_account_file`，`doctor` 增加非致命 `gsc_auth` 检查；两者都不打印密钥。普通 OAuth 令牌仍然可用。
+GSC 也可以使用服务账号。把 `providers.gsc.service_account_file` 设为绝对路径，或导出 `LV24_SEO_GSC_SERVICE_ACCOUNT_FILE`；完整 OAuth 授权优先于文件，文件优先于已存储的 `gsc_token`，环境变量优先于文件。引擎签署 RS256 JWT，在密钥的 `token_uri` 交换并在过期前刷新，因此长期运行的 `mcp serve` 进程可以跨过令牌过期。`properties` 报告 `token_source: oauth_refresh_token|service_account_file|secret`，`doctor` 增加非致命 `gsc_auth` 检查；两者都不打印密钥。普通静态令牌仍然可用。Google 应用处于 **Testing** 时 refresh token 在 7 天后过期，因此无人值守运行应使用服务账号。
 
 ## 桌面安装矩阵
 
-桌面端 `0.9.0` 是当前版本，内置 `lv24-seo 0.11.0`；它要求引擎 `0.11.0` 或更新，因此引擎 `0.12.2` 兼容。从项目的 Releases 页面下载资源文件；`SHA256SUMS.txt` 覆盖所有已发布资源。
+桌面端 `0.9.2` 是当前版本，内置 `lv24-seo 0.14.0`；它要求引擎 `0.14.0` 或更新，因此已安装的 `0.13.x` 引擎不兼容。从项目的 Releases 页面下载资源文件；`SHA256SUMS.txt` 覆盖所有已发布资源。
 
 | 平台 | 文件 | 自动更新 |
 |---|---|---|
-| Windows 10/11 x64 | NSIS `LV24.SEO.Optimizer_0.9.0_x64-setup.exe`（+ `.sig`）、便携包 `LV24-SEO-Optimizer_0.9.0_x64-portable.zip`（+ `.zip.sha256`） | 仅 NSIS；便携包手动更新 |
-| Linux x64 | `LV24.SEO.Optimizer_0.9.0_amd64.AppImage`（+ `.AppImage.sig`）、`LV24.SEO.Optimizer_0.9.0_amd64.deb`、`LV24.SEO.Optimizer-0.9.0-1.x86_64.rpm` | 仅 AppImage；deb/rpm 手动更新 |
-| macOS 13+ arm64/x64 | 首次安装用 `LV24.SEO.Optimizer_0.9.0_aarch64.dmg` / `LV24.SEO.Optimizer_0.9.0_x64.dmg`，更新用 `LV24.SEO.Optimizer_0.9.0_aarch64.app.tar.gz` / `LV24.SEO.Optimizer_0.9.0_x64.app.tar.gz`（+ `.sig`） | 仅 `.app`；DMG 用于首次安装 |
+| Windows 10/11 x64 | NSIS `LV24.SEO.Optimizer_0.9.2_x64-setup.exe`（+ `.sig`）、便携包 `LV24-SEO-Optimizer_0.9.2_x64-portable.zip`（+ `.zip.sha256`） | 仅 NSIS；便携包手动更新 |
+| Linux x64 | `LV24.SEO.Optimizer_0.9.2_amd64.AppImage`（+ `.AppImage.sig`）、`LV24.SEO.Optimizer_0.9.2_amd64.deb`、`LV24.SEO.Optimizer-0.9.2-1.x86_64.rpm` | 仅 AppImage；deb/rpm 手动更新 |
+| macOS 13+ arm64/x64 | 首次安装用 `LV24.SEO.Optimizer_0.9.2_aarch64.dmg` / `LV24.SEO.Optimizer_0.9.2_x64.dmg`，更新用 `LV24.SEO.Optimizer_0.9.2_aarch64.app.tar.gz` / `LV24.SEO.Optimizer_0.9.2_x64.app.tar.gz`（+ `.sig`） | 仅 `.app`；DMG 用于首次安装 |
 
-引擎 `0.12.2` 增加配额感知的索引自动化：`indexing status|run|history` 组、Bing/Yandex/IndexNow/GSC 配额、诚实的逐 URL 索引计数、每日 `lv24-seo-indexing` 任务和模式 v5。它保留 0.11.0 的读取深度（GSC URL Inspection 和站点地图、Yandex 事件/站点地图/历史/队列、Bing 页面/流量/抓取/URL/关联、自然搜索 `metrika`、CrUX 历史和 PSI 审计）。桌面端 `0.9.0` 在只读 Diagnostics 屏幕中展示 0.11.0 的读取；索引自动化在桌面 `0.9.1` 之前仅限 CLI 和调度器。限制见[发行说明](/zh/release/)。
+引擎 `0.14.0` 增加 OAuth 就绪诊断：`auth status` 的 `oauth` 对象、`doctor` 的 `gsc_oauth`/`yandex_oauth`/`metrika_oauth` 检查和八个稳定代码，并记录作用域。它保留 0.12.0 索引自动化、0.11.0 读取深度、25 个 CLI 命令、12 个 MCP 工具和模式 v5。桌面 `0.9.2` 增加只读 Indexing automation 卡片，捆绑引擎 `0.14.0` 并把 `MIN_ENGINE_VERSION` 提升到 `0.14.0`。限制见[发行说明](/zh/release/)。
 
 ### Windows
 
@@ -115,7 +115,7 @@ Apple 芯片使用 `aarch64` DMG，Intel 使用 `x64` DMG。打开 DMG，将 **L
 
 ### 从桌面 0.1.0 升级
 
-`0.1.0` 是仅限 Windows 的预览，没有更新器、端点或公钥。请手动安装一次 `0.9.0`（NSIS 安装程序或便携 ZIP）。从 `0.2.0` 起，只有 Windows NSIS、macOS `.app` 和 Linux AppImage 可以自动更新。
+`0.1.0` 是仅限 Windows 的预览，没有更新器、端点或公钥。请手动安装一次 `0.9.2`（NSIS 安装程序或便携 ZIP）。从 `0.2.0` 起，只有 Windows NSIS、macOS `.app` 和 Linux AppImage 可以自动更新。
 
 ## 未签名构建
 
@@ -146,4 +146,4 @@ pip uninstall lv24-seo
 - [配置参考](/zh/reference/config/) — 所有 `seo.toml` 键。
 - [安全与隐私](/zh/security/) — token 存储和写操作门控。
 
-Source: `_source/engine-README.md`, `_source/engine-cli.md`, `_source/engine-config.md`, `_source/desktop-README.md`, `_source/desktop-releases-0.9.0.md`, `_source/desktop-releases-0.8.0.md`, `_source/desktop-releases-0.7.0.md`, `_source/desktop-releases-0.6.0.md`, `_source/desktop-releases-0.5.0.md`, `_source/desktop-releases-0.4.0.md`, `_source/desktop-releases-0.3.0.md`, `_source/desktop-releases-0.2.3.md`, `_source/desktop-releases-0.2.2.md`, `_source/desktop-releases-0.2.0.md`.
+Source: `_source/engine-README.md`, `_source/engine-cli.md`, `_source/engine-config.md`, `_source/engine-auth.md`, `_source/engine-releases-0.14.0.md`, `_source/engine-releases-0.13.1.md`, `_source/engine-releases-0.13.0.md`, `_source/desktop-README.md`, `_source/desktop-releases-0.9.2.md`, `_source/desktop-releases-0.9.1.md`, `_source/desktop-releases-0.8.0.md`, `_source/desktop-releases-0.7.0.md`, `_source/desktop-releases-0.6.0.md`, `_source/desktop-releases-0.5.0.md`, `_source/desktop-releases-0.4.0.md`, `_source/desktop-releases-0.3.0.md`, `_source/desktop-releases-0.2.3.md`, `_source/desktop-releases-0.2.2.md`, `_source/desktop-releases-0.2.0.md`.

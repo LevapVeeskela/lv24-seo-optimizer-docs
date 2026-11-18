@@ -43,12 +43,12 @@ lv24-seo auth set --provider gsc --stdin
 ## Prerequisites
 
 - Python 3.11 or newer. `uv` can provide the interpreter, so a system Python is not required.
-- Provider credentials for the sources you want: a GSC OAuth access token, Yandex Webmaster OAuth, Yandex Metrika, a Bing Webmaster API key and a CrUX API key. PageSpeed Insights works without a key at a lower quota. All default sources have a free tier.
+- Provider credentials for the sources you want: a GSC OAuth client (or service account), Yandex Webmaster/Metrika OAuth, a Bing Webmaster API key and a CrUX API key. PageSpeed Insights works without a key at a lower quota. All default sources have a free tier.
 - Node.js 18 or newer only for the `npx @lv24/seo` launcher. The Python CLI does not need Node.
 - Network access to the provider APIs. The tool has no telemetry and sends nothing on its own.
 - For the desktop app: Windows 10/11 x64 with WebView2, Linux x64 with glibc 2.35 or newer, or macOS 13 or newer.
 
-GSC accepts a manually supplied OAuth access token or a service account (`providers.gsc.service_account_file` / `LV24_SEO_GSC_SERVICE_ACCOUNT_FILE`, shipped in `0.8.0`); a plain token keeps working. Yandex, Bing and the other adapters use manually supplied tokens or keys.
+GSC, Yandex Webmaster and Yandex Metrika can use the OAuth connector (`auth login`), and GSC also accepts a service account (`providers.gsc.service_account_file` / `LV24_SEO_GSC_SERVICE_ACCOUNT_FILE`); a plain token keeps working. Bing, IndexNow, CrUX and PSI use API keys because those providers have no OAuth flow.
 
 ## Read-only by default
 
@@ -71,13 +71,13 @@ The CLI envelope is `{ok, data, meta, warnings}`. `meta.complete` is `false` whe
 
 ## Optional desktop
 
-The desktop is at `0.9.0` and bundles `lv24-seo 0.11.0`; it requires engine `0.11.0` or newer, so engine `0.12.2` passes the gate. It is useful when you do not want to remember flags: create or choose a `seo.toml` in the app, read the dashboard, edit configuration through a validated form, run a bounded crawl, analyse an nginx log, triage tasks, create or restore a portable backup, scan a folder of sites in the portfolio, compare and export weekly reports with the attributed digest and CWV card, read GSC inspection/sitemaps, Yandex events/sitemaps/queue, Bing pages/traffic/crawl/URL/joins, organic Metrika pages/goals/dimensions and CWV audits/history in the read-only Diagnostics screen, submit Bing URLs or a sitemap, read Bing quota, sitemap feeds and crawl issues, run IndexNow, open the official Bing Site Scan page, and copy a bounded recommendation as a Markdown prompt for an agent. Indexing automation is CLI and scheduler only in `0.9.0`. Long engine jobs run in the background with a window-wide banner and a **Cancel** button; provider writes are not cancellable. Windows NSIS, macOS `.app` and Linux AppImage can auto-update; portable ZIP, deb and rpm are manual-only. The updater stops only the sidecar PIDs it started and blocks with `UPDATE_ENGINE_BUSY` if one cannot be stopped.
+The desktop is at `0.9.2` and bundles `lv24-seo 0.14.0`; it requires engine `0.14.0` or newer, so an installed `0.13.x` engine is incompatible. It is useful when you do not want to remember flags: create or choose a `seo.toml` in the app, connect GSC, Yandex Webmaster or Metrika with the OAuth Connect card, read the dashboard, edit configuration through a validated form, run a bounded crawl, analyse an nginx log, triage tasks, create or restore a portable backup, scan a folder of sites in the portfolio, compare and export weekly reports with the attributed digest and CWV card, read GSC inspection/sitemaps, Yandex events/sitemaps/queue, Bing pages/traffic/crawl/URL/joins, organic Metrika pages/goals/dimensions and CWV audits/history in the read-only Diagnostics screen, submit Bing URLs or a sitemap, read Bing quota, sitemap feeds and crawl issues, run IndexNow, open the official Bing Site Scan page, and copy a bounded recommendation as a Markdown prompt for an agent. Indexing automation is CLI and scheduler only; the `0.9.2` card renders the same status, history and schedule data read-only. Long engine jobs run in the background with a window-wide banner and a **Cancel** button; provider writes are not cancellable. Windows NSIS, macOS `.app` and Linux AppImage can auto-update; portable ZIP, deb and rpm are manual-only. The updater stops only the sidecar PIDs it started and blocks with `UPDATE_ENGINE_BUSY` if one cannot be stopped.
 
 ## Status and limits
 
-The engine is `0.12.2`; the desktop is `0.9.0`. Known gaps before 1.0:
+The engine is `0.14.0`; the desktop is `0.9.2`. Known gaps before 1.0:
 
-- GSC supports a manually supplied OAuth access token or a service account; a plain token is not refreshed.
+- GSC, Yandex Webmaster and Metrika can use OAuth connectors; GSC keeps the service-account fallback, and a Google app in Testing expires refresh tokens after 7 days. A static token is still accepted but is not refreshed.
 - GSC sitemap submit and Bing sitemap delete return `WRITE_DISABLED`; Bing sitemap submit, Bing URL submission, IndexNow, Yandex recrawl and `indexing run --allow-write` really write and need their provider keys or quota.
 - Only GSC exposes a per-URL index verdict. Bing, Yandex and IndexNow report `indexed_total: null` with `no_per_url_index_count`, and the GSC sitemap `indexed` aggregate is deprecated.
 - A scheduled indexing apply needs `[indexing] enabled=true` and `LV24_SEO_WRITE_SECRET` in the scheduler environment; the generated command never contains the secret.
@@ -102,4 +102,4 @@ Unknown values stay unknown instead of being filled in. That is deliberate: a bo
 - [Reports and diffs](/reports/) — weekly reports, delivery and snapshot diffs.
 - [Security and privacy](/security/) — token handling, write gates and the desktop trust boundary.
 
-Source: `_source/engine-README.md`, `_source/engine-cli.md`, `_source/engine-releases-0.12.2.md`, `_source/engine-releases-0.12.0.md`, `_source/engine-releases-0.11.0.md`, `_source/desktop-README.md`, `_source/desktop-releases-0.9.0.md`.
+Source: `_source/engine-README.md`, `_source/engine-cli.md`, `_source/engine-auth.md`, `_source/engine-releases-0.14.0.md`, `_source/engine-releases-0.13.1.md`, `_source/engine-releases-0.13.0.md`, `_source/engine-releases-0.12.2.md`, `_source/engine-releases-0.12.0.md`, `_source/engine-releases-0.11.0.md`, `_source/desktop-README.md`, `_source/desktop-releases-0.9.2.md`, `_source/desktop-releases-0.9.1.md`.

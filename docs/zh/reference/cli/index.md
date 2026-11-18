@@ -24,13 +24,13 @@ description: lv24-seo 命令行的命令、全局参数、JSON 信封、退出�
 使用 `--json` 时，命令只输出一个 JSON 文档，不会输出其他内容：
 
 ```json
-{ "ok": true, "data": {}, "meta": { "version": "0.12.2", "duration_ms": 812 }, "warnings": [] }
+{ "ok": true, "data": {}, "meta": { "version": "0.14.0", "duration_ms": 812 }, "warnings": [] }
 ```
 
 失败的命令使用相同结构，但 `ok: false`，并用 `error` 对象代替 `data`：
 
 ```json
-{ "ok": false, "error": { "code": "AUTH_REQUIRED", "message": "Google Search Console token is missing", "retryable": false, "next_action": "lv24-seo auth login --provider gsc" }, "meta": { "version": "0.12.2" }, "warnings": ["gsc: token missing"] }
+{ "ok": false, "error": { "code": "AUTH_REQUIRED", "message": "Google Search Console token is missing", "retryable": false, "next_action": "lv24-seo auth login --provider gsc" }, "meta": { "version": "0.14.0" }, "warnings": ["gsc: token missing"] }
 ```
 
 - `data` 因命令而异。`meta` 始终包含 `version`，通常还会加入 `duration_ms`、`truncated`、
@@ -294,6 +294,13 @@ lv24-seo indexing history --limit 20 --json
 剩余量接口。每个数据源条目包含 `urls`、`submitted`、`inspected`、`indexed`、`not_indexed`、
 `crawled`、`queued`、`pending`、`stale`、`quota` 和 `limitations`，以及 `write_secret_present`。
 
+| 引擎 | 剩余配额来源 | 每次运行上限 |
+|---|---|---|
+| Bing | `GetUrlSubmissionQuota` 的每日和每月剩余值 | 每个 `SubmitUrlbatch` 500 个 URL；计划受较小剩余窗口限制 |
+| Yandex | `recrawl/quota` 的 `quota_remainder` | 每个 URL 一个 POST；没有批量端点 |
+| GSC | 没有剩余量 API；本地 UTC 日 `quota_usage` 计数器 | 默认每站每天 2,000 次检查，`max_inspect_per_run` 20 |
+| IndexNow | 没有状态或配额 API；本地 UTC 日计数器 | 默认每天 1,000 次提交，每次 POST 10,000 个 URL |
+
 `indexing run` 从 `<project.base_url>/sitemap.xml`（10,000 个 URL 和六个 sitemap 文档）和/或可重复的
 `--url` 构建同主机队列，然后按优先级规划：从未提交、`lastmod` 晚于 `last_submitted_at`、检查早于
 `check_interval_days`，最后是其余。检查在两种模式下都只读：GSC URL Inspection
@@ -434,17 +441,50 @@ lv24-seo mcp serve --transport http --port 8765
 ```bash
 lv24-seo auth status --json
 lv24-seo auth set --provider gsc --stdin
+lv24-seo auth set --provider gsc_oauth_secret --stdin
+lv24-seo auth login --provider gsc
+lv24-seo auth login --provider yandex --no-browser
+lv24-seo auth login --provider yandex --code <code>
+lv24-seo auth login --provider yandex --url-only --json
 ```
 
-`auth set` 从 stdin 或隐藏提示读取密钥，存入系统钥匙串，或存入显式启用的 `0600` 文件后备存储。
-它只输出 `{provider, stored, source}`。`auth status` 报告存在性和来源（`env`、`keyring`、`file`、
-`missing`），从不输出值。
+`auth set` 从 stdin 或隐藏提示读取密钥，存入系统钥匙串，或存入显式启用的 `0600` 文件后备存储。它只输出 `{provider, stored, source}`。`auth status` 报告存在性和来源（`env`、`keyring`、`file`、`missing`），从不输出值。
 
-GSC 也可以使用服务账号。把 `providers.gsc.service_account_file` 设为绝对路径，或导出
-`LV24_SEO_GSC_SERVICE_ACCOUNT_FILE`；文件优先于已存储的 `gsc_token`，环境变量优先于文件。
-`gsc_token` 若是服务账号 JSON 对象也会被接受。引擎签署 RS256 JWT，在密钥的 `token_uri` 交换并在
-过期前刷新。`properties` 报告 `token_source: service_account_file|secret|missing`，`doctor` 增加
-非致命 `gsc_auth` 检查；两者都不打印 JSON 或私钥。
+### OAuth 连接器
+
+`auth login` 使用 OAuth 授权 Google Search Console、Yandex Webmaster 或 Yandex Metrika，无需粘贴令牌。需要在 `[auth.gsc]` 或 `[auth.yandex]` 中配置 client id（或 `LV24_SEO_GSC_CLIENT_ID` / `LV24_SEO_YANDEX_CLIENT_ID`），并用 `auth set --provider gsc_oauth_secret|yandex_oauth_secret --stdin` 保存 client secret。client secret 绝不写入 `seo.toml`。
+
+- **Google Search Console。** `auth login --provider gsc` 使用 Desktop app 客户端，在临时端口监听 `127.0.0.1`，打开同意页面，并用 S256 PKCE 和随机 `state` 交换代码。`--no-browser` 打印 URL 并等待；`--port 8123` 固定 callback；`--code` 复用已保存的 PKCE verifier，并需要 `--port` 或 `[auth.gsc].redirect_uri` 精确重复 redirect。访问令牌、刷新令牌和到期时间存入钥匙串，并在到期前 60 秒刷新。
+- **Yandex Webmaster 与 Metrika。** `auth login --provider yandex|metrika` 使用 `https://oauth.yandex.ru/verification_code` redirect：批准访问后复制短代码，用 `--code` 传入，或在交互提示中输入。一个应用可同时携带 `webmaster:hostinfo` 和 `metrika:read`，但两个引擎使用独立的令牌槽。`--url-only` 仅适用于 Yandex，返回 `{provider, flow, authorization_url, scopes, target}`，不打开浏览器、不提示、不交换代码、不写令牌；桌面显示 URL，并用第二次 `--code` 调用完成授权。
+- **优先级与后备。** GSC 依次选择 OAuth 授权、服务账号文件、静态 `gsc_token`。Yandex 保留静态 `yandex_webmaster_token` / `yandex_metrika_token` 路径，并在存有 refresh token 和到期时间时刷新。Bing、IndexNow、CrUX 和 PSI 按设计没有 OAuth 连接器。
+- **Testing 模式限制。** Google OAuth 应用处于 **Testing** 时，refresh token 在 7 天后过期，每日任务一周后会以 `invalid_grant` 失败。发布应用、每周重新登录，或为无人值守运行使用服务账号。
+
+### OAuth 就绪诊断
+
+`auth status --json` 为 `gsc`、`yandex` 和 `metrika` 增加 `oauth` 对象，包含 `state`、`detail`、
+`client_id_present`、`client_secret_present`、`access_token_present`、`refresh_token_present`、
+`expires_at`、`scopes_recorded`、`next_action` 和 `limitations`。`doctor --json` 增加 `gsc_oauth`、
+`yandex_oauth` 和 `metrika_oauth` 检查，包含 `id`、`ok`、`detail`、`code` 和 `next_action`；它们
+为非致命，且从不打印令牌。两个界面均为离线。
+
+| 代码 | 含义 | 修复 |
+|---|---|---|
+| `oauth_client_missing` | client id 为空或为占位符 | 注册应用并设置 `[auth.gsc].client_id` 或 `[auth.yandex].client_id` |
+| `oauth_client_secret_missing` | 已设置 client id，但缺少 secret | `auth set --provider gsc_oauth_secret\|yandex_oauth_secret --stdin` |
+| `oauth_token_missing` | client id 和 secret 存在，但没有 access/refresh token | `auth login --provider gsc\|yandex\|metrika` |
+| `oauth_token_expired` | 存储的到期时间已过；会说明是否可刷新 | 运行读取命令；没有 refresh token 时重新登录 |
+| `oauth_scope_missing` | 记录的作用域不包含配置的作用域 | 重新登录并授予作用域，或从 `[auth.*].scopes` 移除 |
+| `oauth_scope_unknown` | 未记录作用域；是警告，不是误判通过 | 执行一次登录或刷新 |
+| `oauth_redirect_invalid` | Google redirect 不是回环，或 Yandex 不是 `verification_code` | 清除 `[auth.*].redirect_uri` 或设置有效值 |
+| `oauth_ready` | client id、secret、token、作用域和 redirect 全部就绪 | 无需操作 |
+
+优先级为 redirect、client id、client secret、token、scope。授予的作用域保存在
+`gsc_token_scopes`、`yandex_token_scopes` 和 `yandex_metrika_token_scopes`（位于 `OAUTH_SECRET_NAMES`，
+不是稳定的 `SECRET_NAMES`）；`auth logout` 会删除它们。
+
+`--json` 输出包含 `provider`、`flow`、`scopes`、`expires_at`、`target` 和 `next`，从不包含令牌。刷新失败返回 `AUTH_INVALID`，并给出确切的 `auth login` 命令。
+
+GSC 也可以使用服务账号。把 `providers.gsc.service_account_file` 设为绝对路径，或导出 `LV24_SEO_GSC_SERVICE_ACCOUNT_FILE`；完整的 OAuth 授权优先于文件，文件优先于已存储的 `gsc_token`，环境变量优先于文件。`gsc_token` 若是服务账号 JSON 对象也会被接受。引擎签署 RS256 JWT，在密钥的 `token_uri` 交换并在过期前刷新。`properties` 报告 `token_source: oauth_refresh_token|service_account_file|secret|missing`，`doctor` 增加非致命 `gsc_auth` 检查；两者都不打印 JSON 或私钥。
 
 ### 导出
 
@@ -463,4 +503,4 @@ lv24-seo export skills --out skills/
 - [MCP 与智能体技能](/zh/mcp/)
 - [故障排查](/zh/troubleshooting/)
 
-Source: `_source/engine-cli.md`, `_source/engine-mcp.md`, `_source/engine-releases-0.12.2.md`, `_source/engine-releases-0.12.0.md`, `_source/engine-releases-0.11.0.md`, `_source/engine-releases-0.10.0.md`, `_source/engine-releases-0.9.0.md`, `_source/engine-releases-0.8.0.md`, `_source/engine-releases-0.7.0.md`, `_source/engine-releases-0.6.0.md`, `_source/engine-releases-0.5.3.md`; 引擎仓库中 0.12.2 的 `--help` 输出。
+Source: `_source/engine-cli.md`, `_source/engine-mcp.md`, `_source/engine-releases-0.13.1.md`, `_source/engine-releases-0.12.0.md`, `_source/engine-releases-0.11.0.md`, `_source/engine-releases-0.10.0.md`, `_source/engine-releases-0.9.0.md`, `_source/engine-releases-0.8.0.md`, `_source/engine-releases-0.7.0.md`, `_source/engine-releases-0.6.0.md`, `_source/engine-releases-0.5.3.md`; 引擎仓库中 0.14.0 的 `--help` 输出。

@@ -9,7 +9,7 @@ Start with `error.code`, not the exit code: several failures share an exit statu
 `--json`:
 
 ```json
-{"ok": false, "error": {"code": "AUTH_REQUIRED", "message": "Google Search Console token is missing", "retryable": false, "next_action": "lv24-seo auth login --provider gsc"}, "meta": {"version": "0.12.2"}, "warnings": ["gsc: token missing"]}
+{"ok": false, "error": {"code": "AUTH_REQUIRED", "message": "Google Search Console token is missing", "retryable": false, "next_action": "lv24-seo auth login --provider gsc"}, "meta": {"version": "0.14.0"}, "warnings": ["gsc: token missing"]}
 ```
 
 MCP tools return the same envelope as `structuredContent` and set `isError: true` on failure. The desktop maps `ok=false` to a typed UI error.
@@ -41,19 +41,41 @@ lv24-seo auth set --provider gsc
 printf '%s' "$TOKEN" | lv24-seo auth set --provider gsc --stdin
 ```
 
-`auth set` accepts `gsc`, `yandex`, `metrika`, `bing`, `crux`, `psi`, `smtp` and `telegram`. Store the Webmaster token with `auth set --provider yandex` and the
-Metrika token with `auth set --provider metrika` or `LV24_SEO_YANDEX_METRIKA_TOKEN`. `auth login --provider gsc|yandex` opens no browser and writes nothing; it
-prints manual steps.
+`auth set` accepts `gsc`, `yandex`, `metrika`, `bing`, `crux`, `psi`, `smtp`, `telegram`, `gsc_oauth_secret` and `yandex_oauth_secret`. Store the Webmaster
+token with `auth set --provider yandex` and the Metrika token with `auth set --provider metrika` or `LV24_SEO_YANDEX_METRIKA_TOKEN`. `auth login --provider
+gsc|yandex|metrika` runs the OAuth connector when `[auth.<provider>].client_id` is configured; without a client id it prints manual steps. `--no-browser`
+prints the URL, `--code` completes an out-of-band flow, and the Yandex-only `--url-only` returns the authorization URL without writing a token.
 
 A 401 means the token is expired, revoked, malformed or from the wrong account — replace it. A 403 means the credential is valid but lacks permission: fix
 property or host access instead of re-authenticating. For Yandex, compare `providers.yandex_webmaster.host_id` with the exact id (`https:example.com:443`, not a
 URL); an unverified host looks like a 403.
 
-The current engine supports a manually supplied access token or a GSC service account. `auth set --provider gsc` stores one string sent as
+The engine supports an OAuth grant, a manually supplied access token or a GSC service account. `auth set --provider gsc` stores one string sent as
 `Authorization: Bearer`; that is a Google access token, which normally lives about an hour. For unattended runs set
 `providers.gsc.service_account_file` or `LV24_SEO_GSC_SERVICE_ACCOUNT_FILE`; the engine signs an RS256 JWT, exchanges it and refreshes it before expiry.
 `auth status` reports `present` and the source (`env`, `keyring`, `file`) but never a value. An environment token is read-only: `auth set` and
 `auth logout` return `WRITE_DISABLED` while it is set.
+
+### OAuth login failures
+
+| Symptom | Cause | Fix |
+|---|---|---|
+| `AUTH_REQUIRED ... client secret is missing` | The OAuth app secret is not stored | Run `auth set --provider gsc_oauth_secret\|yandex_oauth_secret --stdin` |
+| `AUTH_REQUIRED ... client_id is not configured` | No public client id | Set `[auth.gsc].client_id` / `[auth.yandex].client_id` or the matching `LV24_SEO_*_CLIENT_ID` |
+| `redirect_uri_mismatch` on the Google page | The client is not a **Desktop app**, or the redirect changed between the URL and `--code` | Create a Desktop-app client, or pin `[auth.gsc].redirect_uri` and repeat it |
+| `invalid_grant` after about a week | Google app is in **Testing**; refresh tokens expire after 7 days | Publish the app, re-run `auth login`, or use a service account |
+| `access_denied` | The account is not a test user, or consent was cancelled | Add the account as a test user and retry |
+| Callback times out | The browser ran on another machine, or a firewall blocks `127.0.0.1` | Use `--no-browser` plus `--code`, or a fixed `--port` |
+| `AUTH_INVALID` with `invalid_grant` on Yandex | The verification code is single-use or expired, or the refresh token was revoked | Run `auth login --provider yandex` again |
+| `INVALID_INPUT: no Yandex authorization code was provided` | `--code` is missing; the code is not read from a pipe | Re-run with `--code <code>` |
+| Yandex scope error | The app lacks `webmaster:hostinfo` or `metrika:read` | Add the scope, then authorize again |
+
+The Yandex `verification_code` flow cannot verify `state` across separate URL-only and `--code` calls; the code is short-lived (10 minutes) and the client
+secret is still required. A single interactive command is the safest path.
+
+### OAuth readiness states
+
+`auth status --json` adds an `oauth` object and `doctor --json` adds `gsc_oauth`, `yandex_oauth` and `metrika_oauth` checks. They are offline and non-fatal and return one of `oauth_client_missing`, `oauth_client_secret_missing`, `oauth_token_missing`, `oauth_token_expired`, `oauth_scope_missing`, `oauth_scope_unknown`, `oauth_redirect_invalid` or `oauth_ready`, with the first actionable `next_action`. Precedence is redirect, client id, client secret, token, then scope; see [OAuth connectors](/reference/cli/#oauth-readiness-diagnostics) for the exact fix of each code.
 
 ## `data_dir` and relative paths
 
@@ -118,7 +140,7 @@ with robots `Crawl-delay` pacing; `concurrency` is reserved and has no effect.
 
 Memory is bounded: page bodies are capped at 5 MB, retained page text at 20,000 characters, and the request budget is `1 + max_urls * (max_redirects + 1)`.
 `word_count` still uses the full visible text. If a crawl is too large or slow, lower `--max-urls` and crawl a section at a time. There is no resume or job
-queue in `0.9.0`; the desktop has a 600-second crawl timeout and a **Cancel** button in the window banner.
+queue in `0.9.2`; the desktop has a 600-second crawl timeout and a **Cancel** button in the window banner.
 
 ## `--days` limits
 
@@ -161,7 +183,7 @@ The command merges the host configuration and prints what it changed.
 | Symptom | Fix |
 |---|---|
 | “not valid JSON” but the file looks valid | UTF-8 BOM, often from PowerShell 5.1; rewrite without BOM or delete and rerun |
-| `No such command 'mcp'` | Old build without `mcp serve`; upgrade to 0.12.2 |
+| `No such command 'mcp'` | Old build without `mcp serve`; upgrade to 0.14.0 |
 | GUI client cannot start the server | Put the absolute `uvx` path in `command`; the app does not inherit the shell `PATH` |
 | VS Code lists nothing | `install` writes `mcpServers`; VS Code uses `servers`; rename the key |
 
@@ -206,7 +228,7 @@ The shell reports its own codes; it never reuses an engine code.
 ## Desktop engine is offline or version-gated
 
 The shell resolves the engine in this order: `LV24_SEO_BIN` (absolute only), bundled `engine/lv24-seo/`, flat `lv24-seo/`, sibling `lv24-seo/`, then `PATH` only
-when `LV24_SEO_ALLOW_PATH_ENGINE=1`. It runs `lv24-seo version --json` and compares the result with `MIN_ENGINE_VERSION`, which is `0.11.0` in the current
+when `LV24_SEO_ALLOW_PATH_ENGINE=1`. It runs `lv24-seo version --json` and compares the result with `MIN_ENGINE_VERSION`, which is `0.14.0` in the current
 source.
 
 An older engine is marked `compatible: false`; the UI treats it as offline and does not run the command. Nothing is downloaded automatically.
@@ -214,7 +236,7 @@ An older engine is marked `compatible: false`; the UI treats it as offline and d
 | Symptom | Fix |
 |---|---|
 | Engine not found | Reinstall, or set `LV24_SEO_BIN` to an absolute executable |
-| Engine too old | Install engine 0.11.0 or newer |
+| Engine too old | Install engine 0.14.0 or newer |
 | External engine label | Expected when `LV24_SEO_BIN` is set |
 
 A stray `lv24-seo` on `PATH` is ignored unless `LV24_SEO_ALLOW_PATH_ENGINE=1`.
@@ -302,5 +324,5 @@ Report security problems through the private advisory described in `SECURITY.md`
 
 See [Security and privacy](/security/) for the write gates and [Releases and updates](/release/) for updater behaviour.
 
-Source: `_source/engine-troubleshooting.md`, `_source/engine-releases-0.12.2.md`, `_source/engine-releases-0.12.0.md`, `_source/engine-releases-0.11.0.md`, `_source/engine-releases-0.5.3.md`, `_source/desktop-releases-0.9.0.md`, `_source/desktop-releases-0.2.2.md`, `_source/desktop-releases-0.2.3.md`, `_source/desktop-releases-0.2.1.md`, `_source/desktop-releases-0.2.0.md`, `_source/desktop-security.md`,
+Source: `_source/engine-troubleshooting.md`, `_source/engine-auth.md`, `_source/engine-auth-google.md`, `_source/engine-auth-yandex.md`, `_source/engine-releases-0.14.0.md`, `_source/engine-releases-0.13.1.md`, `_source/engine-releases-0.13.0.md`, `_source/engine-releases-0.12.2.md`, `_source/engine-releases-0.12.0.md`, `_source/engine-releases-0.11.0.md`, `_source/engine-releases-0.5.3.md`, `_source/desktop-releases-0.9.2.md`, `_source/desktop-releases-0.9.1.md`, `_source/desktop-releases-0.9.0.md`, `_source/desktop-releases-0.2.2.md`, `_source/desktop-releases-0.2.3.md`, `_source/desktop-releases-0.2.1.md`, `_source/desktop-releases-0.2.0.md`, `_source/desktop-security.md`,
 `_source/desktop-architecture.md`.

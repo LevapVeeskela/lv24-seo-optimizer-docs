@@ -1,6 +1,6 @@
 ---
 title: Релизы и обновления
-description: Релизы движка 0.12.2 и приложения 0.9.0, автоматизация индексации 0.12.0, история 0.11.0, 0.10.0 и более ранних версий, матрица подписанных автообновлений, релизный конвейер, закрепление версий и откат.
+description: Релизы движка 0.14.0 и приложения 0.9.2, диагностика готовности OAuth и карточка индексации, OAuth-коннекторы 0.13.0, автоматизация индексации 0.12.0, более ранняя история, матрица подписанных автообновлений, релизный конвейер, закрепление версий и откат.
 ---
 
 # Релизы и обновления
@@ -9,10 +9,181 @@ description: Релизы движка 0.12.2 и приложения 0.9.0, а�
 
 | Продукт | Версия | Дата | Примечания |
 |---|---|---|---|
-| Движок | `lv24-seo 0.12.2` | 2026-11-17 | Автоматизация индексации с учётом квот для Bing, Яндекса, IndexNow и GSC, исправление жизненного цикла клиента в 0.12.1 и честная обработка 5xx Яндекса в 0.12.2; 25 команд CLI, 12 инструментов MCP и схема v5 |
-| Приложение | `0.9.0` | 2026-11-17 | Экран Diagnostics только для чтения с пятью вкладками и 18 командами из белого списка, движок 0.11.0 и `MIN_ENGINE_VERSION` 0.11.0 |
+| Движок | `lv24-seo 0.14.0` | 2026-11-18 | Диагностика готовности OAuth в `auth status` и `doctor`, восемь стабильных кодов и записанные scope; сохранены коннекторы 0.13.0, 25 команд CLI, 12 инструментов MCP и схема v5 |
+| Приложение | `0.9.2` | 2026-11-18 | Карточка Indexing automation только для чтения, движок 0.14.0 и `MIN_ENGINE_VERSION` 0.14.0 |
 
-Версия приложения и версия движка независимы, но приложение закрепляет точный движок и отказывается работать с версией ниже минимальной. `0.9.0` включает `0.11.0` и требует минимум `0.11.0`, поэтому установленный движок `0.10.x` считается несовместимым. Движок `0.12.2` проходит этот порог; автоматизация индексации остаётся только в CLI и планировщике до появления карточки статуса в приложении `0.9.1`.
+Версия приложения и версия движка независимы, но приложение закрепляет точный движок и отказывается работать с версией ниже минимальной. `0.9.2` включает `0.14.0` и требует минимум `0.14.0`, поэтому установленный движок `0.13.x` считается несовместимым. `0.9.1` — предыдущий релиз. OAuth-токены хранит движок в связке ключей ОС; приложение никогда не получает и не отображает их. Карточка Indexing automation только для чтения: она рендерит `indexing status`, `indexing history` и `schedule status` и не имеет записи, подтверждения или `--allow-write`.
+
+## Движок 0.14.0
+
+Выпущен 2026-11-18. OAuth-сбои теперь диагностируются: `auth status` и `doctor` точно называют
+недостающий компонент вместо общей ошибки. В CLI по-прежнему 25 команд верхнего уровня (18 групп +
+7 команд), в MCP — 12 инструментов, схема SQLite — v5.
+
+### Диагностика готовности OAuth
+
+Что изменилось:
+
+- **`auth status --json`.** Добавляет объект `oauth` для `gsc`, `yandex` и `metrika`. Каждая запись несёт `state`, `detail`, `client_id_present`, `client_secret_present`, `access_token_present`, `refresh_token_present`, `expires_at`, `scopes_recorded`, `next_action` и `limitations`. Существующие поля `providers`/`present`/`missing` не меняются.
+- **`doctor --json`.** Добавляет проверки `gsc_oauth`, `yandex_oauth` и `metrika_oauth` с `id`, `ok`, `detail`, `code` и `next_action`. Отсутствующее приложение — предупреждение со ссылкой на регистрацию, а не падение. Проверки некритичны: `healthy` и код выхода по-прежнему зависят только от существующих фатальных проверок. Ненастроенный провайдер помечается как необязательный.
+- **Стабильные состояния.** Проверки офлайн: читают конфигурацию и хранилище секретов, но не провайдера.
+- **Приоритет.** Redirect, затем client id, затем client secret, затем токен, затем scope. Показывается первое действие, которое нужно исправить.
+- **Записанные scope.** `gsc_token_scopes`, `yandex_token_scopes` и `yandex_metrika_token_scopes` хранят выданные scope через пробел и входят в `OAUTH_SECRET_NAMES`; публичный кортеж `SECRET_NAMES` остаётся стабильным. Вход и refresh записывают список провайдера (или запрошенный, если ответ его не содержит); `auth logout` удаляет запись.
+- **Не изменилось.** Нет новых обязательных зависимостей, проверки не вызывают провайдера, имена токенов/секретов и поведение login/logout прежние.
+
+Восемь стабильных кодов:
+
+| Код | Значение | Исправление |
+|---|---|---|
+| `oauth_client_missing` | `[auth.<provider>].client_id` пуст или является документированным placeholder | Зарегистрируйте приложение и задайте client id (Google Desktop app или приложение Яндекс OAuth) |
+| `oauth_client_secret_missing` | Client id задан, но client secret отсутствует | `auth set --provider gsc_oauth_secret\|yandex_oauth_secret --stdin` |
+| `oauth_token_missing` | Client id и secret есть, но access/refresh token отсутствует | `auth login --provider gsc\|yandex\|metrika` |
+| `oauth_token_expired` | Сохранённый срок в прошлом; указывается, доступен ли refresh | Выполните любую команду чтения или войдите заново, если refresh token нет |
+| `oauth_scope_missing` | Записанные scope токена не включают настроенные | Войдите заново и выдайте scope либо уберите его из `[auth.*].scopes` |
+| `oauth_scope_unknown` | Scope не записывались (грант до появления записи); предупреждение, а не ложный успех | Выполните вход или refresh один раз, чтобы записать scope |
+| `oauth_redirect_invalid` | Redirect Google не loopback или у Яндекса не `verification_code` | Очистите `[auth.*].redirect_uri` или задайте корректное значение |
+| `oauth_ready` | Client id, secret, token, scope и redirect в порядке | Ничего делать не нужно |
+
+Проверки, записанные для этого релиза:
+
+| Проверка | Результат |
+|---|---|
+| PyPI / npm / MCP Registry | `lv24-seo 0.14.0` опубликован |
+| GitHub Release | `v0.14.0`; релизный workflow — запуск `44203408208` |
+| Локальный гейт | `ruff check`, `ruff format --check`, `mypy src`, registry `--check` и полный офлайн `pytest -q` зелёные на релизном коммите |
+| Тесты | `tests/unit/test_oauth_status.py` покрывает все состояния трёх провайдеров, round-trip/delete scope, матрицу redirect, обратную совместимость `auth status`, коды `doctor` и правило «ни одного токена в выводе/repr/логе» |
+| Вызовы провайдера | нет: проверки готовности офлайн |
+
+Известные ограничения 0.14.0:
+
+- Redirect проверяется раньше состояния токена, поэтому неверный redirect нужно исправить до появления совета войти.
+- `oauth_scope_unknown` — предупреждение: токен, созданный до записи scope, не может доказать свои права.
+- Ненастроенный провайдер всё равно показывается как `ok:false` в `doctor` с пометкой «optional»; это не меняет `healthy` и код выхода.
+- Живое OAuth-согласие не проверено, пока не зарегистрированы реальный Google Desktop client и приложение Яндекс OAuth.
+
+## Движок 0.13.1
+
+Выпущен 2026-11-18. Два релиза в один день добавляют OAuth-коннекторы для Google Search Console,
+Yandex Webmaster и Yandex Metrika, а затем режим URL-only для Яндекса, нужный карточке Connect в
+приложении. В CLI по-прежнему 25 команд верхнего уровня (18 групп + 7 команд), в MCP — 12
+инструментов, схема SQLite — v5.
+
+### 0.13.0 - OAuth-коннекторы для Google и Яндекса
+
+Что изменилось:
+
+- **Google Search Console.** `auth login --provider gsc [--no-browser] [--port N] [--code CODE] [--json]` использует клиент Google Cloud **Desktop app**, loopback-callback на `127.0.0.1:<port>/callback`, S256 PKCE и случайный `state`; `access_type=offline` и `prompt=consent` дают refresh token. Access token, refresh token и срок хранятся в связке ключей ОС; client secret задаётся один раз через `auth set --provider gsc_oauth_secret --stdin`. `OAuthTokenProvider` обновляет токен за 60 секунд до истечения под блокировкой и читает хранилище при каждом вызове, поэтому работающий MCP-процесс видит вход из CLI. `--no-browser` печатает URL в stderr, чтобы stdout оставался одним JSON-документом, а `--code` переиспользует сохранённый PKCE verifier с `--port` или `[auth.gsc].redirect_uri` для точного повтора redirect. Приоритет: OAuth-грант, затем файл сервисного аккаунта, затем статический `gsc_token`; `doctor` распознаёт OAuth-грант.
+- **Yandex Webmaster и Metrika.** `auth login --provider yandex|metrika [--no-browser] [--code CODE] [--json]` использует одно приложение Яндекс OAuth с областями `webmaster:hostinfo` и `metrika:read` и отдельными слотами токенов, чтобы отзывать движки независимо. Приложения с API-доступом используют redirect `https://oauth.yandex.ru/verification_code`: пользователь подтверждает доступ, Яндекс показывает короткий код, CLI обменивает его; это работает на десктопе, по SSH и на VPS без loopback-сервера. Обмен идёт form-encoded, обновление — через `grant_type=refresh_token`, а неудачное обновление возвращает `AUTH_INVALID` с точной командой `auth login`. `auth logout --provider yandex|metrika` удаляет соответствующие OAuth-токены.
+- **Конфигурация и секреты.** `[auth.gsc]` и `[auth.yandex]` содержат `client_id`, `scopes` и `redirect_uri`; переменные `LV24_SEO_GSC_CLIENT_ID`, `LV24_SEO_GSC_REDIRECT_URI`, `LV24_SEO_YANDEX_CLIENT_ID` и `LV24_SEO_YANDEX_REDIRECT_URI` их переопределяют. Client secret никогда не входит в конфигурацию: `OAUTH_SECRET_NAMES` сохраняет публичный кортеж `SECRET_NAMES`, а `auth set --provider gsc_oauth_secret|yandex_oauth_secret --stdin` хранит companion-секрет. Текстовый вывод `auth login` говорит `OAuth login for ...` и показывает области и срок; JSON не содержит токенов.
+- **Не изменилось.** Нет новых обязательных зависимостей (используются существующий клиент `httpx` и связка ключей ОС), число команд CLI, MCP, схема и версия конфигурации не меняются. Bing Webmaster, IndexNow, CrUX и PSI остаются на ключах, потому что у этих провайдеров нет OAuth; сервисный аккаунт, статические токены и API-ключи продолжают работать.
+
+Проверки, записанные для этого релиза:
+
+| Проверка | Результат |
+|---|---|
+| PyPI / npm / MCP Registry | `lv24-seo 0.13.0` опубликован |
+| Релизный workflow | запуск `44194701424` зелёный |
+| Локальный гейт | `ruff check`, `ruff format --check`, `mypy src`, registry `--check` и полный офлайн `pytest -q` зелёные на релизном коммите |
+| OAuth-наборы | 34 теста Google OAuth и 32 теста Yandex OAuth: PKCE/state/URL, реальный loopback-callback `127.0.0.1`, обмен кода и refresh через `httpx.MockTransport`, границы срока, store/delete, приоритет источников, CLI `--code`/`--no-browser`, отсутствующие секреты, отображение ошибок и конверты/repr без токенов |
+| Живое согласие | не выполнялось: на момент релиза не было зарегистрировано ни Google Cloud Desktop client, ни приложения Яндекс OAuth |
+
+Известные ограничения 0.13.0:
+
+- Google-приложения в статусе **Testing** выдают refresh token на 7 дней; для автономной автоматизации GSC лучше оставить сервисный аккаунт. Публичному приложению нужна верификация Google для чувствительной области `webmasters.readonly`.
+- Поток Яндекса `verification_code` не может проверить `state` между отдельными командами `--no-browser` и `--code`; код живёт 10 минут, и client secret всё равно нужен. Рекомендуется одна интерактивная команда.
+- Долгоживущий MCP-процесс кеширует клиент провайдера; токен, истёкший в процессе, обновится при следующей сборке клиента.
+- У Bing, IndexNow, CrUX и PSI нет OAuth-коннектора по дизайну.
+- Живое согласие на релизе не проверялось; шаги регистрации — в руководствах по Google и Яндекс OAuth.
+
+### 0.13.1 - режим URL-only для коннектора Яндекса
+
+Что изменилось:
+
+- `auth login --provider yandex|metrika --url-only --json` возвращает `{provider, flow, authorization_url, scopes, target}` и не открывает браузер, не печатает в stderr, не обменивает код и не записывает токен. Приложение показывает URL, пользователь подтверждает доступ, а второй вызов с `--code <code>` завершает грант.
+- `--url-only` работает только для Яндекса; `--provider gsc` сохраняет loopback-поток. Интерактивный поток и `--code` не изменились.
+- Placeholder client id (например, `your-client-id`) отклоняется с действием по настройке вместо запуска обречённой авторизации.
+
+Проверки, записанные для этого релиза:
+
+| Проверка | Результат |
+|---|---|
+| PyPI / npm / MCP Registry | `lv24-seo 0.13.1` опубликован |
+| Релизный workflow | запуск `44195481192` зелёный |
+| Юнит-тест | `login_yandex(..., url_only=True)` возвращает URL авторизации и не сохраняет токен |
+| Локальный гейт | `ruff check`, `ruff format --check`, `mypy src`, registry `--check` и полный `pytest -q` зелёные |
+| Живое согласие | всё ещё ожидает зарегистрированного приложения/клиента Яндекс OAuth |
+
+Известные ограничения 0.13.1:
+
+- `--url-only` не проверяет `state` между отдельными шагами URL и кода; код недолговечен, и client secret всё равно нужен.
+- Живое согласие не проверено, пока не настроены реальный Google Cloud Desktop client и приложение Яндекс OAuth.
+- По сравнению с 0.13.0 нет изменений API, числа команд CLI, MCP, схемы или конфигурации.
+
+## Приложение 0.9.2
+
+Выпущено 2026-11-18. Добавляет карточку **Indexing automation** только для чтения в Integrations,
+включает `lv24-seo 0.14.0` и поднимает `MIN_ENGINE_VERSION` до `0.14.0`, поэтому установленный
+движок `0.13.x` считается несовместимым. Новой поверхности записи нет.
+
+Что изменилось:
+
+- **Карточка Indexing automation.** Экран Integrations рендерит `indexing status`, `indexing history` и `schedule status`; в ней нет записи, подтверждения или `--allow-write`.
+- **Расписание.** Показывает `Scheduled`/состояние хоста и документированный ритм **Daily 04:00** для задания `lv24-seo-indexing`.
+- **По провайдерам.** Строки Bing, Yandex, GSC и IndexNow с `submitted`, `indexed` (только GSC), `pending` и квотой: остаток Bing за день/месяц, остаток Яндекса, использовано/лимит GSC/IndexNow. Провайдер без состояния показывает «No data yet», а не ноль.
+- **Последний запуск и история.** Новейшая строка `indexing history` со статусом, числом отправленных/проверенных и до пяти `error_items` (URL, код, сообщение); компактная таблица 7/30 дней по дням и провайдерам из `indexing history --limit 30`.
+- **Честность.** Каждый рендер содержит `data_age_days` и `limitations`; агрегат GSC `indexed_total` помечен устаревшим и отделён от вердикта по URL. Bing/Yandex/IndexNow показывают отсутствие счётчика по URL, а не выдуманное число.
+- **Совместимость и мост.** Если движок отвечает `INVALID_COMMAND`, карточка показывает «Indexing status needs engine >= 0.13.1» и скрывает таблицы. `indexing_status` (`provider`, `limit`, `live`), `indexing_history` (`limit`) и `schedule_status` (`kind`, `target`) в белом списке; Rust проверяет каждое значение, отклоняет write-флаги и аргументы другой команды и использует таймаут 120 с. `--live` — единственный вызов провайдера; отсутствующий ключ становится ограничением, а не сбоем.
+- **Движок и контракты.** Встроенный onedir sidecar — `lv24-seo 0.14.0`; контракты (`config.schema.json`, CLI-фикстуры, включая `stats`) перегенерированы из `0.14.0`. Проверенный пин Windows x64 фиксирует собранный `0.14.0` (`33d2611c…02d0`, 14 580 661 байт); пины Linux и macOS остаются `null` и покрываются rebuild-aware отчётами CI.
+
+Проверки, записанные для этого релиза:
+
+| Проверка | Результат |
+|---|---|
+| GitHub Release | [`v0.9.2`](https://github.com/LevapVeeskela/lv24-seo-optimizer-desktop/releases/tag/v0.9.2); ассеты собирает ручной workflow **Desktop build** с `engine_version=0.14.0` (сверьте `latest.json` и `SHA256SUMS.txt` тега) |
+| Локальный гейт | `npm run typecheck`, `npm test`, `npm run build`, `npm run contract:check`, `cargo fmt --check`, `cargo clippy --all-targets -- -D warnings` и `cargo test` зелёные на релизном коммите |
+| Тесты | 784 теста Vitest и 169 тестов Rust |
+| Контракты | актуальны для движка `0.14.0` |
+| Пин sidecar | Windows x64 проверен по закреплённому SHA-256 (`33d2611c0766c2b1160c80c35cfd51b86f6fbb7e26a9bb508aec0a32053b02d0`, 14 580 661 байт); Linux и macOS покрыты rebuild-aware отчётами |
+
+Известные ограничения 0.9.2:
+
+- Карточка только для чтения: показывает состояние расписания, но не устанавливает, не редактирует и не запускает задание.
+- `--live` читает квоты Bing и Яндекса при обновлении; отсутствующий ключ показывается как ограничение.
+- Bing, Yandex и IndexNow не отдают счётчик индексации по URL; карточка показывает отсутствие значения с `no_per_url_index_count`, а не выдуманное число.
+- Агрегат GSC `contents[].indexed` устарел и может быть нулевым.
+- Движок старше `0.14.0` сообщается как несовместимый.
+
+## Приложение 0.9.1
+
+Выпущено 2026-11-18. Добавляет карточку OAuth Connect в Integrations, включает `lv24-seo 0.13.1` и поднимает `MIN_ENGINE_VERSION` до `0.13.1`, поэтому установленный движок `0.12.x` считается несовместимым. Новой поверхности записи нет.
+
+Что изменилось:
+
+- **Карточка Connect.** В Integrations появляется карточка **Connectors** для Google Search Console, Yandex Webmaster и Yandex Metrika. Токены хранит движок в связке ключей ОС; приложение никогда не получает, не отображает и не логирует их.
+- **Google Search Console.** **Connect** запускает `auth login --provider gsc`. Движок открывает системный браузер, поднимает loopback-callback `127.0.0.1` с S256 PKCE и ждёт согласия; карточка показывает подсказку «завершите вход в браузере» и обновляет `auth status` после успеха. При отсутствии client id или secret показывается `next_action` движка и руководство, а не общая ошибка.
+- **Yandex Webmaster и Metrika.** **Connect** вызывает `auth login --provider yandex|metrika --url-only` и показывает URL авторизации с кнопкой **Open Yandex**. После подтверждения пользователь вставляет код со страницы `https://oauth.yandex.ru/verification_code` и нажимает **Finish**; после обмена код очищается из состояния. Движки используют отдельные слоты токенов.
+- **Статус и мост.** Карточка читает `auth status` (`gsc_oauth`, `yandex_oauth`, `metrika_oauth`) и показывает `Connected`, `Not connected` или `Not checked`. Client secret настраивается один раз через `auth set --provider gsc_oauth_secret|yandex_oauth_secret --stdin`; в UI нет поля для секрета. `auth_login` входит в белый список с `provider`, `noBrowser`, `port`, `code` и `urlOnly`; Rust отклоняет write-флаги, кросс-провайдерные комбинации и неверные порты или коды до запуска движка, а `open_oauth_url` принимает только `https://oauth.yandex.ru/authorize?...`.
+- **Движок и контракты.** Встроенный onedir sidecar — `lv24-seo 0.13.1`; контракты (`config.schema.json`, CLI-фикстуры, включая `stats`) перегенерированы из `0.13.1`. Проверенный пин Windows x64 фиксирует собранный исполняемый файл `0.13.1`; пины Linux и macOS остаются `null` и покрываются rebuild-aware отчётами CI.
+
+Проверки, записанные для этого релиза:
+
+| Проверка | Результат |
+|---|---|
+| Опубликованные ассеты | 18 ассетов на `v0.9.1`; `latest.json` сообщает `0.9.1`, в `SHA256SUMS.txt` 17 строк |
+| Релизный workflow | запуск `44199591548` зелёный |
+| Локальный гейт | `npm run typecheck`, `npm test`, `npm run build`, `npm run contract:check`, `cargo fmt --check`, `cargo clippy --all-targets -- -D warnings` и `cargo test` зелёные на релизном коммите |
+| Тесты | 763 теста Vitest и 167 тестов Rust |
+| Контракты | актуальны для движка `0.13.1` |
+| Пин sidecar | Windows x64 проверен по закреплённому SHA-256 (`0b02b8a0…`, 14 567 729 байт); Linux и macOS покрыты rebuild-aware отчётами |
+
+Известные ограничения 0.9.1:
+
+- **Живое OAuth-согласие ещё не проверено**: на момент релиза не было зарегистрировано ни Google Cloud Desktop client, ни приложения Яндекс OAuth. Карточка показывает ошибку настройки движка, пока не заданы реальные client id/secret.
+- Google-приложения в **Testing** выдают refresh token на 7 дней; для автономного GSC остаётся сервисный аккаунт. Публичному приложению нужна верификация Google для `webmasters.readonly`.
+- Поток Яндекса `verification_code` не может проверить `state` между отдельными шагами URL-only и кода; код недолговечен, и client secret всё равно нужен.
+- Bing Webmaster, IndexNow, CrUX и PSI остаются на ключах; карточка не предлагает для них OAuth.
+- `MIN_ENGINE_VERSION` — `0.13.1`, поэтому движок `0.12.x` отклоняется. У карточки нет `--allow-write`, confirm-токена или пути записи к провайдеру.
+- Карточки статуса индексации нет: `indexing status|run|history` остаются только в CLI и планировщике.
 
 ## Движок 0.12.2
 
@@ -778,8 +949,8 @@ Manual-only — намеренно. Пакет deb или rpm принадлеж
 и `0.7.0 → 0.8.0`. В девятом запуске установленная сборка `0.7.0` обновилась через Rust-обновлятор,
 скачала и проверила подписанный пакет, установила его, перезапустилась и сообщила **Desktop 0.8.0**
 с **Engine 0.10.0** и готовым движком; загрузились карточки отправки URL, sitemap, проблем обхода и
-квоты Bing. `0.8.0 → 0.9.0` — следующий источник обновления. Любая установка `0.2.x` с обновлятором
-может сразу перейти на `0.9.0`; у `0.1.0` нет обновлятора, нужна одна ручная установка.
+квоты Bing. `0.9.1 → 0.9.2` — следующий источник обновления; для `0.9.2` прогон автообновления не записан. Любая установка `0.2.x` с обновлятором
+может сразу перейти на `0.9.2`; у `0.1.0` нет обновлятора, нужна одна ручная установка.
 
 Обновление `0.2.1 → 0.2.2` выполняет старый обновлятор `0.2.1`, в котором нет новой очистки
 отслеживаемых PID. Если во время первого обновления активен sidecar, повторите после его выхода
@@ -794,12 +965,12 @@ Workflow приложения ручной и owner-gated. У него нет т
 
 | Вход | Значение по умолчанию | Смысл |
 |---|---|---|
-| `engine_version` | `0.11.0` | Точная версия движка в sidecar |
+| `engine_version` | `0.14.0` | Точная версия движка в sidecar |
 | `signed` | `false` | Запросить подпись/нотаризацию ОС; в этом zero-spend репозитории не настроено |
 | `publish` | `false` | Создать GitHub release после прохождения всей матрицы |
 | `tag` | Пусто | Тег релиза `vX.Y.Z`; обязателен при `publish=true` |
 
-Значение по умолчанию соответствует пину `0.7.0`. Релизный гейт отклоняет несоответствие
+Значение по умолчанию соответствует пину `0.9.2`. Релизный гейт отклоняет несоответствие
 манифеста, если передана другая версия.
 
 | Runner | Target | Пакеты |
@@ -817,7 +988,7 @@ Workflow приложения ручной и owner-gated. У него нет т
 
 Релизный sidecar — дерево PyInstaller **onedir**, собранное на соответствующем хосте; PyInstaller не
 кросс-компилирует. Версии движка, Python, Pydantic, Typer и PyInstaller закреплены в
-`scripts/cli-checksums.json`. `0.9.0` закрепляет движок `0.11.0` (выше `0.10.0`), Python `3.12`, Pydantic `2.14.3`,
+`scripts/cli-checksums.json`. `0.9.2` закрепляет движок `0.14.0` (выше `0.13.1`), Python `3.12`, Pydantic `2.14.3`,
 Typer `0.29.0` и PyInstaller `6.22.3`.
 
 Вывод PyInstaller onedir не байт-воспроизводим. Поэтому политика контрольных сумм разделена:
@@ -831,9 +1002,9 @@ Typer `0.29.0` и PyInstaller `6.22.3`.
   target: совпадение имени target, `hashPolicy: "rebuild"`, `ok: true`, 64-hex хеш, положительный
   размер и точную версию движка.
 
-Для `0.9.0` Windows x64 имеет проверенный локальный пин (`db02d1b3…`, 14 478 498 байт); sidecar для Linux и macOS пересобраны релизным
+Для `0.9.2` Windows x64 имеет проверенный локальный пин (`33d2611c…02d0`, 14 580 661 байт); sidecar для Linux и macOS пересобраны релизным
 workflow с пройденными rebuild-aware отчётами, а их проверенные пины остаются `null`, пока локальная сборка
-не будет проверена на этих хостах. Windows-пин `0.8.0`
+не будет проверена на этих хостах. Windows-пин `0.9.1`
 не переносился, потому что исполняемый файл меняется вместе с движком. Отчёты контрольных сумм — доказательства CI, а не релизные артефакты.
 `SHA256SUMS.txt` покрывает установщики, пакеты обновления, подписи и `latest.json`; исполняемый
 файл sidecar находится внутри этих пакетов и отдельно не указан. При ручной установке сверяйте
@@ -843,7 +1014,7 @@ workflow с пройденными rebuild-aware отчётами, а их пр�
 node scripts/verify-sidecar.mjs \
   --root src-tauri/engine \
   --target x86_64-pc-windows-msvc \
-  --engine-version 0.11.0
+  --engine-version 0.14.0
 ```
 
 ## `latest.json`, подпись и публикация
@@ -880,8 +1051,8 @@ node scripts/verify-sidecar.mjs \
 `scripts/cli-checksums.json`; workflow передаёт `engine_version` явно, а релизный гейт требует
 совпадения с манифестом.
 
-`MIN_ENGINE_VERSION` в `src-tauri/src/commands.rs` в текущем исходнике равен `0.11.0`. Сборка `0.9.0`
-включает движок `0.11.0`, поэтому минимум совпадает с движком сборки, а движок `0.10.x` считается
+`MIN_ENGINE_VERSION` в `src-tauri/src/commands.rs` в текущем исходнике равен `0.14.0`. Сборка `0.9.2`
+включает движок `0.14.0`, поэтому минимум совпадает с движком сборки, а движок `0.13.x` считается
 несовместимым. Оболочка
 принимает движок не старше этой версии и помечает более старый как offline с уведомлением. Более
 новый движок проходит гейт, но не является релизно-проверенным пином. Сборочная версия может
@@ -890,13 +1061,18 @@ node scripts/verify-sidecar.mjs \
 
 ## Однократное обновление с 0.1.0
 
-У `0.1.0` нет updater, endpoint и публичного ключа. Он не может найти или установить `0.9.0`.
-Скачайте и установите `0.9.0` вручную один раз (NSIS-установщик или portable ZIP в Windows).
-После этого установка `0.9.0` может автоматически обновляться до следующих релизов, если
+У `0.1.0` нет updater, endpoint и публичного ключа. Он не может найти или установить `0.9.2`.
+Скачайте и установите `0.9.2` вручную один раз (NSIS-установщик или portable ZIP в Windows).
+После этого установка `0.9.2` может автоматически обновляться до следующих релизов, если
 использует пакет с поддержкой автообновления.
 
 ## Предыдущие релизы
 
+- **Движок 0.14.0** добавил диагностику готовности OAuth: объект `oauth` в `auth status`, проверки `doctor` и восемь стабильных кодов, с записанными scope и без вызова провайдера.
+- **Приложение 0.9.2** добавило карточку Indexing automation только для чтения, движок `0.14.0` и `MIN_ENGINE_VERSION` `0.14.0`.
+
+- **Движок 0.13.0** добавил OAuth-коннекторы для Google Search Console и Yandex Webmaster/Metrika, токены в связке ключей, `[auth.gsc]`/`[auth.yandex]` и путь `auth set --provider *_oauth_secret`, не меняя число команд CLI, инструменты MCP или схему.
+- **Приложение 0.9.1** добавило карточку OAuth Connect, движок `0.13.1` и `MIN_ENGINE_VERSION` `0.13.1`; новой поверхности записи нет.
 - **Движок 0.11.0** добавил глубину чтения по всем платформам: GSC URL Inspection, карты сайта и
   фильтруемую поисковую аналитику; события/карты/историю/очередь Яндекса и переобход с гейтом;
   страницы/трафик/обход/URL/связки Bing; органическую Метрику; историю CrUX и аудиты PSI;
@@ -970,4 +1146,4 @@ Gatekeeper ожидаемы; сверьте контрольную сумму и
 
 См. [Безопасность и приватность](/ru/security/) для доверия к обновлениям и [Архитектуру](/ru/architecture/) для раскладки sidecar.
 
-Source: `_source/engine-releases-0.12.2.md`, `_source/engine-releases-0.12.1.md`, `_source/engine-releases-0.12.0.md`, `_source/engine-releases-0.11.0.md`, `_source/engine-releases-0.10.0.md`, `_source/engine-releases-0.9.0.md`, `_source/engine-releases-0.8.0.md`, `_source/engine-releases-0.7.0.md`, `_source/engine-releases-0.6.0.md`, `_source/engine-releases-0.5.3.md`, `_source/engine-releases-0.5.2.md`, `_source/desktop-releases-0.9.0.md`, `_source/desktop-releases-0.8.0.md`, `_source/desktop-releases-0.7.0.md`, `_source/desktop-releases-0.6.0.md`, `_source/desktop-releases-0.5.0.md`, `_source/desktop-releases-0.4.0.md`, `_source/desktop-releases-0.3.0.md`, `_source/desktop-releases-0.2.3.md`, `_source/desktop-releases-0.2.2.md`, `_source/desktop-releases-0.2.1.md`, `_source/desktop-releases-0.2.0.md`, `_source/desktop-release.md`, `_source/desktop-security.md`.
+Source: `_source/engine-releases-0.14.0.md`, `_source/engine-CHANGELOG.md`, `_source/engine-releases-0.13.1.md`, `_source/engine-releases-0.13.0.md`, `_source/engine-releases-0.12.2.md`, `_source/engine-releases-0.12.1.md`, `_source/engine-releases-0.12.0.md`, `_source/engine-releases-0.11.0.md`, `_source/engine-releases-0.10.0.md`, `_source/engine-releases-0.9.0.md`, `_source/engine-releases-0.8.0.md`, `_source/engine-releases-0.7.0.md`, `_source/engine-releases-0.6.0.md`, `_source/engine-releases-0.5.3.md`, `_source/engine-releases-0.5.2.md`, `_source/desktop-releases-0.9.2.md`, `_source/desktop-releases-0.9.2-update.md`, `_source/desktop-releases-0.9.1.md`, `_source/desktop-releases-0.9.0.md`, `_source/desktop-releases-0.8.0.md`, `_source/desktop-releases-0.7.0.md`, `_source/desktop-releases-0.6.0.md`, `_source/desktop-releases-0.5.0.md`, `_source/desktop-releases-0.4.0.md`, `_source/desktop-releases-0.3.0.md`, `_source/desktop-releases-0.2.3.md`, `_source/desktop-releases-0.2.2.md`, `_source/desktop-releases-0.2.1.md`, `_source/desktop-releases-0.2.0.md`, `_source/desktop-release.md`, `_source/desktop-security.md`.

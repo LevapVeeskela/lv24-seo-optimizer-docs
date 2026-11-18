@@ -74,23 +74,23 @@ lv24-seo auth set --provider gsc --stdin
 lv24-seo auth status --json
 ```
 
-`auth login` печатает пошаговую инструкцию для провайдера; браузер он не открывает. `auth set` читает секрет из stdin или скрытого приглашения и сохраняет его в системном keychain либо в файловом fallback с правами `0600`, если он явно разрешён. Никогда не передавайте токен в argv, историю команд, файл репозитория или скриншот. `auth status` сообщает только наличие и источник; он не печатает значение и не проверяет права.
+`auth login` запускает OAuth-коннектор провайдера, когда настроен client id: GSC использует Desktop-app loopback-callback с S256 PKCE, а Yandex Webmaster/Metrika — redirect `verification_code`. `--no-browser` печатает URL, `--code` завершает внешний поток, а `--url-only` (только Яндекс) возвращает URL авторизации без записи токена — приложение использует его для карточки Connect. Без client id `auth login` печатает ручные шаги. `auth set` читает секрет из stdin или скрытого приглашения и сохраняет его в системном keychain либо в файловом fallback с правами `0600`, если он явно разрешён; OAuth client secret использует `gsc_oauth_secret` или `yandex_oauth_secret`. Никогда не передавайте токен в argv, историю команд, файл репозитория или скриншот. `auth status` сообщает только наличие и источник; он не печатает значение и не проверяет права.
 
-Поддерживаемые имена провайдеров: `gsc`, `yandex`, `metrika`, `bing`, `crux`, `psi`, `smtp` и `telegram`. Без extra `secrets` используйте переменные окружения `LV24_SEO_*` для нужного провайдера, например `LV24_SEO_YANDEX_WEBMASTER_TOKEN`. Резервный вариант для headless — `LV24_SEO_ALLOW_FILE_SECRETS=1` плюс `data/secrets.json` с правами `0600`; в этом режиме движок предупреждает при каждом запуске.
+Поддерживаемые имена провайдеров: `gsc`, `yandex`, `metrika`, `bing`, `crux`, `psi`, `smtp`, `telegram`, `gsc_oauth_secret` и `yandex_oauth_secret`. Без extra `secrets` используйте переменные окружения `LV24_SEO_*` для нужного провайдера, например `LV24_SEO_YANDEX_WEBMASTER_TOKEN`. Резервный вариант для headless — `LV24_SEO_ALLOW_FILE_SECRETS=1` плюс `data/secrets.json` с правами `0600`; в этом режиме движок предупреждает при каждом запуске.
 
-GSC также принимает сервисный аккаунт вместо вставленного OAuth-токена. Задайте `providers.gsc.service_account_file` с абсолютным путём или экспортируйте `LV24_SEO_GSC_SERVICE_ACCOUNT_FILE`; файл важнее сохранённого `gsc_token`, а окружение важнее файла. Движок подписывает RS256 JWT, обменивает его в `token_uri` ключа и обновляет до истечения, поэтому долгоживущий процесс `mcp serve` переживает истечение токена. `properties` сообщает `token_source: service_account_file`, а `doctor` добавляет некритичную проверку `gsc_auth`; ни один не печатает ключ. Обычный OAuth-токен продолжает работать.
+GSC также принимает сервисный аккаунт. Задайте `providers.gsc.service_account_file` с абсолютным путём или экспортируйте `LV24_SEO_GSC_SERVICE_ACCOUNT_FILE`; полный OAuth-грант важнее файла, файл важнее сохранённого `gsc_token`, а окружение важнее файла. Движок подписывает RS256 JWT, обменивает его в `token_uri` ключа и обновляет до истечения, поэтому долгоживущий процесс `mcp serve` переживает истечение токена. `properties` сообщает `token_source: oauth_refresh_token|service_account_file|secret`, а `doctor` добавляет некритичную проверку `gsc_auth`; ни один не печатает ключ. Обычный статический токен продолжает работать. Google-приложение в **Testing** истекает refresh token через 7 дней, поэтому для автономных запусков лучше сервисный аккаунт.
 
 ## Матрица установки приложения
 
-Настольное приложение `0.9.0` — текущий релиз с движком `lv24-seo 0.11.0`; оно требует движок `0.11.0` или новее, поэтому движок `0.12.2` совместим. Скачивайте файлы со страницы релизов проекта; `SHA256SUMS.txt` покрывает все опубликованные файлы.
+Настольное приложение `0.9.2` — текущий релиз с движком `lv24-seo 0.14.0`; оно требует движок `0.14.0` или новее, поэтому установленный движок `0.13.x` несовместим. Скачивайте файлы со страницы релизов проекта; `SHA256SUMS.txt` покрывает все опубликованные файлы.
 
 | Платформа | Файлы | Автообновление |
 |---|---|---|
-| Windows 10/11 x64 | NSIS `LV24.SEO.Optimizer_0.9.0_x64-setup.exe` (+ `.sig`), portable `LV24-SEO-Optimizer_0.9.0_x64-portable.zip` (+ `.zip.sha256`) | Только NSIS; portable вручную |
-| Linux x64 | `LV24.SEO.Optimizer_0.9.0_amd64.AppImage` (+ `.AppImage.sig`), `LV24.SEO.Optimizer_0.9.0_amd64.deb`, `LV24.SEO.Optimizer-0.9.0-1.x86_64.rpm` | Только AppImage; deb/rpm вручную |
-| macOS 13+ arm64/x64 | `LV24.SEO.Optimizer_0.9.0_aarch64.dmg` / `LV24.SEO.Optimizer_0.9.0_x64.dmg` для первой установки, `LV24.SEO.Optimizer_0.9.0_aarch64.app.tar.gz` / `LV24.SEO.Optimizer_0.9.0_x64.app.tar.gz` (+ `.sig`) для обновлений | Только `.app`; DMG — первая установка |
+| Windows 10/11 x64 | NSIS `LV24.SEO.Optimizer_0.9.2_x64-setup.exe` (+ `.sig`), portable `LV24-SEO-Optimizer_0.9.2_x64-portable.zip` (+ `.zip.sha256`) | Только NSIS; portable вручную |
+| Linux x64 | `LV24.SEO.Optimizer_0.9.2_amd64.AppImage` (+ `.AppImage.sig`), `LV24.SEO.Optimizer_0.9.2_amd64.deb`, `LV24.SEO.Optimizer-0.9.2-1.x86_64.rpm` | Только AppImage; deb/rpm вручную |
+| macOS 13+ arm64/x64 | `LV24.SEO.Optimizer_0.9.2_aarch64.dmg` / `LV24.SEO.Optimizer_0.9.2_x64.dmg` для первой установки, `LV24.SEO.Optimizer_0.9.2_aarch64.app.tar.gz` / `LV24.SEO.Optimizer_0.9.2_x64.app.tar.gz` (+ `.sig`) для обновлений | Только `.app`; DMG — первая установка |
 
-Движок `0.12.2` добавляет автоматизацию индексации с учётом квот: группу `indexing status|run|history`, квоты Bing/Яндекса/IndexNow/GSC, честные счётчики индексации по URL, ежедневную задачу `lv24-seo-indexing` и схему v5. Он сохраняет глубину чтения 0.11.0 (URL Inspection и карты сайта GSC, события/карты/историю/очередь Яндекса, страницы/трафик/обход/URL/связки Bing, органическую `metrika`, историю CrUX и аудиты PSI). Приложение `0.9.0` показывает чтения 0.11.0 в экране Diagnostics только для чтения; автоматизация индексации доступна только в CLI и планировщике до приложения `0.9.1`. Ограничения перечислены в [заметках к релизу](/ru/release/).
+Движок `0.14.0` добавляет диагностику готовности OAuth: объект `oauth` в `auth status`, проверки `gsc_oauth`/`yandex_oauth`/`metrika_oauth` в `doctor` и восемь стабильных кодов с записанными scope. Он сохраняет автоматизацию индексации 0.12.0, глубину чтения 0.11.0, 25 команд CLI, 12 инструментов MCP и схему v5. Приложение `0.9.2` добавляет карточку Indexing automation только для чтения, включает движок `0.14.0` и поднимает `MIN_ENGINE_VERSION` до `0.14.0`. Ограничения перечислены в [заметках к релизу](/ru/release/).
 
 ### Windows
 
@@ -115,7 +115,7 @@ sudo dnf install ./*_amd64.rpm
 
 ### Обновление с версии 0.1.0
 
-`0.1.0` была превью только для Windows без обновлятора, endpoint и публичного ключа. Установите `0.9.0` вручную один раз (установщик NSIS или portable ZIP). Автообновление работает с `0.2.0` и далее только для Windows NSIS, macOS `.app` и Linux AppImage.
+`0.1.0` была превью только для Windows без обновлятора, endpoint и публичного ключа. Установите `0.9.2` вручную один раз (установщик NSIS или portable ZIP). Автообновление работает с `0.2.0` и далее только для Windows NSIS, macOS `.app` и Linux AppImage.
 
 ## Неподписанные сборки
 
@@ -146,4 +146,4 @@ pip uninstall lv24-seo
 - [Справочник конфигурации](/ru/reference/config/) — все ключи `seo.toml`.
 - [Безопасность и приватность](/ru/security/) — хранение токенов и защита записи.
 
-Source: `_source/engine-README.md`, `_source/engine-cli.md`, `_source/engine-config.md`, `_source/desktop-README.md`, `_source/desktop-releases-0.9.0.md`, `_source/desktop-releases-0.8.0.md`, `_source/desktop-releases-0.7.0.md`, `_source/desktop-releases-0.6.0.md`, `_source/desktop-releases-0.5.0.md`, `_source/desktop-releases-0.4.0.md`, `_source/desktop-releases-0.3.0.md`, `_source/desktop-releases-0.2.3.md`, `_source/desktop-releases-0.2.2.md`, `_source/desktop-releases-0.2.0.md`.
+Source: `_source/engine-README.md`, `_source/engine-cli.md`, `_source/engine-config.md`, `_source/engine-auth.md`, `_source/engine-releases-0.14.0.md`, `_source/engine-releases-0.13.1.md`, `_source/engine-releases-0.13.0.md`, `_source/desktop-README.md`, `_source/desktop-releases-0.9.2.md`, `_source/desktop-releases-0.9.1.md`, `_source/desktop-releases-0.8.0.md`, `_source/desktop-releases-0.7.0.md`, `_source/desktop-releases-0.6.0.md`, `_source/desktop-releases-0.5.0.md`, `_source/desktop-releases-0.4.0.md`, `_source/desktop-releases-0.3.0.md`, `_source/desktop-releases-0.2.3.md`, `_source/desktop-releases-0.2.2.md`, `_source/desktop-releases-0.2.0.md`.

@@ -1,6 +1,6 @@
 ---
 title: 发行与更新
-description: 引擎 0.12.2 与桌面 0.9.0 发行说明、0.12.0 索引自动化、0.11.0、0.10.0 及更早版本历史、签名自动更新矩阵、发布流水线、版本固定与回滚。
+description: 引擎 0.14.0 与桌面 0.9.2 发行说明、OAuth 就绪诊断和索引卡片、0.13.0 OAuth 连接器、0.12.0 索引自动化、更早历史、签名自动更新矩阵、发布流水线、版本固定与回滚。
 ---
 
 # 发行与更新
@@ -9,10 +9,180 @@ description: 引擎 0.12.2 与桌面 0.9.0 发行说明、0.12.0 索引自动化
 
 | 产品 | 版本 | 发布日期 | 说明 |
 |---|---|---|---|
-| 引擎 | `lv24-seo 0.12.2` | 2026-11-17 | 面向 Bing、Yandex、IndexNow 和 GSC 的配额感知索引自动化，0.12.1 的客户端生命周期修复和 0.12.2 的 Yandex 5xx 映射；25 个 CLI 命令、12 个 MCP 工具和模式 v5 |
-| 桌面 | `0.9.0` | 2026-11-17 | 只读 Diagnostics 屏幕，五个标签页和 18 个白名单命令，捆绑引擎 0.11.0 和 `MIN_ENGINE_VERSION` 0.11.0 |
+| 引擎 | `lv24-seo 0.14.0` | 2026-11-18 | `auth status` 与 `doctor` 的 OAuth 就绪诊断、八个稳定代码和记录的作用域；保留 0.13.0 连接器、25 个 CLI 命令、12 个 MCP 工具和模式 v5 |
+| 桌面 | `0.9.2` | 2026-11-18 | 只读 Indexing automation 卡片，捆绑引擎 0.14.0 和 `MIN_ENGINE_VERSION` 0.14.0 |
 
-桌面版本与引擎版本相互独立，但桌面固定精确引擎，并拒绝低于最低版本的引擎。`0.9.0` 捆绑 `0.11.0` 并要求至少 `0.11.0`，因此已安装的 `0.10.x` 引擎会被报告为不兼容。引擎 `0.12.2` 通过该门槛；索引自动化在桌面 `0.9.1` 加入状态卡片之前仅限 CLI 和调度器。
+桌面版本与引擎版本相互独立，但桌面固定精确引擎，并拒绝低于最低版本的引擎。`0.9.2` 捆绑 `0.14.0` 并要求至少 `0.14.0`，因此已安装的 `0.13.x` 引擎会被报告为不兼容。`0.9.1` 是上一个版本。OAuth 令牌由引擎存入系统钥匙串；桌面从不接收或渲染。Indexing automation 卡片为只读：渲染 `indexing status`、`indexing history` 和 `schedule status`，没有写入、确认或 `--allow-write` 控件。
+
+## 引擎 0.14.0
+
+2026-11-18 发布。OAuth 失败现在可以自诊断：`auth status` 和 `doctor` 能准确指出缺少的前置条件，
+而不是返回通用错误。CLI 仍为 25 个顶层命令（18 个命令组 + 7 个命令），MCP 仍为 12 个工具，
+SQLite 模式仍为 v5。
+
+### OAuth 就绪诊断
+
+变更：
+
+- **`auth status --json`。** 为 `gsc`、`yandex` 和 `metrika` 增加 `oauth` 对象。每项包含 `state`、`detail`、`client_id_present`、`client_secret_present`、`access_token_present`、`refresh_token_present`、`expires_at`、`scopes_recorded`、`next_action` 和 `limitations`。现有 `providers`/`present`/`missing` 字段不变。
+- **`doctor --json`。** 增加 `gsc_oauth`、`yandex_oauth` 和 `metrika_oauth` 检查，包含 `id`、`ok`、`detail`、`code` 和 `next_action`。缺少应用是带注册链接的警告，不会崩溃。检查为非致命：`healthy` 和退出码仍只取决于现有致命检查。未配置的数据源标记为可选。
+- **稳定状态。** 检查为离线：只读配置和密钥存储，不访问数据源。
+- **优先级。** redirect、client id、client secret、token、scope，最先显示需要修复的那一项。
+- **记录作用域。** `gsc_token_scopes`、`yandex_token_scopes` 和 `yandex_metrika_token_scopes` 以空格分隔保存授予的作用域，并加入 `OAUTH_SECRET_NAMES`；公开的 `SECRET_NAMES` 元组保持稳定。登录和刷新记录数据源返回的列表（响应省略时记录请求的列表）；`auth logout` 删除它。
+- **未改变。** 没有新的必需依赖，就绪检查不调用数据源，现有令牌/密钥名称和 login/logout 行为不变。
+
+八个稳定代码：
+
+| 代码 | 含义 | 修复 |
+|---|---|---|
+| `oauth_client_missing` | `[auth.<provider>].client_id` 为空或为文档化占位符 | 注册应用并设置 client id（Google Desktop app 或 Yandex OAuth 应用） |
+| `oauth_client_secret_missing` | 已设置 client id，但缺少 client secret | `auth set --provider gsc_oauth_secret\|yandex_oauth_secret --stdin` |
+| `oauth_token_missing` | client id 和 secret 已设置，但没有 access/refresh token | `auth login --provider gsc\|yandex\|metrika` |
+| `oauth_token_expired` | 存储的到期时间已过；会说明是否可刷新 | 运行任意读取命令；没有 refresh token 时重新登录 |
+| `oauth_scope_missing` | 记录的 token 作用域不包含配置的作用域 | 重新登录并授予作用域，或从 `[auth.*].scopes` 移除 |
+| `oauth_scope_unknown` | 未记录作用域（作用域记录之前保存的授权）；是警告，不是误判通过 | 执行一次登录或刷新以记录作用域 |
+| `oauth_redirect_invalid` | Google redirect 不是回环，或 Yandex 不是 `verification_code` | 清除 `[auth.*].redirect_uri` 或设置有效值 |
+| `oauth_ready` | client id、secret、token、作用域和 redirect 全部就绪 | 无需操作 |
+
+本版本记录的验证：
+
+| 检查 | 结果 |
+|---|---|
+| PyPI / npm / MCP Registry | `lv24-seo 0.14.0` 已发布 |
+| GitHub Release | `v0.14.0`；发布工作流运行 `44203408208` |
+| 本地门禁 | 发布提交上 `ruff check`、`ruff format --check`、`mypy src`、registry `--check` 和完整离线 `pytest -q` 通过 |
+| 测试 | `tests/unit/test_oauth_status.py` 覆盖三个数据源的全部状态、作用域 round-trip/delete、redirect 矩阵、`auth status` 向后兼容、`doctor` 代码以及“输出/repr/日志中无令牌”规则 |
+| 数据源调用 | 无：就绪检查为离线 |
+
+0.14.0 的已知限制：
+
+- redirect 在 token 状态之前检查，因此错误的 redirect 必须先修复，之后才会显示登录建议。
+- `oauth_scope_unknown` 是警告：在作用域记录之前创建的 token 无法证明其权限。
+- 未配置的数据源在 `doctor` 中仍显示为 `ok:false` 的 OAuth 检查，并带“optional”说明；它不改变 `healthy` 或退出码。
+- 在注册真实的 Google Desktop client 和 Yandex OAuth 应用之前，实时 OAuth 同意仍未验证。
+
+## 引擎 0.13.1
+
+2026-11-18 发布。同一天两个版本加入 Google Search Console、Yandex Webmaster 和 Yandex Metrika 的
+OAuth 连接器，随后加入桌面 Connect 卡片所需的 Yandex URL-only 模式。CLI 仍为 25 个顶层命令
+（18 个命令组 + 7 个命令），MCP 仍为 12 个工具，SQLite 模式仍为 v5。
+
+### 0.13.0 - Google 与 Yandex 的 OAuth 连接器
+
+变更：
+
+- **Google Search Console。** `auth login --provider gsc [--no-browser] [--port N] [--code CODE] [--json]` 使用 Google Cloud **Desktop app** 客户端、`127.0.0.1:<port>/callback` 回环回调、S256 PKCE 和随机 `state`；`access_type=offline` 与 `prompt=consent` 获取 refresh token。访问令牌、刷新令牌和到期时间存入系统钥匙串；client secret 通过 `auth set --provider gsc_oauth_secret --stdin` 设置一次。`OAuthTokenProvider` 在锁内于到期前 60 秒刷新，并在每次调用时读取存储，因此运行中的 MCP 进程能看到 CLI 登录。`--no-browser` 把 URL 打印到 stderr，让 stdout 保持单个 JSON 文档；`--code` 复用已保存的 PKCE verifier，并需要 `--port` 或 `[auth.gsc].redirect_uri` 精确重复 redirect。优先级为 OAuth 授权、服务账号文件、静态 `gsc_token`；`doctor` 能识别 OAuth 授权。
+- **Yandex Webmaster 与 Metrika。** `auth login --provider yandex|metrika [--no-browser] [--code CODE] [--json]` 使用一个可携带 `webmaster:hostinfo` 和 `metrika:read` 的 Yandex OAuth 应用，并为两个引擎保留独立令牌槽，便于分别撤销。API-access 应用使用 `https://oauth.yandex.ru/verification_code` redirect：用户批准访问，Yandex 显示短代码，CLI 交换它；这在桌面、SSH 和没有回环服务器的 VPS 上都可用。交换使用 form-encoded，刷新使用 `grant_type=refresh_token`，刷新失败映射为 `AUTH_INVALID` 并给出确切的 `auth login` 命令。`auth logout --provider yandex|metrika` 删除对应的 OAuth 令牌。
+- **配置与密钥。** `[auth.gsc]` 和 `[auth.yandex]` 保存 `client_id`、`scopes` 和 `redirect_uri`；`LV24_SEO_GSC_CLIENT_ID`、`LV24_SEO_GSC_REDIRECT_URI`、`LV24_SEO_YANDEX_CLIENT_ID` 和 `LV24_SEO_YANDEX_REDIRECT_URI` 可覆盖。client secret 绝不进入配置：`OAUTH_SECRET_NAMES` 保持公开 `SECRET_NAMES` 元组稳定，`auth set --provider gsc_oauth_secret|yandex_oauth_secret --stdin` 保存配套密钥。`auth login` 文本输出显示 `OAuth login for ...`、作用域和到期时间；JSON 不含令牌。
+- **未改变。** 没有新的必需依赖（使用现有 `httpx` 客户端和系统钥匙串），CLI 数量、MCP、模式或配置版本均未改变。Bing Webmaster、IndexNow、CrUX 和 PSI 仍使用密钥，因为这些数据源没有 OAuth；服务账号、静态令牌和 API 密钥路径继续工作。
+
+本版本记录的验证：
+
+| 检查 | 结果 |
+|---|---|
+| PyPI / npm / MCP Registry | `lv24-seo 0.13.0` 已发布 |
+| 发布工作流 | 运行 `44194701424` 通过 |
+| 本地门禁 | 发布提交上 `ruff check`、`ruff format --check`、`mypy src`、registry `--check` 和完整离线 `pytest -q` 均通过 |
+| OAuth 测试集 | 34 个 Google OAuth 测试和 32 个 Yandex OAuth 测试：PKCE/state/URL、真实 `127.0.0.1` 回环回调、通过 `httpx.MockTransport` 的代码交换与刷新、到期边界、store/delete、来源优先级、CLI `--code`/`--no-browser`、缺失密钥、错误映射和无令牌信封/repr |
+| 实时同意 | 未执行：发布时没有注册 Google Cloud Desktop client 或 Yandex OAuth 应用 |
+
+0.13.0 的已知限制：
+
+- Google OAuth 应用处于 **Testing** 时，refresh token 在 7 天后过期；无人值守 GSC 自动化应继续使用服务账号。公开应用需要 Google 验证敏感作用域 `webmasters.readonly`。
+- Yandex `verification_code` 流程无法在分开的 `--no-browser` 和 `--code` 命令之间验证 `state`；代码只有 10 分钟有效，且仍需要 client secret。推荐使用单条交互命令。
+- 长时间运行的 MCP 进程会缓存数据源客户端；进程内过期的令牌会在下一次构建客户端时刷新。
+- Bing、IndexNow、CrUX 和 PSI 按设计没有 OAuth 连接器。
+- 发布时未验证实时同意；注册步骤见 Google 和 Yandex OAuth 指南。
+
+### 0.13.1 - Yandex 连接器的 URL-only 模式
+
+变更：
+
+- `auth login --provider yandex|metrika --url-only --json` 返回 `{provider, flow, authorization_url, scopes, target}`，不打开浏览器、不向 stderr 打印、不交换代码、不写令牌。桌面显示 URL，用户批准访问，第二次带 `--code <code>` 的调用完成授权。
+- `--url-only` 仅适用于 Yandex；`--provider gsc` 保留回环流程。交互流程和 `--code` 未改变。
+- 占位 client id（例如 `your-client-id`）会被拒绝并给出设置操作，而不是启动注定失败的授权。
+
+本版本记录的验证：
+
+| 检查 | 结果 |
+|---|---|
+| PyPI / npm / MCP Registry | `lv24-seo 0.13.1` 已发布 |
+| 发布工作流 | 运行 `44195481192` 通过 |
+| 单元测试 | `login_yandex(..., url_only=True)` 返回授权 URL 且不保存令牌 |
+| 本地门禁 | `ruff check`、`ruff format --check`、`mypy src`、registry `--check` 和完整 `pytest -q` 通过 |
+| 实时同意 | 仍在等待注册的 Yandex OAuth 应用/client ID |
+
+0.13.1 的已知限制：
+
+- `--url-only` 不会在分开的 URL 和代码步骤之间验证 `state`；验证代码很短命，且仍需要 client secret。
+- 在配置真实的 Google Cloud Desktop client 和 Yandex OAuth 应用之前，实时同意仍未验证。
+- 相对 0.13.0 没有 API、CLI 数量、MCP、模式或配置变更。
+
+## 桌面 0.9.2
+
+2026-11-18 发布。Integrations 新增只读 **Indexing automation** 卡片，捆绑 `lv24-seo 0.14.0`，
+并把 `MIN_ENGINE_VERSION` 提升到 `0.14.0`，因此已安装的 `0.13.x` 引擎会被报告为不兼容。没有新的
+写入面。
+
+变更：
+
+- **Indexing automation 卡片。** Integrations 屏幕渲染 `indexing status`、`indexing history` 和 `schedule status`；没有写入、确认或 `--allow-write` 控件。
+- **计划。** 显示 `Scheduled`/主机状态和文档化的 **Daily 04:00** 节奏（任务名 `lv24-seo-indexing`）。
+- **按数据源。** Bing、Yandex、GSC 和 IndexNow 行，包含 `submitted`、`indexed`（仅 GSC）、`pending` 和配额：Bing 每日/每月剩余、Yandex 剩余、GSC/IndexNow 已用/上限。没有状态的数据源显示“No data yet”，绝不是零。
+- **最近运行与历史。** 最新 `indexing history` 行，含状态、提交/检查数和最多五个 `error_items`（URL、代码、消息）；来自 `indexing history --limit 30` 的紧凑 7/30 天按日/数据源表格。
+- **诚实性。** 每次渲染都包含 `data_age_days` 和 `limitations`；GSC `indexed_total` 聚合标记为已弃用，并与逐 URL 判定分开。Bing/Yandex/IndexNow 显示没有逐 URL 索引计数，而不是编造数字。
+- **兼容性与桥接。** 如果引擎返回 `INVALID_COMMAND`，卡片显示“Indexing status needs engine >= 0.13.1”并隐藏表格。`indexing_status`（`provider`、`limit`、`live`）、`indexing_history`（`limit`）和 `schedule_status`（`kind`、`target`）进入白名单；Rust 校验每个值，拒绝写入标志和跨命令参数，并使用 120 秒超时。`--live` 是唯一的数据源调用；缺少凭据会成为限制，而不是失败。
+- **引擎与契约。** 捆绑的 onedir sidecar 为 `lv24-seo 0.14.0`；契约（`config.schema.json`、包括 `stats` 的 CLI 夹具）从 `0.14.0` 重新生成。Windows x64 审核固定记录构建出的 `0.14.0`（`33d2611c…02d0`，14,580,661 字节）；Linux 和 macOS 固定仍为 `null`，由 rebuild-aware CI 报告覆盖。
+
+本版本记录的验证：
+
+| 检查 | 结果 |
+|---|---|
+| GitHub Release | [`v0.9.2`](https://github.com/LevapVeeskela/lv24-seo-optimizer-desktop/releases/tag/v0.9.2)；资产由手动 **Desktop build** 工作流以 `engine_version=0.14.0` 生成（请核对标签的 `latest.json` 和 `SHA256SUMS.txt`） |
+| 本地门禁 | 发布提交上 `npm run typecheck`、`npm test`、`npm run build`、`npm run contract:check`、`cargo fmt --check`、`cargo clippy --all-targets -- -D warnings` 和 `cargo test` 通过 |
+| 测试 | 784 个 Vitest 测试和 169 个 Rust 测试 |
+| 契约 | 与引擎 `0.14.0` 一致 |
+| Sidecar 固定 | Windows x64 已按固定 SHA-256 校验（`33d2611c0766c2b1160c80c35cfd51b86f6fbb7e26a9bb508aec0a32053b02d0`，14,580,661 字节）；Linux 和 macOS 由 rebuild-aware 报告覆盖 |
+
+0.9.2 的已知限制：
+
+- 卡片只读：显示计划状态，但不能安装、编辑或运行任务。
+- `--live` 刷新时读取 Bing 和 Yandex 配额；缺少凭据会显示为限制。
+- Bing、Yandex 和 IndexNow 不提供逐 URL 索引计数；卡片显示无值并带 `no_per_url_index_count`，而不是编造数字。
+- GSC `contents[].indexed` 聚合已弃用，可能为零。
+- 低于 `0.14.0` 的引擎会被报告为不兼容。
+
+## 桌面 0.9.1
+
+2026-11-18 发布。Integrations 新增 OAuth Connect 卡片，捆绑 `lv24-seo 0.13.1`，并把 `MIN_ENGINE_VERSION` 提升到 `0.13.1`，因此已安装的 `0.12.x` 引擎会被报告为不兼容。没有新的写入面。
+
+变更：
+
+- **Connect 卡片。** Integrations 新增 **Connectors** 卡片，覆盖 Google Search Console、Yandex Webmaster 和 Yandex Metrika。令牌由引擎存入系统钥匙串；桌面从不接收、渲染或记录令牌。
+- **Google Search Console。** **Connect** 运行 `auth login --provider gsc`。引擎打开系统浏览器，启动 `127.0.0.1` 回环回调和 S256 PKCE，并等待同意；卡片显示“在浏览器中完成登录”的提示，成功后刷新 `auth status`。缺少 client id 或 secret 时显示引擎的 `next_action` 和授权指南，而不是通用错误。
+- **Yandex Webmaster 与 Metrika。** **Connect** 调用 `auth login --provider yandex|metrika --url-only`，显示授权 URL 和 **Open Yandex** 按钮。批准访问后，用户粘贴 `https://oauth.yandex.ru/verification_code` 页面上的代码并点击 **Finish**；交换后代码从状态中清除。两个引擎使用独立令牌槽。
+- **状态与桥接。** 卡片读取 `auth status`（`gsc_oauth`、`yandex_oauth`、`metrika_oauth`），显示 `Connected`、`Not connected` 或 `Not checked`。client secret 通过 `auth set --provider gsc_oauth_secret|yandex_oauth_secret --stdin` 设置一次；UI 没有密钥输入框。`auth_login` 以 `provider`、`noBrowser`、`port`、`code` 和 `urlOnly` 进入白名单；Rust 在启动引擎前拒绝写入标志、跨数据源组合和非法端口/代码，`open_oauth_url` 只接受 `https://oauth.yandex.ru/authorize?...`。
+- **引擎与契约。** 捆绑的 onedir sidecar 为 `lv24-seo 0.13.1`；契约（`config.schema.json`、包括 `stats` 的 CLI 夹具）从 `0.13.1` 重新生成。Windows x64 审核固定记录构建出的 `0.13.1` 可执行文件；Linux 和 macOS 固定仍为 `null`，由 rebuild-aware CI 校验报告覆盖。
+
+本版本记录的验证：
+
+| 检查 | 结果 |
+|---|---|
+| 已发布资产 | `v0.9.1` 上 18 个资产；`latest.json` 报告 `0.9.1`，`SHA256SUMS.txt` 有 17 行 |
+| 发布工作流 | 运行 `44199591548` 通过 |
+| 本地门禁 | 发布提交上 `npm run typecheck`、`npm test`、`npm run build`、`npm run contract:check`、`cargo fmt --check`、`cargo clippy --all-targets -- -D warnings` 和 `cargo test` 通过 |
+| 测试 | 763 个 Vitest 测试和 167 个 Rust 测试 |
+| 契约 | 与引擎 `0.13.1` 一致 |
+| Sidecar 固定 | Windows x64 已按固定 SHA-256 校验（`0b02b8a0…`，14,567,729 字节）；Linux 和 macOS 由 rebuild-aware 报告覆盖 |
+
+0.9.1 的已知限制：
+
+- **实时 OAuth 同意尚未验证**：发布时没有注册 Google Cloud Desktop client 或 Yandex OAuth 应用。在配置真实 client id/secret 之前，卡片显示引擎的设置错误。
+- Google OAuth 应用处于 **Testing** 时 refresh token 在 7 天后过期；无人值守 GSC 仍使用服务账号。公开应用需要 Google 验证 `webmasters.readonly`。
+- Yandex `verification_code` 流程无法在分开的 URL-only 和代码步骤之间验证 `state`；代码很短命，且仍需要 client secret。
+- Bing Webmaster、IndexNow、CrUX 和 PSI 仍使用密钥；卡片不为它们提供 OAuth。
+- `MIN_ENGINE_VERSION` 为 `0.13.1`，因此 `0.12.x` 引擎被拒绝。卡片没有 `--allow-write`、确认令牌或数据源写入路径。
+- 没有索引状态卡片：`indexing status|run|history` 仍仅限 CLI 和调度器。
 
 ## 引擎 0.12.2
 
@@ -731,7 +901,7 @@ Windows NSIS 路径现已完成九次端到端验证：`0.2.0 → 0.2.1`、`0.2.
 `0.2.2 → 0.2.3`、`0.2.3 → 0.3.0`、`0.3.0 → 0.4.0`、`0.4.0 → 0.5.0`、`0.5.0 → 0.6.0`、`0.6.0 → 0.7.0`
 和 `0.7.0 → 0.8.0`。第九次运行中，已安装的 `0.7.0` 通过 Rust 更新器升级，下载并验证已签名包，安装并重启后
 报告 **Desktop 0.8.0**、**Engine 0.10.0** 且引擎就绪；Bing URL 提交、站点地图、抓取问题和配额卡片已加载。
-`0.8.0 → 0.9.0` 是下一个应用内更新来源。任何带应用内更新器的 `0.2.x` 安装都可直接升级到 `0.9.0`；
+`0.9.1 → 0.9.2` 是下一个应用内更新来源；`0.9.2` 没有记录应用内更新运行。任何带应用内更新器的 `0.2.x` 安装都可直接升级到 `0.9.2`；
 `0.1.0` 没有更新器，需要一次手动安装。
 
 `0.2.1 → 0.2.2` 更新由旧的 `0.2.1` 更新器执行，其中没有新的受跟踪 PID 清理。如果首次更新期间
@@ -745,12 +915,12 @@ Windows NSIS 路径现已完成九次端到端验证：`0.2.0 → 0.2.1`、`0.2.
 
 | 输入 | 默认值 | 含义 |
 |---|---|---|
-| `engine_version` | `0.11.0` | sidecar 中捆绑的精确引擎版本 |
+| `engine_version` | `0.14.0` | sidecar 中捆绑的精确引擎版本 |
 | `signed` | `false` | 请求操作系统签名/公证；此零支出仓库未配置 |
 | `publish` | `false` | 所有矩阵构建通过后创建 GitHub release |
 | `tag` | 空 | `vX.Y.Z` 发布标签；`publish=true` 时必填 |
 
-默认值与 `0.7.0` 固定版本一致。如果传入不同版本，发布门控会拒绝清单不匹配。
+默认值与 `0.9.2` 固定版本一致。如果传入不同版本，发布门控会拒绝清单不匹配。
 
 | Runner | Target | 包 |
 |---|---|---|
@@ -765,8 +935,8 @@ Windows NSIS 路径现已完成九次端到端验证：`0.2.0 → 0.2.1`、`0.2.
 ## Sidecar 固定与校验和
 
 发布 sidecar 是 PyInstaller **onedir** 树，在匹配的主机上构建；PyInstaller 不交叉编译。引擎、
-Python、Pydantic、Typer 和 PyInstaller 版本固定在 `scripts/cli-checksums.json`。`0.9.0` 固定
-引擎 `0.11.0`（高于 `0.10.0`）、Python `3.12`、Pydantic `2.14.3`、Typer `0.29.0` 和 PyInstaller `6.22.3`。
+Python、Pydantic、Typer 和 PyInstaller 版本固定在 `scripts/cli-checksums.json`。`0.9.2` 固定
+引擎 `0.14.0`（高于 `0.13.1`）、Python `3.12`、Pydantic `2.14.3`、Typer `0.29.0` 和 PyInstaller `6.22.3`。
 
 PyInstaller onedir 输出不是字节可复现的。因此校验和政策分为三部分：
 
@@ -777,8 +947,8 @@ PyInstaller onedir 输出不是字节可复现的。因此校验和政策分为�
 - **发布门控 — 基于报告。** 发布 job 要求每个交付 target 都有有效报告：target 名称匹配、
   `hashPolicy: "rebuild"`、`ok: true`、64 位十六进制哈希、正大小和精确引擎版本。
 
-对于 `0.9.0`，Windows x64 有已审查的本地固定值；Linux 和 macOS sidecar 由发布 workflow 重新构建并通过
-rebuild-aware 报告，其已审查固定值仍为 `null`，直到在这些主机上审查本地构建。`0.8.0` 的 Windows 固定值没有沿用，因为可执行文件随引擎变化。校验和报告是 CI 证据，不是发布产物。
+对于 `0.9.2`，Windows x64 有已审查的本地固定值（`33d2611c…02d0`，14,580,661 字节）；Linux 和 macOS sidecar 由发布 workflow 重新构建并通过
+rebuild-aware 报告，其已审查固定值仍为 `null`，直到在这些主机上审查本地构建。`0.9.1` 的 Windows 固定值没有沿用，因为可执行文件随引擎变化。校验和报告是 CI 证据，不是发布产物。
 `SHA256SUMS.txt` 覆盖安装器、更新包、签名和 `latest.json`；sidecar 可执行文件位于这些包内，
 不单独列出。手动安装的用户应使用 `SHA256SUMS.txt` 校验下载的产物。
 
@@ -786,7 +956,7 @@ rebuild-aware 报告，其已审查固定值仍为 `null`，直到在这些主�
 node scripts/verify-sidecar.mjs \
   --root src-tauri/engine \
   --target x86_64-pc-windows-msvc \
-  --engine-version 0.11.0
+  --engine-version 0.14.0
 ```
 
 ## `latest.json`、签名与发布
@@ -818,19 +988,25 @@ node scripts/verify-sidecar.mjs \
 和发布标题中一致。引擎固定值位于 `scripts/cli-checksums.json`；workflow 显式传入
 `engine_version`，发布门控要求它与清单一致。
 
-当前源码中 `src-tauri/src/commands.rs` 的 `MIN_ENGINE_VERSION` 为 `0.11.0`。`0.9.0` 捆绑引擎
-`0.11.0`，因此最低版本与捆绑引擎一致，`0.10.x` 引擎会被视为不兼容。外壳接受不低于该
+当前源码中 `src-tauri/src/commands.rs` 的 `MIN_ENGINE_VERSION` 为 `0.14.0`。`0.9.2` 捆绑引擎
+`0.14.0`，因此最低版本与捆绑引擎一致，`0.13.x` 引擎会被视为不兼容。外壳接受不低于该
 版本的引擎，并把更旧版本标记为离线并显示通知。更新的引擎会通过门控，但不是发布测试过的固定
 版本。开发构建可通过 `LV24_SEO_BIN` 使用其他版本；UI 会将其标记为外部并仍检查最低版本。只有
 设置 `LV24_SEO_ALLOW_PATH_ENGINE=1` 时才使用 `PATH` 中的引擎。
 
 ## 从 0.1.0 一次性升级
 
-`0.1.0` 没有更新器、端点和公钥。它无法发现或安装 `0.9.0`。请手动下载并安装一次 `0.9.0`
-（Windows 上的 NSIS 安装器或便携 ZIP）。之后，`0.9.0` 安装在使用支持自动更新的包类型时，
+`0.1.0` 没有更新器、端点和公钥。它无法发现或安装 `0.9.2`。请手动下载并安装一次 `0.9.2`
+（Windows 上的 NSIS 安装器或便携 ZIP）。之后，`0.9.2` 安装在使用支持自动更新的包类型时，
 可以自动更新到后续版本。
 
 ## 更早的版本
+
+- **引擎 0.14.0** 加入 OAuth 就绪诊断：`auth status` 的 `oauth` 对象、`doctor` 检查、八个稳定代码和记录的作用域，不调用数据源。
+- **桌面 0.9.2** 加入只读 Indexing automation 卡片，捆绑引擎 `0.14.0` 并把 `MIN_ENGINE_VERSION` 提升到 `0.14.0`。
+
+- **引擎 0.13.0** 加入 Google Search Console 与 Yandex Webmaster/Metrika 的 OAuth 连接器、钥匙串令牌、`[auth.gsc]`/`[auth.yandex]` 和 `auth set --provider *_oauth_secret` 路径，CLI 数量、MCP 工具和模式不变。
+- **桌面 0.9.1** 加入 OAuth Connect 卡片，捆绑引擎 `0.13.1` 并把 `MIN_ENGINE_VERSION` 提升到 `0.13.1`；没有新的写入面。
 
 - **引擎 0.11.0** 增加全平台读取深度：GSC URL Inspection、站点地图和可筛选的搜索分析；Yandex 事件/站点地图/历史/队列和受限重新抓取；Bing 页面/流量/抓取/URL/关联；自然搜索 Metrika；CrUX 历史和 PSI 审计；24 个 CLI 命令和 12 个工具。
 - **引擎 0.10.0** 把 Bing URL 提交变成受限的 `SubmitUrlbatch` 写入，并增加只读配额、站点地图源和抓取问题视图、23 个 CLI 命令和 12 个工具。
@@ -888,4 +1064,4 @@ sha256sum -c SHA256SUMS.txt --ignore-missing
 
 更新信任见[安全与隐私](/zh/security/)，sidecar 布局见[架构](/zh/architecture/)。
 
-Source: `_source/engine-releases-0.12.2.md`, `_source/engine-releases-0.12.1.md`, `_source/engine-releases-0.12.0.md`, `_source/engine-releases-0.11.0.md`, `_source/engine-releases-0.10.0.md`, `_source/engine-releases-0.9.0.md`, `_source/engine-releases-0.8.0.md`, `_source/engine-releases-0.7.0.md`, `_source/engine-releases-0.6.0.md`, `_source/engine-releases-0.5.3.md`, `_source/engine-releases-0.5.2.md`, `_source/desktop-releases-0.9.0.md`, `_source/desktop-releases-0.8.0.md`, `_source/desktop-releases-0.7.0.md`, `_source/desktop-releases-0.6.0.md`, `_source/desktop-releases-0.5.0.md`, `_source/desktop-releases-0.4.0.md`, `_source/desktop-releases-0.3.0.md`, `_source/desktop-releases-0.2.3.md`, `_source/desktop-releases-0.2.2.md`, `_source/desktop-releases-0.2.1.md`, `_source/desktop-releases-0.2.0.md`, `_source/desktop-release.md`, `_source/desktop-security.md`.
+Source: `_source/engine-releases-0.14.0.md`, `_source/engine-CHANGELOG.md`, `_source/engine-releases-0.13.1.md`, `_source/engine-releases-0.13.0.md`, `_source/engine-releases-0.12.2.md`, `_source/engine-releases-0.12.1.md`, `_source/engine-releases-0.12.0.md`, `_source/engine-releases-0.11.0.md`, `_source/engine-releases-0.10.0.md`, `_source/engine-releases-0.9.0.md`, `_source/engine-releases-0.8.0.md`, `_source/engine-releases-0.7.0.md`, `_source/engine-releases-0.6.0.md`, `_source/engine-releases-0.5.3.md`, `_source/engine-releases-0.5.2.md`, `_source/desktop-releases-0.9.2.md`, `_source/desktop-releases-0.9.2-update.md`, `_source/desktop-releases-0.9.1.md`, `_source/desktop-releases-0.9.0.md`, `_source/desktop-releases-0.8.0.md`, `_source/desktop-releases-0.7.0.md`, `_source/desktop-releases-0.6.0.md`, `_source/desktop-releases-0.5.0.md`, `_source/desktop-releases-0.4.0.md`, `_source/desktop-releases-0.3.0.md`, `_source/desktop-releases-0.2.3.md`, `_source/desktop-releases-0.2.2.md`, `_source/desktop-releases-0.2.1.md`, `_source/desktop-releases-0.2.0.md`, `_source/desktop-release.md`, `_source/desktop-security.md`.

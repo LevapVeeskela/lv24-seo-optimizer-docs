@@ -1,23 +1,25 @@
 ---
 title: Desktop app
-description: What the LV24 SEO Optimizer desktop shell adds, how signed updates work, and the 0.9.0 read-only Diagnostics screen plus the 0.8.0 and older history.
+description: What the LV24 SEO Optimizer desktop shell adds, how signed updates work, and the 0.9.2 Indexing automation card, the 0.9.1 OAuth Connect card, the 0.9.0 Diagnostics screen and older history.
 ---
 
 # Desktop app
 
 LV24 SEO Optimizer Desktop is a local, offline-first Tauri v2 shell around the `lv24-seo` engine. The Python CLI remains the engine of record: it owns provider clients, crawl rules, analysis, report builders and delivery. The desktop adds a React UI and a Rust process bridge, not a second SEO implementation.
 
-The `0.9.0` release bundles `lv24-seo 0.11.0` as a PyInstaller onedir sidecar and adds a read-only Diagnostics screen with five tabs over Google, Yandex, Bing, Metrika and Core Web Vitals. It keeps the Bing indexing cards, the sitemap, IndexNow and Site Scan actions and the per-session write secret. It requires engine `0.11.0` or newer (`MIN_ENGINE_VERSION`); engine `0.12.2` passes that gate, but indexing automation (`indexing status|run|history`) is CLI and scheduler only in `0.9.0`, and desktop `0.9.1` adds the status card. There is no cloud account, no telemetry, no local HTTP API and no SERP scraping. The desktop talks to the engine through a fixed, allow-listed child-process bridge.
+The `0.9.2` release bundles `lv24-seo 0.14.0` as a PyInstaller onedir sidecar and adds the read-only Indexing automation card. It keeps the OAuth Connect card for Google Search Console, Yandex Webmaster and Yandex Metrika, the read-only Diagnostics screen, the Bing indexing cards, the sitemap, IndexNow and Site Scan actions and the per-session write secret. It requires engine `0.14.0` or newer (`MIN_ENGINE_VERSION`), so an installed `0.13.x` engine is reported as incompatible. OAuth tokens are stored by the engine in the OS keychain; the desktop never receives, renders or logs one. The Indexing automation card renders `indexing status`, `indexing history` and `schedule status`; it has no write, confirm or `--allow-write` control. There is no cloud account, no telemetry, no local HTTP API and no SERP scraping. The desktop talks to the engine through a fixed, allow-listed child-process bridge.
 
 ## What it adds
 
 - **Workspace picker and onboarding.** Choose the `seo.toml` the engine should use through a native file dialog in Settings, or create a project with the three-step wizard that runs `lv24-seo init` and shows the exact config and data paths first. The selected config path is the workspace identity; a header site chip opens up to 8 recent workspaces, and a moved or deleted config is reported as missing and can be re-selected instead of blocking startup.
 - **Stats dashboard.** Renders the bounded `stats` envelope: one card per configured provider, current values, previous-window comparison, coverage, data age, truncation and limitations. CTR changes are shown in percentage points. There is no zero-fill and no cross-engine total; unknown stays unknown. A properties panel renders `lv24-seo properties` with token presence per provider.
-- **Settings form and configuration outputs.** The Settings screen is the editable form. The Configuration screen is read-only and has Overview, Effective, Source TOML, Diff, Validation, Doctor and Environment tabs. Source TOML is redacted and read-only; there is no raw TOML editor. Saves use field-level patches, keep comments and key order, validate with the engine, create a timestamped backup (last five kept) and replace the file atomically. In `0.9.0` the temp file and backup are mode `0600` on POSIX and carry an owner-only DACL on Windows, both are fsynced, and the parent directory is fsynced after the rename. Reads are bounded at 8 MiB; settings load per field; Windows reserved device names and trailing dots/spaces are rejected in every path component. GSC service accounts are configured outside the form: set `providers.gsc.service_account_file` or `LV24_SEO_GSC_SERVICE_ACCOUNT_FILE`, and the Configuration screen shows the effective redacted config.
+- **Settings form and configuration outputs.** The Settings screen is the editable form. The Configuration screen is read-only and has Overview, Effective, Source TOML, Diff, Validation, Doctor and Environment tabs. Source TOML is redacted and read-only; there is no raw TOML editor. Saves use field-level patches, keep comments and key order, validate with the engine, create a timestamped backup (last five kept) and replace the file atomically. In `0.9.2` the temp file and backup are mode `0600` on POSIX and carry an owner-only DACL on Windows, both are fsynced, and the parent directory is fsynced after the rename. Reads are bounded at 8 MiB; settings load per field; Windows reserved device names and trailing dots/spaces are rejected in every path component. GSC service accounts are configured outside the form: set `providers.gsc.service_account_file` or `LV24_SEO_GSC_SERVICE_ACCOUNT_FILE`, and the Configuration screen shows the effective redacted config.
 - **Reports.** Runs the weekly report locally, writes `report.json` and `report.html` under the app data directory, and opens the HTML in your default browser. The report HTML is never embedded in the app webview. It compares the two newest stored snapshots, exports JSON (`lv24-seo.report/v1`) or CSV, renders the engine's attributed change digest with cause, confidence, evidence rows and next action, and shows the Core Web Vitals card per URL template and device.
 - **Recommendations and an agent queue.** Turns report and stats findings into bounded Markdown prompts. Search and sort them, copy one, export it as `.md`, or queue or export all visible tasks. The queue is stored in the webview's local storage; nothing is submitted automatically.
-- **Secrets over stdin.** Token input is a password field sent once over IPC. The Rust layer pipes it to `lv24-seo auth set --provider <p> --stdin`, zeroizes its buffer and never writes the value to a log, MobX store, localStorage, clipboard or diagnostics bundle. After saving, the UI shows only presence and source.
-- **Yandex Metrika token.** `0.9.0` keeps the separate `metrika` provider (`yandex_metrika_token`) in the TypeScript and Rust allow-lists, the Settings badge, the secret modal and the en/ru/zh labels. The Metrika counter never borrows the Webmaster token. Engine `0.11.0` adds the read-only `metrika` command group and makes every Metrika read organic-only, so the Diagnostics tab shows organic pages, goals and dimensions with the sampling fields.
+- **Secrets over stdin.** Token input is a password field sent once over IPC. The Rust layer pipes it to `lv24-seo auth set --provider <p> --stdin`, zeroizes its buffer and never writes the value to a log, MobX store, localStorage, clipboard or diagnostics bundle. After saving, the UI shows only presence and source. OAuth client secrets are configured once in a terminal with `auth set --provider gsc_oauth_secret|yandex_oauth_secret --stdin`; the Connect card has no secret field.
+- **Indexing automation card.** Integrations renders the engine's `indexing status`, `indexing history` and `schedule status`: the daily 04:00 `lv24-seo-indexing` job, per-provider submitted/indexed/pending counts and quotas for Bing, Yandex, GSC and IndexNow, the newest run with up to five error items, and a compact 7/30-day day/provider history. A provider with no state shows "No data yet", never zero; `data_age_days` and `limitations` are always shown, and GSC's deprecated `indexed_total` is labelled separately. The card is read-only and has no write or confirm control.
+- **OAuth Connect card.** Integrations gains a **Connectors** card for GSC, Yandex Webmaster and Metrika. **Connect** runs the engine's `auth login`; GSC uses the system browser with a `127.0.0.1` loopback callback and S256 PKCE, while Yandex uses `--url-only`, shows the authorization URL, then accepts the verification code and calls `auth login --code`. The card reads `auth status` (`gsc_oauth`, `yandex_oauth`, `metrika_oauth`) and shows `Connected`, `Not connected` or `Not checked`; it has no write controls and never renders a token.
+- **Yandex Metrika token.** `0.9.2` keeps the separate `metrika` provider (`yandex_metrika_token`) in the TypeScript and Rust allow-lists, the Settings badge, the secret modal and the en/ru/zh labels. The Metrika counter never borrows the Webmaster token. Engine `0.11.0` adds the read-only `metrika` command group and makes every Metrika read organic-only, so the Diagnostics tab shows organic pages, goals and dimensions with the sampling fields.
 - **One secret store with the CLI.** The desktop runs the same engine under the same OS user, so a token stored by `lv24-seo auth set` in a terminal is visible in the desktop and a token stored in the desktop is visible to the CLI. The OS keychain entry uses service `lv24-seo` and the same secret name. `LV24_SEO_*` environment variables are inherited but shown as read-only in the UI: the desktop cannot remove an environment variable, and it says so instead of offering a delete button that does nothing. The opt-in `<data-dir>/secrets.json` fallback is shared only when both surfaces open the same workspace/data directory.
 - **Crawl screen.** A bounded `lv24-seo crawl --json` run with summary counters, a truncated badge, engine warnings and limitations; issue filters for severity, rule and free-text search; a table capped at 500 rendered rows while the JSON and CSV export contains every returned row. Switching workspace resets the screen.
 - **Integrations and run status.** MCP snippets for Claude Desktop, OpenCode, VS Code and Cursor in JSON, plus a TOML form for hosts such as Codex CLI; snippets contain no tokens. The Bing indexing panel plans and applies a Bing sitemap submission, submits URLs through `bing submit`, reads the remaining quota, sitemap feeds and crawl issues, sends the sitemap's URLs to IndexNow and opens the official Bing Site Scan page; all writes are two-phase and review the engine plan first. Scheduled runs can be previewed as a `lv24-seo schedule print` artifact or installed on this host after a confirmation dialog that names the config and job kind; the install appends `--allow-write` only after that confirmation. Runs show live elapsed time, the last duration and timestamp, and truncation or limitation badges.
@@ -43,12 +45,12 @@ Download desktop assets from the project's Releases page. The desktop is separat
 
 | Bundle | How it is installed | In-app update |
 |---|---|---|
-| Windows NSIS | `LV24.SEO.Optimizer_0.9.0_x64-setup.exe` | Yes |
-| Windows portable ZIP | `LV24-SEO-Optimizer_0.9.0_x64-portable.zip`; extract the whole folder and run `lv24-seo-desktop.exe` | No |
-| Linux AppImage | `LV24.SEO.Optimizer_0.9.0_amd64.AppImage`; `chmod +x` and run | Yes |
-| Linux deb | `LV24.SEO.Optimizer_0.9.0_amd64.deb`; `sudo apt install ./*_amd64.deb` | No |
-| Linux rpm | `LV24.SEO.Optimizer-0.9.0-1.x86_64.rpm`; `sudo dnf install ./*_amd64.rpm` | No |
-| macOS `.app` from DMG | `LV24.SEO.Optimizer_0.9.0_aarch64.dmg` or `LV24.SEO.Optimizer_0.9.0_x64.dmg`; drag to Applications | Yes |
+| Windows NSIS | `LV24.SEO.Optimizer_0.9.2_x64-setup.exe` | Yes |
+| Windows portable ZIP | `LV24-SEO-Optimizer_0.9.2_x64-portable.zip`; extract the whole folder and run `lv24-seo-desktop.exe` | No |
+| Linux AppImage | `LV24.SEO.Optimizer_0.9.2_amd64.AppImage`; `chmod +x` and run | Yes |
+| Linux deb | `LV24.SEO.Optimizer_0.9.2_amd64.deb`; `sudo apt install ./*_amd64.deb` | No |
+| Linux rpm | `LV24.SEO.Optimizer-0.9.2-1.x86_64.rpm`; `sudo dnf install ./*_amd64.rpm` | No |
+| macOS `.app` from DMG | `LV24.SEO.Optimizer_0.9.2_aarch64.dmg` or `LV24.SEO.Optimizer_0.9.2_x64.dmg`; drag to Applications | Yes |
 | MSI | Not produced by this project | No |
 
 Windows requires Windows 10/11 x64 and WebView2. Linux is x64 only and built on Ubuntu 22.04 with a glibc 2.35 baseline. macOS requires 13 or newer; use the arm64 DMG on Apple silicon and the x64 DMG on Intel. The OS packages are unsigned or ad-hoc signed, so SmartScreen and Gatekeeper warnings are expected. Verify `SHA256SUMS.txt` before running an installer.
@@ -95,8 +97,8 @@ same updater: an installed `0.6.0` build reported **Desktop 0.7.0** with **Engin
 engine ready, and the Integrations screen shows the Bing indexing panel. The `0.7.0 → 0.8.0` update was
 verified through the same updater: an installed `0.7.0` build reported **Desktop 0.8.0** with
 **Engine 0.10.0** and the engine ready, and the new Bing URL submission, sitemap, crawl-issue and quota
-cards loaded. `0.8.0 → 0.9.0` is the next in-app update source. Any `0.2.x` install can jump straight
-to `0.9.0`.
+cards loaded. `0.9.1 → 0.9.2` is the next in-app update source; no in-app update run is recorded for
+`0.9.2`. Any `0.2.x` install can jump straight to `0.9.2`.
 
 For `0.2.2`, installs were also checked on macOS and Linux: the arm64 DMG on macOS 27.2 passed
 `codesign --verify --deep --strict`, launched with engine `0.5.2` ready and fetched the `0.2.2`
@@ -108,6 +110,71 @@ The `0.2.1 → 0.2.2` update runs the old `0.2.1` updater, which does not includ
 cleanup. If a sidecar is active during that first update, retry after it exits or install `0.2.2`
 manually. `0.2.2 → 0.2.3` uses the tracked-PID cleanup and blocks with `UPDATE_ENGINE_BUSY` if a
 tracked sidecar cannot be stopped.
+
+## 0.9.2 Indexing automation
+
+Released on 2026-11-18. It bundles `lv24-seo 0.14.0` and requires `MIN_ENGINE_VERSION` `0.14.0`, so a `0.13.x`
+engine is reported as incompatible. It adds a read-only card and no new write surface.
+
+- **Indexing automation card.** Integrations renders `indexing status`, `indexing history` and `schedule status`; there are no write, confirm or `--allow-write` controls.
+- **Schedule and providers.** Shows `Scheduled`/host state and the **Daily 04:00** `lv24-seo-indexing` cadence; Bing, Yandex, GSC and IndexNow rows carry `submitted`, `indexed` (GSC only), `pending` and quotas (Bing daily/monthly remaining, Yandex remaining, GSC/IndexNow used/limit). Missing state is "No data yet", never zero.
+- **Last run and history.** Newest `indexing history` row with status, submitted/checked counts and up to five `error_items`, plus a 7/30-day day/provider table from `indexing history --limit 30`.
+- **Honesty.** `data_age_days` and `limitations` are always rendered; the deprecated GSC `indexed_total` aggregate is separate from the per-URL verdict. Bing/Yandex/IndexNow show no per-URL indexed count instead of inventing one.
+- **Compatibility and bridge.** An `INVALID_COMMAND` answer shows "Indexing status needs engine >= 0.13.1" and hides the tables. `indexing_status` (`provider`, `limit`, `live`), `indexing_history` (`limit`) and `schedule_status` (`kind`, `target`) are allow-listed; the Rust layer validates every value, rejects write flags and cross-command arguments and uses a 120 s timeout. `--live` is the only provider call; a missing credential is a limitation, not a failure.
+- **Engine and contracts.** The sidecar is `lv24-seo 0.14.0`; contracts are regenerated from `0.14.0`. The Windows x64 reviewed pin is `33d2611c…02d0` (14,580,661 bytes); Linux and macOS pins remain `null` and are covered by rebuild-aware reports.
+
+Verification recorded for this release: 784 Vitest tests and 169 Rust tests passed, contracts are up to date at engine `0.14.0`, and the release workflow publishes the `v0.9.2` assets with `engine_version=0.14.0`.
+
+Known limits in 0.9.2:
+
+- The card is read-only: it shows the schedule state but cannot install, edit or run the job.
+- `--live` reads Bing and Yandex quotas; a missing credential is shown as a limitation.
+- Bing, Yandex and IndexNow do not expose a per-URL indexed count; the card shows no value with `no_per_url_index_count`.
+- The GSC `contents[].indexed` aggregate is deprecated and can be zero.
+- An engine older than `0.14.0` is reported as incompatible.
+
+## 0.9.1 OAuth Connect
+
+Released on 2026-11-18. It bundles `lv24-seo 0.13.1` and requires `MIN_ENGINE_VERSION` `0.13.1`, so a `0.12.x`
+engine is reported as incompatible. It adds no provider write and no new write surface.
+
+- **Connectors card.** The Integrations screen gains a card for Google Search Console, Yandex Webmaster and
+  Yandex Metrika. Tokens are stored by the engine in the OS keychain; the desktop never receives, renders or
+  logs one.
+- **Google Search Console.** **Connect** runs `auth login --provider gsc`. The engine opens the system browser,
+  starts a `127.0.0.1` loopback callback with S256 PKCE and waits for consent. The card shows a "complete the
+  sign-in in your browser" hint and refreshes `auth status` on success. A missing client id or secret shows the
+  engine's `next_action` and the auth guide instead of a generic failure.
+- **Yandex Webmaster and Metrika.** **Connect** calls `auth login --provider yandex|metrika --url-only` and shows
+  the authorization URL with an **Open Yandex** button. After approving access, the user pastes the code from
+  `https://oauth.yandex.ru/verification_code` and clicks **Finish**; the code is cleared from state after the
+  exchange. The two engines use separate token slots.
+- **Status.** The card reads `auth status` (`gsc_oauth`, `yandex_oauth`, `metrika_oauth`) and shows `Connected`,
+  `Not connected` or `Not checked`. The client secret is configured once with
+  `auth set --provider gsc_oauth_secret|yandex_oauth_secret --stdin`; the UI has no secret field.
+- **Bridge hardening.** `auth_login` is allow-listed with `provider`, `noBrowser`, `port`, `code` and `urlOnly`.
+  The Rust layer rejects write flags, cross-provider combinations and invalid ports or codes before spawning the
+  engine. `open_oauth_url` accepts only `https://oauth.yandex.ru/authorize?...`; it is not a generic URL opener.
+- **Engine and contracts.** The bundled onedir sidecar is `lv24-seo 0.13.1`; contracts (`config.schema.json`, CLI
+  fixtures including `stats`) are regenerated from `0.13.1`. The Windows x64 reviewed pin records the built
+  `0.13.1` executable (`0b02b8a0…`, 14,567,729 bytes); Linux and macOS pins remain `null` and are covered by
+  rebuild-aware CI checksum reports.
+
+Verification recorded for this release: 763 Vitest tests and 167 Rust tests passed, contracts are up to date at
+engine `0.13.1`, and the release workflow published 18 assets on `v0.9.1` with `latest.json` at `0.9.1` and a
+17-line `SHA256SUMS.txt`.
+
+Known limits in 0.9.1:
+
+- **Live OAuth consent is not yet verified**: no Google Cloud Desktop client or Yandex OAuth app was registered
+  at release time. The card shows the engine's setup error until a real client id/secret is configured.
+- Google OAuth apps in **Testing** issue refresh tokens that expire after 7 days; the service account remains the
+  unattended GSC path. A public app needs Google verification for `webmasters.readonly`.
+- The Yandex `verification_code` flow cannot verify `state` across the separate URL-only and code steps; the code
+  is short-lived and the client secret is still required.
+- Bing Webmaster, IndexNow, CrUX and PSI remain key-based; the card does not offer OAuth for them.
+- `MIN_ENGINE_VERSION` is `0.13.1`, so a `0.12.x` engine is rejected. The card has no `--allow-write`, confirm
+  token or provider write path.
 
 ## 0.9.0 read-only Diagnostics
 
@@ -438,7 +505,7 @@ The desktop has a dedicated Crawl screen: start URL and URL budget, summary coun
 | Symptom | Likely cause | What to do |
 |---|---|---|
 | No workspace configuration | No `seo.toml` selected, or the saved path was moved/deleted | Run `lv24-seo init`, then choose the file in Settings |
-| Engine marked offline | Engine missing or below the shell's minimum version (`0.11.0`) | Use the bundled engine, or point `LV24_SEO_BIN` at a compatible engine |
+| Engine marked offline | Engine missing or below the shell's minimum version (`0.14.0`) | Use the bundled engine, or point `LV24_SEO_BIN` at a compatible engine |
 | SmartScreen or Gatekeeper warning | The OS build is unsigned or ad-hoc signed | Verify `SHA256SUMS.txt`, then use the documented **Run anyway** or **Open Anyway** flow |
 | AppImage will not start | FUSE 2 is missing | Install `libfuse2` or use deb/rpm |
 | Update check fails | GitHub endpoint is blocked or offline | Stay on the current version; the silent startup check stays quiet |
@@ -463,7 +530,7 @@ The desktop has a dedicated Crawl screen: start URL and URL budget, summary coun
 - The updater needs access to the GitHub Releases endpoint. A blocked or offline endpoint leaves the app on its current version.
 - The updater can stop only sidecars it started itself. An engine launched from a terminal or another app copy is not killed; if it holds the installed sidecar open, the install is blocked with `UPDATE_ENGINE_BUSY`.
 - The `0.2.1 → 0.2.2` update runs the old `0.2.1` updater, which does not include the tracked-PID cleanup. If a sidecar is active during that first update, retry after it exits or install `0.2.2` manually. `0.2.2 → 0.2.3` and later updates use the cleanup.
-- Cancel is not rollback and there is no job queue in `0.9.0`: a cancelled crawl, report, log analysis, backup or schedule install may leave a partial artefact, and a cancelled in-place restore keeps the `.pre-restore-<utc>` copy but may have replaced one file, so build a fresh plan before retrying. Closing the window does not move a run into a queue.
+- Cancel is not rollback and there is no job queue in `0.9.2`: a cancelled crawl, report, log analysis, backup or schedule install may leave a partial artefact, and a cancelled in-place restore keeps the `.pre-restore-<utc>` copy but may have replaced one file, so build a fresh plan before retrying. Closing the window does not move a run into a queue.
 - Restore replaces the database and config and never merges; the `.pre-restore-<utc>` copies are the only rollback, and a database held open by another process cannot be replaced on Windows. Tokens are excluded, so re-authenticate afterwards. `backup restore --to` is a CLI-only extraction.
 - Schedule install mutates the host: it writes a cron entry, systemd user timer or Windows task only after confirmation, and only on this computer. The desktop does not manage, repair or uninstall the job; use `schedule status`/`schedule uninstall` in the CLI.
 - GSC service accounts are configured outside the form: set `providers.gsc.service_account_file` in `seo.toml` or `LV24_SEO_GSC_SERVICE_ACCOUNT_FILE` in the environment. The desktop has no field for it.
@@ -471,9 +538,10 @@ The desktop has a dedicated Crawl screen: start URL and URL budget, summary coun
 - Portfolio reports local history only, inspects at most 50 sites per scan and never calls a provider.
 - Bot triage is User-Agent only: a spoofed UA is not detected and non-search crawlers are reported as `other`.
 - One log file at a time, at most 100 MiB; there is no rotation, glob, remote fetch or persisted log history.
-- `MIN_ENGINE_VERSION` is `0.11.0`, so a `0.10.x` engine is rejected; the desktop does not silently downgrade commands to an older engine.
+- `MIN_ENGINE_VERSION` is `0.14.0`, so a `0.13.x` engine is rejected; the desktop does not silently downgrade commands to an older engine.
 - The Diagnostics screen is read-only and covers 18 allow-listed commands; it has no recrawl, sitemap or URL submission action, and the panels do not poll or auto-retry.
-- The desktop does not expose `indexing status|run|history` in `0.9.0`: quota-aware indexing automation is CLI and scheduler only, and there is no indexing status card until `0.9.1`.
+- The Indexing automation card is read-only: `indexing status|run|history` still run through the CLI and scheduler, and the card cannot install, edit or run the job.
+- OAuth consent is not live-verified; a Google Testing app expires refresh tokens after 7 days, and the Yandex URL-only and code steps cannot verify `state` across separate calls. Bing, IndexNow, CrUX and PSI stay key-based.
 - Only GSC exposes a per-URL index verdict. The desktop renders the engine's `no_per_url_index_count` and `gsc_indexed_count_deprecated` limitations instead of inventing an indexed total.
 - Metrika goals are shown as totals only, and CWV history “all devices” omits the device filter instead of inventing a combined row.
 - Bing sitemap submit needs a Bing Webmaster API key, and IndexNow needs `providers.bing.indexnow_key` plus a hosted key file. A missing key is reported as `AUTH_REQUIRED`, not as a generic failure.
@@ -493,4 +561,4 @@ The desktop has a dedicated Crawl screen: start URL and URL budget, summary coun
 - Recommendation copy is localised in en/ru/zh; tasks queued before `0.2.3` keep the stored English text.
 - This is a `0.x` preview: configuration output, updater behavior and UI details may change before 1.0.
 
-Source: `_source/desktop-README.md`, `_source/desktop-releases-0.9.0.md`, `_source/desktop-releases-0.8.0.md`, `_source/desktop-releases-0.7.0.md`, `_source/desktop-releases-0.6.0.md`, `_source/desktop-releases-0.5.0.md`, `_source/desktop-releases-0.4.0.md`, `_source/desktop-releases-0.3.0.md`, `_source/desktop-releases-0.2.3.md`, `_source/desktop-releases-0.2.2.md`, `_source/desktop-releases-0.2.1.md`, `_source/desktop-releases-0.2.0.md`, `_source/desktop-security.md`, `_source/desktop-architecture.md`, `_source/engine-releases-0.12.2.md`, `_source/engine-releases-0.11.0.md`.
+Source: `_source/desktop-README.md`, `_source/desktop-releases-0.9.2.md`, `_source/desktop-releases-0.9.2-update.md`, `_source/desktop-releases-0.9.1.md`, `_source/desktop-releases-0.9.0.md`, `_source/engine-releases-0.13.1.md`, `_source/engine-releases-0.13.0.md`, `_source/desktop-releases-0.8.0.md`, `_source/desktop-releases-0.7.0.md`, `_source/desktop-releases-0.6.0.md`, `_source/desktop-releases-0.5.0.md`, `_source/desktop-releases-0.4.0.md`, `_source/desktop-releases-0.3.0.md`, `_source/desktop-releases-0.2.3.md`, `_source/desktop-releases-0.2.2.md`, `_source/desktop-releases-0.2.1.md`, `_source/desktop-releases-0.2.0.md`, `_source/desktop-security.md`, `_source/desktop-architecture.md`, `_source/engine-releases-0.12.2.md`, `_source/engine-releases-0.11.0.md`.

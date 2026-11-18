@@ -5,8 +5,8 @@ description: Модель угроз, хранение секретов, write-�
 
 # Безопасность и приватность
 
-LV24 SEO Optimizer работает локально. Движок (`lv24-seo 0.12.2`) выполняет работу с
-провайдерами, обход, хранение и отчёты. Приложение (`0.9.0`) — это UI и оболочка
+LV24 SEO Optimizer работает локально. Движок (`lv24-seo 0.14.0`) выполняет работу с
+провайдерами, обход, хранение и отчёты. Приложение (`0.9.2`) — это UI и оболочка
 процессов вокруг движка; оно не переписывает провайдерские клиенты и не проксирует
 трафик.
 
@@ -53,7 +53,10 @@ POSIX-биты прав там не работают.
 ```bash
 lv24-seo auth status --json
 printf '%s' "$TOKEN" | lv24-seo auth set --provider gsc --stdin
+printf '%s' "$CLIENT_SECRET" | lv24-seo auth set --provider gsc_oauth_secret --stdin
 ```
+
+OAuth-коннекторы (`auth login --provider gsc|yandex|metrika`) хранят access token, refresh token, срок и client secret в том же хранилище секретов. Google использует loopback-callback `127.0.0.1` с S256 PKCE и случайным `state`; Яндекс — страницу `verification_code`. Callback принимает один запрос, проверяет `state` и никогда не логирует путь запроса, потому что он несёт код. PKCE verifier удаляется после обмена. Ни один токен не пишется в `seo.toml`, конверт, лог или `repr()`; `auth status` сообщает только наличие и источник, а `--json` вывода login не содержит токенов.
 
 `auth status` показывает `present`, источник (`env`, `keyring`, `file`, `missing`) и срок
 действия, если он известен. Значение не выводится никогда. Токен из окружения доступен
@@ -83,7 +86,7 @@ printf '%s' "$TOKEN" | lv24-seo auth set --provider gsc --stdin
 
 Приложение не сохраняет секрет в webview. Ввод токена — это поле пароля; значение
 один раз уходит по IPC и сразу передаётся в `lv24-seo auth set --provider <p> --stdin`.
-Rust обнуляет буфер после завершения дочернего процесса. Значение не попадает в лог,
+Карточка OAuth Connect никогда не получает токен: обмен выполняет движок и хранит грант в связке ключей, а приложение читает только `auth status`. `auth_login` входит в белый список с `provider`, `noBrowser`, `port`, `code` и `urlOnly`, а `open_oauth_url` принимает только хост авторизации Яндекса. Rust обнуляет буфер после завершения дочернего процесса. Значение не попадает в лог,
 MobX-хранилище, localStorage, буфер обмена, crash report или support bundle. На Linux
 CLI-раннер наследует переменные session bus и XDG, нужные Secret Service, а остальные
 переменные хоста фильтруются; само значение по-прежнему идёт только через stdin.
@@ -309,4 +312,4 @@ Sidecar — это дерево PyInstaller **onedir**, а не onefile. `script
 
 См. [Архитектура](/ru/architecture/) для границ доверия и [Релизы и обновление](/ru/release/) для матрицы подписанных обновлений.
 
-Source: `_source/engine-security.md`, `_source/desktop-security.md`, `_source/engine-architecture.md`, `_source/desktop-architecture.md`, `_source/engine-releases-0.12.2.md`, `_source/engine-releases-0.12.0.md`, `_source/engine-releases-0.11.0.md`, `_source/engine-releases-0.5.3.md`, `_source/desktop-releases-0.9.0.md`, `_source/desktop-releases-0.2.2.md`, `_source/desktop-releases-0.2.3.md`.
+Source: `_source/engine-security.md`, `_source/desktop-security.md`, `_source/engine-architecture.md`, `_source/desktop-architecture.md`, `_source/engine-auth.md`, `_source/engine-releases-0.14.0.md`, `_source/engine-releases-0.13.1.md`, `_source/engine-releases-0.13.0.md`, `_source/engine-releases-0.12.2.md`, `_source/engine-releases-0.12.0.md`, `_source/engine-releases-0.11.0.md`, `_source/engine-releases-0.5.3.md`, `_source/desktop-releases-0.9.2.md`, `_source/desktop-releases-0.9.1.md`, `_source/desktop-releases-0.9.0.md`, `_source/desktop-releases-0.2.2.md`, `_source/desktop-releases-0.2.3.md`.

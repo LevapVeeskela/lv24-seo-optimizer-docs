@@ -10,7 +10,10 @@ to site routes.
 | `engine-architecture.md` | `/architecture/` | Package layout, surfaces, dependency rules, storage. |
 | `engine-security.md` | `/security/` | Threat model, secrets, write gates, reporting. |
 | `engine-cli.md` | `/reference/cli/`, `/start/` | Command groups, exit codes, envelopes. |
-| `engine-config.md` | `/reference/config/` | Config file keys, defaults, precedence. |
+| `engine-config.md` | `/reference/config/` | Config file keys, defaults, precedence, `[auth.*]` blocks. |
+| `engine-auth.md` | `/reference/cli/`, `/reference/config/`, `/providers/`, `/troubleshooting/` | OAuth connector overview, quick start, fallbacks, readiness codes and recorded scopes. |
+| `engine-auth-google.md` | `/reference/cli/`, `/reference/config/`, `/troubleshooting/` | GSC Desktop-app OAuth, loopback + PKCE, Testing-mode caveat, service-account fallback. |
+| `engine-auth-yandex.md` | `/reference/cli/`, `/reference/config/`, `/troubleshooting/` | Yandex Webmaster/Metrika OAuth, `verification_code`, refresh, token slots. |
 | `engine-data-sources.md` | `/providers/` | Provider capabilities, quotas, limits. |
 | `engine-mcp.md` | `/mcp/` | Tools, resources, prompts, annotations. |
 | `engine-skills.md` | `/mcp/` | Canonical skills and export. |
@@ -28,6 +31,10 @@ to site routes.
 | `engine-releases-0.12.0.md` | `/release/`, `/reference/cli/`, `/providers/`, `/automation/` | Engine 0.12.0 notes: quota-aware `indexing status`/`run`/`history` across Bing, Yandex, IndexNow and GSC, priority/idempotency, honest index counts, the daily `lv24-seo-indexing` job, `[indexing]` config, schema v5 and 25 CLI commands. |
 | `engine-releases-0.12.1.md` | `/release/` | Engine 0.12.1 notes: the indexing client-lifecycle fix (`SeoService` keeps provider clients open for the whole run); no API, CLI, schema or config change. |
 | `engine-releases-0.12.2.md` | `/release/`, `/providers/` | Engine 0.12.2 notes: Yandex `recrawl/queue` 5xx mapped to `UPSTREAM_UNAVAILABLE` with the HTTP status instead of "invalid JSON"; no API, CLI, schema or config change. |
+| `engine-releases-0.13.0.md` | `/release/`, `/reference/cli/`, `/reference/config/`, `/providers/`, `/troubleshooting/` | Engine 0.13.0 notes: OAuth connectors for GSC (loopback + PKCE) and Yandex Webmaster/Metrika (`verification_code` + refresh), keychain tokens, `[auth.gsc]`/`[auth.yandex]`, `auth login`, `auth set --provider *_oauth_secret`; 25 CLI commands, 12 tools and schema v5 unchanged. |
+| `engine-releases-0.13.1.md` | `/release/`, `/reference/cli/`, `/desktop/` | Engine 0.13.1 notes: Yandex-only `auth login --url-only` returns the authorization URL without a browser, prompt or token write, so the desktop Connect card can complete the code in a second call; no API, CLI count, MCP, schema or config change. |
+| `engine-releases-0.14.0.md` | `/release/`, `/reference/cli/`, `/reference/config/`, `/providers/`, `/troubleshooting/` | Engine 0.14.0 notes: `auth status` OAuth object, `doctor` readiness checks, the eight stable codes, precedence and recorded scopes; 25 CLI commands, 12 tools and schema v5 unchanged. |
+| `engine-CHANGELOG.md` | `/release/` | Changelog index for the 0.14.0 release line and earlier entries. |
 | `desktop-README.md` | `/desktop/`, `/install/` | Desktop install matrix, update, troubleshooting. |
 | `desktop-release.md` | `/release/` | Release pipeline, signing, assets, rollback. |
 | `desktop-security.md` | `/security/`, `/desktop/` | Shell boundary, secrets, updater trust. |
@@ -40,11 +47,20 @@ to site routes.
 | `desktop-releases-0.7.0.md` | `/release/`, `/desktop/` | Desktop 0.7.0 notes: Bing sitemap plan/apply, IndexNow from sitemap, Bing Site Scan opener, per-session write secret, bundled engine 0.9.0 and `MIN_ENGINE_VERSION` 0.9.0. |
 | `desktop-releases-0.8.0.md` | `/release/`, `/desktop/`, `/install/` | Desktop 0.8.0 notes: Bing URL submission, read-only sitemap, crawl-issue and quota cards, bundled engine 0.10.0 and `MIN_ENGINE_VERSION` 0.10.0. |
 | `desktop-releases-0.9.0.md` | `/release/`, `/desktop/`, `/install/` | Desktop 0.9.0 notes: read-only Diagnostics screen with five tabs and 18 allow-listed commands, bundled engine 0.11.0 and `MIN_ENGINE_VERSION` 0.11.0. |
+| `desktop-releases-0.9.1.md` | `/release/`, `/desktop/`, `/install/` | Desktop 0.9.1 notes: OAuth Connect card for GSC, Yandex Webmaster and Metrika, bundled engine 0.13.1 and `MIN_ENGINE_VERSION` 0.13.1, contracts 0.13.1, no new write surface. |
+| `desktop-releases-0.9.2.md` | `/release/`, `/desktop/`, `/install/`, `/indexing/` | Desktop 0.9.2 notes: read-only Indexing automation card, bundled engine 0.14.0 and `MIN_ENGINE_VERSION` 0.14.0, contracts 0.14.0, no write controls. |
+| `desktop-releases-0.9.2-update.md` | `/release/`, `/desktop/` | Desktop 0.9.2 short update note: daily 04:00 job, per-provider quotas and honest counts, no write controls. |
 | `desktop-releases-0.2.3.md` | `/release/` | Desktop 0.2.3 notes: Rust updater and cancel, dialog-approved config path, path rejection, redaction, UI state, release CI. |
 | `desktop-releases-0.2.1.md` | `/release/` | Desktop 0.2.1 patch notes: Metrika token and shared CLI keychain. |
 | `desktop-releases-0.2.0.md` | `/release/` | Desktop 0.2.0 release notes, kept for the first multi-platform release. |
 
 ## Known source tensions
+
+- The engine `SECURITY.md` supported-versions line still says 0.2.x; the
+  portal security page states the current 0.13.1 line and the release notes are
+  authoritative.
+- OAuth live consent was not exercised at release time for either product; both
+  release pages say so instead of implying a verified provider login.
 
 - The desktop is distributed unsigned at the OS level (Windows/Linux) or
   ad-hoc signed (macOS), while updater payloads are minisign-signed. Pages keep

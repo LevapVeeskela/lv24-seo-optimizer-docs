@@ -54,7 +54,7 @@ MCP-сервер предоставляет небольшую, продуман
 
 | Инструмент | Входы | Возвращает |
 |---|---|---|
-| `seo_properties` | Нет | Настроенные провайдеры, их цель, наличие токена и `token_source` (`service_account_file`, `secret` или `missing`) |
+| `seo_properties` | Нет | Настроенные провайдеры, их цель, наличие токена и `token_source` (`oauth_refresh_token`, `service_account_file`, `secret` или `missing`) |
 | `gsc_search_analytics` | `property`, `start_date`, `end_date`, `dimensions`, `limit` 1–500 (по умолчанию 50) | Строки по запросу, странице, стране или устройству с кликами, показами, CTR и позицией |
 | `yandex_query_stats` | `host_id`, `limit` 1–500, `order_by` `TOTAL_SHOWS` или `TOTAL_CLICKS` | Топ-запросы с показами, кликами, позицией, `avg_click_position`, `query_id` и `extra_indicators` |
 | `yandex_indexing_state` | Нет, кроме настроенного хоста | История индексирования, количество страниц в поиске, диагностика, объединённая серия `http_2xx` … `other` и `site_problems`; сохраняет события по URL в `indexing_events` (схема v4), когда есть хранилище рабочей области |
@@ -197,4 +197,4 @@ lv24-seo export skills --out .opencode/skills
 - **Технический аудит.** Обойди до 500 URL через `seo_crawl_site` и суммируй критические и высокие проблемы по id правила. Не называй необойдённый URL битым.
 - **Запрос записи.** Подготовь план переобхода для этих URL и сначала покажи квоту. Ничего не записывай, пока я не утвержу план.
 
-Source: `_source/engine-mcp.md`, `_source/engine-skills.md`, `_source/engine-cli.md`, `_source/engine-releases-0.12.2.md`, `_source/engine-releases-0.12.0.md`, `_source/engine-releases-0.11.0.md`, `_source/engine-releases-0.10.0.md`, `_source/engine-releases-0.9.0.md`, `_source/engine-releases-0.8.0.md`, `_source/engine-releases-0.7.0.md`, `_source/engine-releases-0.6.0.md`, `_source/engine-releases-0.5.3.md`.
+Source: `_source/engine-mcp.md`, `_source/engine-skills.md`, `_source/engine-cli.md`, `_source/engine-auth.md`, `_source/engine-releases-0.14.0.md`, `_source/engine-releases-0.13.1.md`, `_source/engine-releases-0.13.0.md`, `_source/engine-releases-0.12.2.md`, `_source/engine-releases-0.12.0.md`, `_source/engine-releases-0.11.0.md`, `_source/engine-releases-0.10.0.md`, `_source/engine-releases-0.9.0.md`, `_source/engine-releases-0.8.0.md`, `_source/engine-releases-0.7.0.md`, `_source/engine-releases-0.6.0.md`, `_source/engine-releases-0.5.3.md`.

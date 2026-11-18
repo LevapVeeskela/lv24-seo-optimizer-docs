@@ -7,15 +7,15 @@ scraping.
 
 [![License: Apache-2.0](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](LICENSE)
 [![Status: pre-release](https://img.shields.io/badge/status-pre--release-orange.svg)](#public-status)
-[![Engine: lv24-seo 0.11.0](https://img.shields.io/badge/engine-lv24--seo%200.11.0-informational.svg)](docs/releases/0.9.0.md)
+[![Engine: lv24-seo 0.14.0](https://img.shields.io/badge/engine-lv24--seo%200.14.0-informational.svg)](docs/releases/0.9.2.md)
 
-> **0.9.0 released (2026-11-17).** `0.9.0` is the latest published line; `0.8.0`, `0.7.0`, `0.6.0`,
-> `0.5.0`, `0.4.0` and `0.3.0` remain available for rollback. Windows NSIS, macOS `.app` and Linux
-> AppImage can auto-update from `0.2.0` onward; deb, rpm, MSI and the portable ZIP are manual-only.
-> `0.1.0` has no updater and must be upgraded manually once. `0.9.0` bundles `lv24-seo 0.11.0`, adds
-> the read-only Diagnostics screen (Google, Yandex, Bing, Metrika, Core Web Vitals), and raises
-> `MIN_ENGINE_VERSION` to `0.11.0`. Read [Public status](#public-status) before relying on anything
-> here. Release notes: [`docs/releases/0.9.0.md`](docs/releases/0.9.0.md).
+> **0.9.2 released (2026-11-18).** `0.9.2` is the latest published line; `0.9.1`, `0.9.0`, `0.8.0`,
+> `0.7.0`, `0.6.0`, `0.5.0`, `0.4.0` and `0.3.0` remain available for rollback. Windows NSIS, macOS
+> `.app` and Linux AppImage can auto-update from `0.2.0` onward; deb, rpm, MSI and the portable ZIP
+> are manual-only. `0.1.0` has no updater and must be upgraded manually once. `0.9.2` bundles
+> `lv24-seo 0.14.0`, adds the read-only Indexing automation card, and raises `MIN_ENGINE_VERSION` to
+> `0.14.0`. Read [Public status](#public-status) before relying on anything here. Release notes:
+> [`docs/releases/0.9.2.md`](docs/releases/0.9.2.md).
 
 ## Screenshot
 
@@ -53,6 +53,13 @@ not want to remember flags:
   `GetUrlSubmissionQuota`. A missing Bing key is reported as `AUTH_REQUIRED` with a Settings hint.
   **Bing Site Scan** has no public API in the official Webmaster method list, so the desktop only
   opens the official page in your default browser — it never claims to start a scan.
+- **Indexing automation (read-only):** a card on the Integrations page reads the quota-aware
+  indexing queue (`indexing status`), the newest runs (`indexing history`) and the host job state
+  (`schedule status --kind indexing`). It shows submitted/indexed/pending counts per provider, Bing
+  daily/monthly remaining, Yandex remaining, the GSC/IndexNow used/limit counter, the documented
+  **Daily 04:00** cadence, a **Scheduled** chip when the host job is installed, the newest run with
+  up to five error items, a 7/30-day day/provider roll-up and every limitation the engine reports.
+  There is no write control, no confirm token and no provider secret on this card.
 - **Read-only platform diagnostics:** a Diagnostics screen with five tabs — Google URL Inspection
   and sitemaps, Yandex indexing history/search events/sitemaps/recrawl queue, Bing page, traffic,
   crawl, URL and query/page-join stats, Metrika pages, goals, devices, countries, engagement and
@@ -72,9 +79,11 @@ not want to remember flags:
 - **A recommendations-to-agent workflow**: review findings, search and sort them, copy a bounded
   Markdown prompt, bulk-export or queue the visible set, hand it to a coding agent, then re-run the
   report to verify the fix.
-- **Integrations:** MCP snippets for Claude Desktop, OpenCode, VS Code and Cursor, two-phase Bing
-  sitemap/IndexNow/URL submission actions, a Site Scan opener, plus a schedule card that previews a
-  cron/systemd/Windows artifact or installs the host job after confirmation.
+- **Integrations:** OAuth connectors for Google Search Console, Yandex Webmaster and Yandex
+  Metrika, MCP snippets for Claude Desktop, OpenCode, VS Code and Cursor, a read-only indexing
+  automation card, two-phase Bing sitemap/IndexNow/URL submission actions, a Site Scan opener, plus
+  a schedule card that previews a cron/systemd/Windows artifact or installs the host job after
+  confirmation.
 - **A per-workspace reporting window** (7/28/90 days, 2- or 3-day provider lag) and honest run status:
   elapsed time, last run, truncation and limitations.
 - **Cancellable background runs:** crawl, weekly report, log analysis, backup create/restore and host
@@ -93,7 +102,7 @@ The desktop is one surface over the same engine. These are the tools the engine 
 
 | Surface | What you get |
 |---|---|
-| Desktop | Project wizard, dashboard with properties and reporting window, crawl screen, log analysis, task lifecycle, portfolio, weekly report with snapshot comparison, attributed digest and CWV, read-only platform diagnostics (GSC, Yandex, Bing, Metrika, CWV), config editor/diff/validation, recommendations with search/bulk, integrations snippets, Bing sitemap/IndexNow/URL submission actions, read-only Bing sitemap/issue/quota views, Site Scan opener, backup create/restore, host schedule install, agent task queue, signed updates |
+| Desktop | Project wizard, dashboard with properties and reporting window, crawl screen, log analysis, task lifecycle, portfolio, weekly report with snapshot comparison, attributed digest and CWV, read-only platform diagnostics (GSC, Yandex, Bing, Metrika, CWV), OAuth provider connectors, read-only indexing automation (queue, quotas, runs, host job), config editor/diff/validation, recommendations with search/bulk, integrations snippets, Bing sitemap/IndexNow/URL submission actions, read-only Bing sitemap/issue/quota views, Site Scan opener, backup create/restore, host schedule install, agent task queue, signed updates |
 | CLI | 22 top-level commands (15 groups + 7 commands): `version`, `doctor`, `init`, `properties`, `stats`, `crawl`, `install`, `auth`, `config`, `gsc`, `yandex`, `sitemap`, `indexnow`, `report`, `cwv`, `schedule`, `export`, `logs`, `tasks`, `backup`, `portfolio`, `mcp` |
 | MCP | 12 tools, 3 resources, 3 prompts; no provider writes by default |
 | Skills | `seo-weekly`, `seo-indexing-triage`, `seo-technical-audit` |
@@ -113,8 +122,8 @@ MCP tools by access level:
 | `seo_indexing_triage` | read-only | Group indexing problems into an action list |
 | `seo_opportunities` | read-only | Striking-distance and decay opportunities |
 | `seo_log_analysis` | read-only | Bot rollup and crawl waste from one local nginx JSON access log |
-| `seo_recrawl_request` | gated write (`destructiveHint: true`) | Yandex recrawl queue; wired in 0.11.0 (quota-capped, one URL per request) |
-| `seo_sitemap_submit` | gated write (`destructiveHint: true`) | Bing sitemap submit (works with `allow_write=true`); GSC submit and Bing delete stay `WRITE_DISABLED` in 0.11.0 |
+| `seo_recrawl_request` | gated write (`destructiveHint: true`) | Yandex recrawl queue; wired in 0.13.1 (quota-capped, one URL per request) |
+| `seo_sitemap_submit` | gated write (`destructiveHint: true`) | Bing sitemap submit (works with `allow_write=true`); GSC submit and Bing delete stay `WRITE_DISABLED` in 0.13.1 |
 
 The two local-state tools never touch provider state and are not destructive. The two provider
 writes require `allow_write=true`; GSC submit and Bing delete still return `WRITE_DISABLED` in the
@@ -136,17 +145,17 @@ The full inputs, outputs and limits are in the engine's
 ## Install
 
 Download from [Releases](https://github.com/LevapVeeskela/lv24-seo-optimizer-desktop/releases).
-The latest published line is `0.9.0`; full notes, install steps and limitations:
-[`docs/releases/0.9.0.md`](docs/releases/0.9.0.md) for the current release,
-[`docs/releases/0.8.0.md`](docs/releases/0.8.0.md) for the previous one and
-[`docs/releases/0.7.0.md`](docs/releases/0.7.0.md) for the one before that. `0.8.0`, `0.7.0`,
-`0.6.0`, `0.5.0` and `0.4.0` remain available for rollback.
+The latest published line is `0.9.2`; full notes, install steps and limitations:
+[`docs/releases/0.9.2.md`](docs/releases/0.9.2.md) for the current release,
+[`docs/releases/0.9.1.md`](docs/releases/0.9.1.md) for the previous one and
+[`docs/releases/0.9.0.md`](docs/releases/0.9.0.md) for the one before that. `0.9.1`, `0.9.0`,
+`0.8.0`, `0.7.0`, `0.6.0`, `0.5.0` and `0.4.0` remain available for rollback.
 
 | Platform | Assets | Auto-update |
 |---|---|---|
-| Windows 10/11 x64 | `LV24.SEO.Optimizer_0.9.0_x64-setup.exe` (+ `.exe.sig`), `LV24-SEO-Optimizer_0.9.0_x64-portable.zip` | NSIS only; portable ZIP is manual |
-| Linux x64 | `LV24.SEO.Optimizer_0.9.0_amd64.AppImage` (+ `.AppImage.sig`), `LV24.SEO.Optimizer_0.9.0_amd64.deb`, `LV24.SEO.Optimizer-0.9.0-1.x86_64.rpm` | AppImage only; deb/rpm are manual |
-| macOS 13+ arm64/x64 | `LV24.SEO.Optimizer_0.9.0_aarch64.dmg`, `LV24.SEO.Optimizer_0.9.0_x64.dmg`, `LV24.SEO.Optimizer_0.9.0_aarch64.app.tar.gz` and `LV24.SEO.Optimizer_0.9.0_x64.app.tar.gz` (+ `.sig`) | `.app` only; DMG is the first install |
+| Windows 10/11 x64 | `LV24.SEO.Optimizer_0.9.2_x64-setup.exe` (+ `.exe.sig`), `LV24-SEO-Optimizer_0.9.2_x64-portable.zip` | NSIS only; portable ZIP is manual |
+| Linux x64 | `LV24.SEO.Optimizer_0.9.2_amd64.AppImage` (+ `.AppImage.sig`), `LV24.SEO.Optimizer_0.9.2_amd64.deb`, `LV24.SEO.Optimizer-0.9.2-1.x86_64.rpm` | AppImage only; deb/rpm are manual |
+| macOS 13+ arm64/x64 | `LV24.SEO.Optimizer_0.9.2_aarch64.dmg`, `LV24.SEO.Optimizer_0.9.2_x64.dmg`, `LV24.SEO.Optimizer_0.9.2_aarch64.app.tar.gz` and `LV24.SEO.Optimizer_0.9.2_x64.app.tar.gz` (+ `.sig`) | `.app` only; DMG is the first install |
 
 The `0.2.x` through `0.9.x` releases also publish `latest.json` and `SHA256SUMS.txt`. Verify the
 checksum before running an installer. `SHA256SUMS.txt` covers every other published asset, including
@@ -224,7 +233,7 @@ assets.
 
 ### Upgrading from 0.1.0
 
-`0.1.0` has no updater, endpoint or public key. Install `0.9.0` manually once (NSIS installer or
+`0.1.0` has no updater, endpoint or public key. Install `0.9.2` manually once (NSIS installer or
 portable ZIP); auto-update works from `0.2.0` onward when the installed bundle is Windows NSIS, macOS
 `.app` or Linux AppImage.
 
@@ -313,7 +322,7 @@ PowerShell).
 Build the bundled sidecar (PyInstaller **onedir**) and then the platform bundles:
 
 ```bash
-python scripts/build-sidecar.py --engine-version 0.11.0 --target x86_64-pc-windows-msvc
+python scripts/build-sidecar.py --engine-version 0.14.0 --target x86_64-pc-windows-msvc
 node scripts/verify-sidecar.mjs --root src-tauri/engine --target x86_64-pc-windows-msvc --write
 npm run tauri build -- --bundles nsis
 npm run package:portable
@@ -328,10 +337,10 @@ its `.sha256` sidecar under `release/`.
 For Linux or macOS, use the matching target and bundle set, for example:
 
 ```bash
-python scripts/build-sidecar.py --engine-version 0.11.0 --target x86_64-unknown-linux-gnu
+python scripts/build-sidecar.py --engine-version 0.14.0 --target x86_64-unknown-linux-gnu
 npm run tauri build -- --target x86_64-unknown-linux-gnu --bundles appimage,deb,rpm
 
-python scripts/build-sidecar.py --engine-version 0.11.0 --target aarch64-apple-darwin
+python scripts/build-sidecar.py --engine-version 0.14.0 --target aarch64-apple-darwin
 npm run tauri build -- --target aarch64-apple-darwin --bundles dmg
 ```
 
@@ -377,10 +386,69 @@ Yandex Metrika is a separate auth provider from Yandex Webmaster: the desktop st
 The desktop never asks for a paid provider key. Optional paid adapters in the engine are
 bring-your-own-key and are not part of the default path.
 
+## Provider connectors (OAuth)
+
+The **Integrations** page starts with a **Provider connectors** card for Google Search Console,
+Yandex Webmaster and Yandex Metrika. Each row shows **Connected** / **Not connected** from
+`lv24-seo auth status --json` (`gsc_oauth`, `yandex_oauth`, `metrika_oauth`); a provider the engine
+did not report stays **Not checked** instead of being shown as missing.
+
+- **Google Search Console:** **Connect** runs `lv24-seo auth login --provider gsc --json`. The
+  engine opens the system browser, listens on a `127.0.0.1` loopback callback and returns a
+  token-free summary after consent. The card says *Complete the sign-in in your browser* while the
+  call is in flight, then refreshes the status.
+- **Yandex Webmaster / Metrika:** **Connect** runs the same command with `--url-only`, which returns
+  the consent URL without exchanging anything. **Open Yandex** hands that exact URL to a narrow
+  opener, and **Finish** sends the pasted code back with `--code`. The code is single-use and is
+  cleared from the window after the exchange.
+
+The connectors require engine `lv24-seo >= 0.13.1`. Client ids live in `[auth.gsc]` / `[auth.yandex]`
+in `seo.toml`; the client secret is never entered in the window. Set it once from a terminal:
+
+```bash
+lv24-seo auth set --provider gsc_oauth_secret --stdin
+lv24-seo auth set --provider yandex_oauth_secret --stdin
+```
+
+No token is returned over IPC or rendered in the page. If the client id/secret is missing, the card
+shows the engine's `AUTH_REQUIRED` / `CONFIG_INVALID` message with its `next_action` and a link to
+the engine auth guide instead of a generic failure. The card has no write or confirm control: the
+engine stores the tokens in the OS keychain (or its explicit file fallback).
+
+## Indexing automation (read-only)
+
+The **Indexing automation** card sits between the MCP snippets and the write-capable indexing
+actions. It reads three commands from engine `lv24-seo >= 0.13.1`:
+
+```text
+lv24-seo indexing status --provider all --limit 50 --live --json
+lv24-seo indexing history --limit 30 --json
+lv24-seo schedule status --kind indexing --target <cron|systemd|windows> --json
+```
+
+- **Header:** a state chip from `schedule status` (`Scheduled` when the host job is `installed`,
+  otherwise the reported state) and the documented **Daily 04:00** cadence. The card never installs,
+  edits or removes the job; `schedule install` in this release still covers the weekly/daily report
+  jobs only.
+- **Providers:** Bing, Yandex, GSC and IndexNow rows with submitted, indexed (GSC only), pending and
+  quota. Bing shows daily/monthly remaining, Yandex shows remaining, and GSC/IndexNow show the local
+  used/limit counter. A provider the engine did not configure is **No data yet**, never a zero row.
+  The GSC `indexed_total` is rendered separately with a **deprecated aggregate** note because Google
+  deprecates the sitemap `contents[].indexed` field.
+- **Last run:** the newest history row with status, provider, start time, submitted/checked/errors
+  and at most five `detail.error_items` (`url`, `code`, `message`); the rest are summarized.
+- **History:** `--limit 30` is aggregated by day and provider, with 7-day and 30-day totals. There is
+  no chart dependency.
+- **Honesty:** `meta.limitations` and `meta.data_age_days` are always rendered. If the engine rejects
+  the command as unknown, the card says **Indexing status needs engine >= 0.13.1** and hides the
+  tables instead of showing empty zeros.
+- **Read-only:** no `--allow-write`, no confirm token and no credential is sent or rendered. Refresh
+  re-runs the same three reads; it is disabled while a load is in flight.
+
 ## Stats dashboard
 
 The dashboard renders the stats envelope; it is not a new metric engine. The contract is
-[`contracts/stats-v1.md`](contracts/stats-v1.md) and `lv24-seo 0.11.0` ships the command:
+[`contracts/stats-v1.md`](contracts/stats-v1.md) and `lv24-seo 0.13.1` ships the command:
 
 - one card per configured provider with the metrics the provider actually returned;
 - current values with deltas against the previous window, including CTR deltas in **percentage
@@ -562,22 +630,24 @@ build from source and sign it with your own certificate. See [`docs/release.md`]
 
 | Area | Status |
 |---|---|
-| Contracts (`config.schema.json`, CLI fixtures incl. `stats`) | generated from `lv24-seo 0.11.0`; drift check in CI |
+| Contracts (`config.schema.json`, CLI fixtures incl. `stats`) | generated from `lv24-seo 0.14.0`; drift check in CI |
 | CI (web, Rust matrix, contract check) | active on pull requests and `main`; standard runners only |
 | Manual desktop build workflow (NSIS, DMG, AppImage, deb, rpm) | available; owner-triggered; publish requires the updater key |
-| Tauri command bridge (config read/validate/write/patch, CLI runner incl. `init`, `schedule_print`, `logs_analyze`, `tasks_*`, `backup_create`, `backup_restore`, `portfolio_list`, `schedule_install`, `sitemap_submit`, `indexnow_submit`, `bing_submit`, `bing_sitemaps`, `bing_issues`, `bing_quota`, the 18 read-only diagnostics commands, file and directory pickers, known configs, secrets, diagnostics, `open_bing_sitescan`) | implemented |
+| Tauri command bridge (config read/validate/write/patch, CLI runner incl. `init`, `schedule_print`, `logs_analyze`, `tasks_*`, `backup_create`, `backup_restore`, `portfolio_list`, `schedule_install`, `sitemap_submit`, `indexnow_submit`, `bing_submit`, `bing_sitemaps`, `bing_issues`, `bing_quota`, `indexing_status`, `indexing_history`, `schedule_status`, the 18 read-only diagnostics commands, file and directory pickers, known configs, secrets, diagnostics, `open_bing_sitescan`) | implemented |
 | Bing indexing actions (sitemap submit, IndexNow from sitemap, Site Scan opener) | implemented in `0.7.0`; requires engine `0.9.0`; Site Scan only opens the official page |
 | Bing URL submission and read-only sitemap/issue/quota views | implemented in `0.8.0`; requires engine `0.10.0`; accepted is not indexed |
 | Read-only Diagnostics screen (Google, Yandex, Bing, Metrika, Core Web Vitals) | implemented in `0.9.0`; requires engine `0.11.0`; 18 allow-listed read commands, no writes |
+| OAuth Connect card (Google Search Console, Yandex Webmaster, Metrika) | implemented in `0.9.1`; requires engine `0.13.1`; tokens stay in the OS keychain, no token is rendered |
+| Read-only Indexing automation card (queue, quotas, last run, day/provider history, host job state) | implemented in `0.9.2`; requires engine `0.13.1`; no write control, no confirm token |
 | Cancellable background runs (`run_cancel`, run banner) | implemented in `0.6.0` |
 | React screens (onboarding, dashboard, crawl, logs, tasks, portfolio, settings, configuration, reports, recommendations, integrations, diagnostics, backup) | implemented |
-| Bundled onedir sidecar | all four targets built in CI and by the release workflow; the Windows x64 pin records the reviewed `0.11.0` build, Linux/macOS reviewed pins remain `null` and are covered by rebuild-aware CI checksum reports |
-| Published installers | `0.9.0`: Windows x64, Linux x64, macOS arm64/x64; `0.8.0`, `0.7.0`, `0.6.0`, `0.5.0`, `0.4.0` and `0.3.0` remain available for rollback |
+| Bundled onedir sidecar | all four targets built in CI and by the release workflow; the Windows x64 pin records the reviewed `0.14.0` build, Linux/macOS reviewed pins remain `null` and are covered by rebuild-aware CI checksum reports |
+| Published installers | `0.9.2`: Windows x64, Linux x64, macOS arm64/x64; `0.9.1`, `0.9.0`, `0.8.0`, `0.7.0`, `0.6.0`, `0.5.0`, `0.4.0` and `0.3.0` remain available for rollback |
 | Install checks | `0.2.2`: macOS 27.2 arm64 DMG installed and launched with engine `0.5.2`; deb and AppImage (FUSE mount and extract-and-run fallback) on Ubuntu 24.04 and rpm on Fedora 45 installed and launched with engine `0.5.2`; Linux updater signatures verified against the embedded key |
-| Auto-update | Windows NSIS, macOS `.app`, Linux AppImage; `0.2.0 → 0.2.1` through `0.7.0 → 0.8.0` verified end-to-end on Windows NSIS; `0.8.0 → 0.9.0` is the next in-app update; the macOS/Linux `0.9.0` update paths still need a re-run on a machine with the previous release installed; deb/rpm/MSI/portable ZIP are manual |
-| `lv24-seo stats --json` engine command | shipped since `lv24-seo 0.5.2`; bundled `0.11.0`; fixture committed |
+| Auto-update | Windows NSIS, macOS `.app`, Linux AppImage; `0.2.0 → 0.2.1` through `0.8.0 → 0.9.0` verified end-to-end on Windows NSIS; `0.9.1 → 0.9.2` is the next in-app update; the macOS/Linux `0.9.2` update paths still need a re-run on a machine with the previous release installed; deb/rpm/MSI/portable ZIP are manual |
+| `lv24-seo stats --json` engine command | shipped since `lv24-seo 0.5.2`; bundled `0.14.0`; fixture committed |
 
-`0.1.0` remains available as a Windows-only preview. It has no updater; install `0.9.0` manually
+`0.1.0` remains available as a Windows-only preview. It has no updater; install `0.9.2` manually
 once. Follow the [issues](https://github.com/LevapVeeskela/lv24-seo-optimizer-desktop/issues) for
 progress, or read the implementation plan in the engine repository:
 [`docs/plans/2026-11-14-seo-desktop.md`](https://github.com/LevapVeeskela/lv24-seo-optimizer/blob/main/docs/plans/2026-11-14-seo-desktop.md).

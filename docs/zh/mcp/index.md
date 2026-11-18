@@ -54,7 +54,7 @@ dry run 的 `data` 对象：
 
 | 工具 | 输入 | 返回 |
 |---|---|---|
-| `seo_properties` | 无 | 已配置的提供商、目标、令牌是否存在以及 `token_source`（`service_account_file`、`secret` 或 `missing`） |
+| `seo_properties` | 无 | 已配置的提供商、目标、令牌是否存在以及 `token_source`（`oauth_refresh_token`、`service_account_file`、`secret` 或 `missing`） |
 | `gsc_search_analytics` | `property`、`start_date`、`end_date`、`dimensions`、`limit` 1–500（默认 50） | 按查询、页面、国家或设备分组的点击、展示、CTR 和排名行 |
 | `yandex_query_stats` | `host_id`、`limit` 1–500、`order_by` `TOTAL_SHOWS` 或 `TOTAL_CLICKS` | 热门查询的展示、点击、排名、`avg_click_position`、`query_id` 和 `extra_indicators` |
 | `yandex_indexing_state` | 除已配置主机外无输入 | 索引历史、搜索中页面数、诊断、合并的 `http_2xx` … `other` 系列和 `site_problems`；存在工作区存储时把按 URL 事件保存到 `indexing_events`（模式 v4） |
@@ -199,4 +199,4 @@ lv24-seo export skills --out .opencode/skills
 - **技术审计。** 用 `seo_crawl_site` 抓取最多 500 个 URL，按规则 id 汇总 critical 和 high 问题。不要把未抓取的 URL 说成失效。
 - **写入请求。** 为这些 URL 准备重新抓取计划，先显示配额。在我批准计划前不要写入任何内容。
 
-Source: `_source/engine-mcp.md`, `_source/engine-skills.md`, `_source/engine-cli.md`, `_source/engine-releases-0.12.2.md`, `_source/engine-releases-0.12.0.md`, `_source/engine-releases-0.11.0.md`, `_source/engine-releases-0.10.0.md`, `_source/engine-releases-0.9.0.md`, `_source/engine-releases-0.8.0.md`, `_source/engine-releases-0.7.0.md`, `_source/engine-releases-0.6.0.md`, `_source/engine-releases-0.5.3.md`.
+Source: `_source/engine-mcp.md`, `_source/engine-skills.md`, `_source/engine-cli.md`, `_source/engine-auth.md`, `_source/engine-releases-0.14.0.md`, `_source/engine-releases-0.13.1.md`, `_source/engine-releases-0.13.0.md`, `_source/engine-releases-0.12.2.md`, `_source/engine-releases-0.12.0.md`, `_source/engine-releases-0.11.0.md`, `_source/engine-releases-0.10.0.md`, `_source/engine-releases-0.9.0.md`, `_source/engine-releases-0.8.0.md`, `_source/engine-releases-0.7.0.md`, `_source/engine-releases-0.6.0.md`, `_source/engine-releases-0.5.3.md`.

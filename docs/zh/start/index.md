@@ -43,12 +43,12 @@ lv24-seo auth set --provider gsc --stdin
 ## 前置条件
 
 - Python 3.11 或更高版本。`uv` 可以提供解释器，因此不要求系统安装 Python。
-- 所需来源的提供商凭据：GSC OAuth 访问令牌、Yandex Webmaster OAuth、Yandex Metrika、Bing Webmaster API 密钥和 CrUX API 密钥。PageSpeed Insights 无需密钥即可使用，但配额较低。所有默认来源都有免费额度。
+- 所需来源的提供商凭据：GSC OAuth 客户端（或服务账号）、Yandex Webmaster/Metrika OAuth、Bing Webmaster API 密钥和 CrUX API 密钥。PageSpeed Insights 无需密钥即可使用，但配额较低。所有默认来源都有免费额度。
 - Node.js 18 或更高版本，仅用于 `npx @lv24/seo` 启动器。Python CLI 不需要 Node。
 - 能访问提供商 API。工具没有遥测，不会自行发送任何内容。
 - 桌面应用：Windows 10/11 x64 与 WebView2，Linux x64 与 glibc 2.35 或更高版本，或 macOS 13 或更高版本。
 
-GSC 接受手动提供的 OAuth 访问令牌或服务账号（`providers.gsc.service_account_file` / `LV24_SEO_GSC_SERVICE_ACCOUNT_FILE`，`0.8.0` 起提供）；普通令牌仍然可用。Yandex、Bing 和其他适配器使用手动提供的令牌或密钥。
+GSC、Yandex Webmaster 和 Yandex Metrika 可以使用 OAuth 连接器（`auth login`），GSC 还接受服务账号（`providers.gsc.service_account_file` / `LV24_SEO_GSC_SERVICE_ACCOUNT_FILE`）；普通令牌仍然可用。Bing、IndexNow、CrUX 和 PSI 使用 API 密钥，因为这些数据源没有 OAuth。
 
 ## 默认只读
 
@@ -71,19 +71,19 @@ CLI 信封为 `{ok, data, meta, warnings}`。当输入缺失、被截断或采�
 
 ## 可选桌面端
 
-桌面端是 `0.9.0`，内置 `lv24-seo 0.11.0`；它要求引擎 `0.11.0` 或更新，因此引擎 `0.12.2` 通过门槛。当你不想记参数时它很有用：在应用内创建或选择 `seo.toml`，查看仪表板，通过带校验的表单编辑配置，运行有边界的抓取，分析 nginx 日志，分诊任务，创建或恢复可移植备份，扫描组合文件夹，比较并导出带归因摘要和 CWV 卡片的周报，在只读 Diagnostics 屏幕中读取 GSC 检查/站点地图、Yandex 事件/站点地图/队列、Bing 页面/流量/抓取/URL/关联、自然搜索 Metrika 页面/目标/维度和 CWV 审计/历史，向 Bing 提交 URL 或站点地图，读取 Bing 配额、站点地图源和抓取问题，运行 IndexNow，打开官方 Bing Site Scan 页面，并把有边界的建议复制为给智能体的 Markdown 提示词。索引自动化在 `0.9.0` 中仅限 CLI 和调度器。长时间引擎任务在后台运行，带窗口级横幅和 **Cancel** 按钮；提供商写入不可取消。Windows NSIS、macOS `.app` 和 Linux AppImage 可以自动更新；便携 ZIP、deb 和 rpm 仅手动更新。更新器只停止它启动的 sidecar，如果无法停止会以 `UPDATE_ENGINE_BUSY` 阻止安装。
+桌面端是 `0.9.2`，内置 `lv24-seo 0.14.0`；它要求引擎 `0.14.0` 或更新，因此已安装的 `0.13.x` 引擎不兼容。当你不想记参数时它很有用：在应用内创建或选择 `seo.toml`，通过 OAuth Connect 卡片连接 GSC、Yandex Webmaster 或 Metrika，查看仪表板和只读 Indexing automation 卡片，通过带校验的表单编辑配置，运行有边界的抓取，分析 nginx 日志，分诊任务，创建或恢复可移植备份，扫描组合文件夹，比较并导出带归因摘要和 CWV 卡片的周报，在只读 Diagnostics 屏幕中读取 GSC 检查/站点地图、Yandex 事件/站点地图/队列、Bing 页面/流量/抓取/URL/关联、自然搜索 Metrika 页面/目标/维度和 CWV 审计/历史，向 Bing 提交 URL 或站点地图，读取 Bing 配额、站点地图源和抓取问题，运行 IndexNow，打开官方 Bing Site Scan 页面，并把有边界的建议复制为给智能体的 Markdown 提示词。索引自动化仅限 CLI 和调度器；`0.9.2` 增加连接器，而不是索引状态卡片。长时间引擎任务在后台运行，带窗口级横幅和 **Cancel** 按钮；提供商写入不可取消。Windows NSIS、macOS `.app` 和 Linux AppImage 可以自动更新；便携 ZIP、deb 和 rpm 仅手动更新。更新器只停止它启动的 sidecar，如果无法停止会以 `UPDATE_ENGINE_BUSY` 阻止安装。
 
 ## 状态与限制
 
-引擎为 `0.12.2`；桌面端为 `0.9.0`。1.0 之前的已知缺口：
+引擎为 `0.14.0`；桌面端为 `0.9.2`。1.0 之前的已知缺口：
 
-- GSC 支持手动提供的 OAuth 访问令牌或服务账号；普通令牌不会刷新。
+- GSC、Yandex Webmaster 和 Metrika 可以使用 OAuth 连接器；GSC 保留服务账号后备，Google Testing 应用的 refresh token 在 7 天后过期。静态令牌仍被接受，但不会刷新。
 - GSC sitemap 提交和 Bing 站点地图删除返回 `WRITE_DISABLED`；Bing 站点地图提交、Bing URL 提交、IndexNow 和 Yandex 重新抓取会真正写入，并需要各自的提供商密钥或配额。
 - Bing URL 提交报告 `accepted`，不是已索引；配额值是剩余量，不是总量，月度窗口可能先耗尽。`bing sitemaps` 没有按 URL 的错误，`bing issues` 没有严重性或日期。
 - Bing 统计和关联返回 `no_rows_for_window`，而不是零展示；URL Inspection 每次调用一个 URL，且不是实时测试。
 - 桌面端会打开官方 Bing Site Scan 页面，但不启动、监控或导入扫描。
 - `storage.raw_retention_days` 已保留；目前不会写入原始归档。
-- 桌面端 `0.9.0` 有抓取、日志、任务、备份、恢复、计划任务安装、组合、Bing 索引和只读 Diagnostics 屏幕。长时间引擎调用在后台运行，带窗口级横幅和 **Cancel** 按钮，但取消不是回滚，也没有任务队列；提供商写入不可取消。
+- 桌面端 `0.9.2` 有抓取、日志、任务、备份、恢复、计划任务安装、组合、Bing 索引和只读 Diagnostics 屏幕。长时间引擎调用在后台运行，带窗口级横幅和 **Cancel** 按钮，但取消不是回滚，也没有任务队列；提供商写入不可取消。
 - `cwv collect`、`backup restore --to` 和 `schedule status`/`uninstall` 仅限 CLI；桌面端渲染已存储的 CWV 行、规划就地恢复并在确认后安装调度器任务。
 - `report indexing`、`report opportunities` 和 `report history` 已计划，尚未发布。
 - 日志是可选项：设置 `LV24_SEO_LOG_LEVEL` 才会在 CLI 和 `mcp serve` 中安装脱敏处理器。稳定的诊断接口仍是 `--json` 信封。
@@ -100,4 +100,4 @@ CLI 信封为 `{ok, data, meta, warnings}`。当输入缺失、被截断或采�
 - [报告与差异](/zh/reports/) — 周报、投递和快照差异。
 - [安全与隐私](/zh/security/) — token 处理、写操作门控和桌面信任边界。
 
-Source: `_source/engine-README.md`, `_source/engine-cli.md`, `_source/engine-releases-0.12.2.md`, `_source/engine-releases-0.12.0.md`, `_source/engine-releases-0.11.0.md`, `_source/desktop-README.md`, `_source/desktop-releases-0.9.0.md`.
+Source: `_source/engine-README.md`, `_source/engine-cli.md`, `_source/engine-auth.md`, `_source/engine-releases-0.14.0.md`, `_source/engine-releases-0.13.1.md`, `_source/engine-releases-0.13.0.md`, `_source/engine-releases-0.12.2.md`, `_source/engine-releases-0.12.0.md`, `_source/engine-releases-0.11.0.md`, `_source/desktop-README.md`, `_source/desktop-releases-0.9.2.md`, `_source/desktop-releases-0.9.1.md`.

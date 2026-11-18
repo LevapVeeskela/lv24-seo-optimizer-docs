@@ -25,13 +25,13 @@ description: Команды, глобальные флаги, JSON-конвер�
 С флагом `--json` команда печатает ровно один JSON-документ и ничего больше:
 
 ```json
-{ "ok": true, "data": {}, "meta": { "version": "0.12.2", "duration_ms": 812 }, "warnings": [] }
+{ "ok": true, "data": {}, "meta": { "version": "0.14.0", "duration_ms": 812 }, "warnings": [] }
 ```
 
 Неудачная команда использует ту же форму с `ok: false` и объектом `error` вместо `data`:
 
 ```json
-{ "ok": false, "error": { "code": "AUTH_REQUIRED", "message": "Google Search Console token is missing", "retryable": false, "next_action": "lv24-seo auth login --provider gsc" }, "meta": { "version": "0.12.2" }, "warnings": ["gsc: token missing"] }
+{ "ok": false, "error": { "code": "AUTH_REQUIRED", "message": "Google Search Console token is missing", "retryable": false, "next_action": "lv24-seo auth login --provider gsc" }, "meta": { "version": "0.14.0" }, "warnings": ["gsc: token missing"] }
 ```
 
 - `data` зависит от команды. В `meta` всегда есть `version`, часто добавляются `duration_ms`,
@@ -323,6 +323,13 @@ lv24-seo indexing history --limit 20 --json
 провайдера несёт `urls`, `submitted`, `inspected`, `indexed`, `not_indexed`, `crawled`, `queued`,
 `pending`, `stale`, `quota` и `limitations`, плюс `write_secret_present`.
 
+| Движок | Источник остатка квоты | Лимит за запуск |
+|---|---|---|
+| Bing | `GetUrlSubmissionQuota`, дневной и месячный остаток | 500 URL на `SubmitUrlbatch`; план ограничен меньшим остатком |
+| Яндекс | `recrawl/quota` `quota_remainder` | Один POST на URL; пакетного endpoint нет |
+| GSC | API остатка нет; локальный счётчик `quota_usage` за UTC-день | 2 000 проверок/день/сайт по умолчанию, `max_inspect_per_run` 20 |
+| IndexNow | API статуса и квоты нет; локальный счётчик за UTC-день | 1 000 отправок/день по умолчанию, 10 000 URL на POST |
+
 `indexing run` собирает очередь того же хоста из `<project.base_url>/sitemap.xml` (10 000 URL и шесть
 документов sitemap) и/или повторяемых `--url`, затем планирует по приоритету: ещё не отправленные,
 `lastmod` новее `last_submitted_at`, проверка старше `check_interval_days`, затем остальные. Проверки
@@ -492,19 +499,50 @@ lv24-seo mcp serve --transport http --port 8765
 ```bash
 lv24-seo auth status --json
 lv24-seo auth set --provider gsc --stdin
+lv24-seo auth set --provider gsc_oauth_secret --stdin
+lv24-seo auth login --provider gsc
+lv24-seo auth login --provider yandex --no-browser
+lv24-seo auth login --provider yandex --code <code>
+lv24-seo auth login --provider yandex --url-only --json
 ```
 
-`auth set` читает секрет из stdin или скрытого запроса и кладёт его в связку ключей ОС либо в
-явно включённый файловый резерв с правами `0600`. Печатается только `{provider, stored, source}`.
-`auth status` показывает наличие и источник (`env`, `keyring`, `file`, `missing`), но никогда —
-значение.
+`auth set` читает секрет из stdin или скрытого запроса и кладёт его в связку ключей ОС либо в явно включённый файловый резерв с правами `0600`. Печатается только `{provider, stored, source}`. `auth status` показывает наличие и источник (`env`, `keyring`, `file`, `missing`), но никогда — значение.
 
-GSC также может использовать сервисный аккаунт. Задайте `providers.gsc.service_account_file` с
-абсолютным путём или экспортируйте `LV24_SEO_GSC_SERVICE_ACCOUNT_FILE`; файл важнее сохранённого
-`gsc_token`, а окружение важнее файла. `gsc_token`, являющийся JSON-объектом сервисного аккаунта,
-тоже принимается. Движок подписывает RS256 JWT, обменивает его в `token_uri` ключа и обновляет до
-истечения. `properties` сообщает `token_source: service_account_file|secret|missing`, а `doctor`
-добавляет некритичную проверку `gsc_auth`; ни один не печатает JSON или приватный ключ.
+### OAuth-коннекторы
+
+`auth login` авторизует Google Search Console, Yandex Webmaster или Yandex Metrika через OAuth вместо вставленного токена. Нужен client id в `[auth.gsc]` или `[auth.yandex]` (либо `LV24_SEO_GSC_CLIENT_ID` / `LV24_SEO_YANDEX_CLIENT_ID`) и client secret, сохранённый через `auth set --provider gsc_oauth_secret|yandex_oauth_secret --stdin`. Client secret никогда не хранится в `seo.toml`.
+
+- **Google Search Console.** `auth login --provider gsc` использует клиент типа Desktop app, слушает `127.0.0.1` на свободном порту, открывает страницу согласия и обменивает код с S256 PKCE и случайным `state`. `--no-browser` печатает URL и ждёт; `--port 8123` фиксирует callback; `--code` переиспользует сохранённый PKCE verifier и требует `--port` или `[auth.gsc].redirect_uri`, чтобы точно повторить redirect. Access token, refresh token и срок хранятся в связке ключей и обновляются за 60 секунд до истечения.
+- **Yandex Webmaster и Metrika.** `auth login --provider yandex|metrika` использует redirect `https://oauth.yandex.ru/verification_code`: подтвердите доступ, скопируйте короткий код и передайте его в `--code` либо введите в интерактивном запросе. Одно приложение может нести `webmaster:hostinfo` и `metrika:read`, но движки хранят отдельные слоты токенов. `--url-only` работает только для Яндекса и возвращает `{provider, flow, authorization_url, scopes, target}`, не открывая браузер, не запрашивая код, не обменивая его и не записывая токен; приложение показывает URL и завершает грант вторым вызовом с `--code`.
+- **Приоритет и резервы.** GSC выбирает OAuth-грант, затем файл сервисного аккаунта, затем статический `gsc_token`. Яндекс сохраняет путь статических `yandex_webmaster_token` / `yandex_metrika_token` и обновляет токен, когда сохранены refresh token и срок. У Bing, IndexNow, CrUX и PSI нет OAuth-коннектора по дизайну.
+- **Ограничение режима Testing.** Google-приложение в статусе **Testing** выдаёт refresh token, истекающий через 7 дней, поэтому ежедневное задание через неделю падает с `invalid_grant`. Опубликуйте приложение, повторяйте вход раз в неделю или используйте сервисный аккаунт для автономных запусков.
+
+### Диагностика готовности OAuth
+
+`auth status --json` добавляет объект `oauth` для `gsc`, `yandex` и `metrika` с `state`, `detail`,
+`client_id_present`, `client_secret_present`, `access_token_present`, `refresh_token_present`,
+`expires_at`, `scopes_recorded`, `next_action` и `limitations`. `doctor --json` добавляет проверки
+`gsc_oauth`, `yandex_oauth` и `metrika_oauth` с `id`, `ok`, `detail`, `code` и `next_action`; они
+некритичны и никогда не печатают токен. Обе поверхности работают офлайн.
+
+| Код | Значение | Исправление |
+|---|---|---|
+| `oauth_client_missing` | Client id пуст или является placeholder | Зарегистрируйте приложение и задайте `[auth.gsc].client_id` или `[auth.yandex].client_id` |
+| `oauth_client_secret_missing` | Client id задан, но secret отсутствует | `auth set --provider gsc_oauth_secret\|yandex_oauth_secret --stdin` |
+| `oauth_token_missing` | Client id и secret есть, но access/refresh token отсутствует | `auth login --provider gsc\|yandex\|metrika` |
+| `oauth_token_expired` | Сохранённый срок в прошлом; указывается, доступен ли refresh | Выполните команду чтения или войдите заново, если refresh token нет |
+| `oauth_scope_missing` | Записанные scope не включают настроенные | Войдите заново и выдайте scope либо уберите его из `[auth.*].scopes` |
+| `oauth_scope_unknown` | Scope не записывались; предупреждение, а не ложный успех | Выполните вход или refresh один раз |
+| `oauth_redirect_invalid` | Redirect Google не loopback или у Яндекса не `verification_code` | Очистите `[auth.*].redirect_uri` или задайте корректное значение |
+| `oauth_ready` | Client id, secret, token, scope и redirect в порядке | Ничего делать не нужно |
+
+Приоритет: redirect, client id, client secret, token, затем scope. Выданные scope хранятся в
+`gsc_token_scopes`, `yandex_token_scopes` и `yandex_metrika_token_scopes` (в `OAUTH_SECRET_NAMES`, не
+в стабильном `SECRET_NAMES`); `auth logout` удаляет их.
+
+`--json` содержит `provider`, `flow`, `scopes`, `expires_at`, `target` и `next`; токенов в нём нет. Неудачное обновление возвращает `AUTH_INVALID` с точной командой `auth login`.
+
+GSC также может использовать сервисный аккаунт. Задайте `providers.gsc.service_account_file` с абсолютным путём или экспортируйте `LV24_SEO_GSC_SERVICE_ACCOUNT_FILE`; OAuth-грант важнее файла, файл важнее сохранённого `gsc_token`, а окружение важнее файла. `gsc_token`, являющийся JSON-объектом сервисного аккаунта, тоже принимается. Движок подписывает RS256 JWT, обменивает его в `token_uri` ключа и обновляет до истечения. `properties` сообщает `token_source: oauth_refresh_token|service_account_file|secret|missing`, а `doctor` добавляет некритичную проверку `gsc_auth`; ни один не печатает JSON или приватный ключ.
 
 ### Экспорт
 
@@ -523,4 +561,4 @@ lv24-seo export skills --out skills/
 - [MCP и навыки агентов](/ru/mcp/)
 - [Устранение неполадок](/ru/troubleshooting/)
 
-Source: `_source/engine-cli.md`, `_source/engine-mcp.md`, `_source/engine-releases-0.12.2.md`, `_source/engine-releases-0.12.0.md`, `_source/engine-releases-0.11.0.md`, `_source/engine-releases-0.10.0.md`, `_source/engine-releases-0.9.0.md`, `_source/engine-releases-0.8.0.md`, `_source/engine-releases-0.7.0.md`, `_source/engine-releases-0.6.0.md`, `_source/engine-releases-0.5.3.md`; вывод `--help` версии 0.12.2 в репозитории движка.
+Source: `_source/engine-cli.md`, `_source/engine-mcp.md`, `_source/engine-releases-0.13.1.md`, `_source/engine-releases-0.12.0.md`, `_source/engine-releases-0.11.0.md`, `_source/engine-releases-0.10.0.md`, `_source/engine-releases-0.9.0.md`, `_source/engine-releases-0.8.0.md`, `_source/engine-releases-0.7.0.md`, `_source/engine-releases-0.6.0.md`, `_source/engine-releases-0.5.3.md`; вывод `--help` версии 0.14.0 в репозитории движка.

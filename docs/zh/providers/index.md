@@ -23,18 +23,20 @@ description: LV24 SEO Optimizer 的提供商能力矩阵、认证、配额、数
 | 自有抓取 | 页面、问题、链接图、站点地图覆盖 | 无 | 无 | 本地 | 当前运行 |
 | 日志 | 对 nginx JSON 访问日志按 User-Agent 做机器人分诊；不能证明是已验证的爬虫 | 无 | 本地文件 | 本地 | 日志窗口 |
 
-GA4 是可选的集成点，不在默认路径中。随版本提供的提供商是 GSC、Yandex Webmaster、Yandex Metrika、Bing、CrUX 和 PSI。付费 SERP 或外链适配器（DataForSEO、SerpApi 等）仅处于计划或文档阶段；0.12.2 不随版本提供任何此类适配器。
+GA4 是可选的集成点，不在默认路径中。随版本提供的提供商是 GSC、Yandex Webmaster、Yandex Metrika、Bing、CrUX 和 PSI。付费 SERP 或外链适配器（DataForSEO、SerpApi 等）仅处于计划或文档阶段；0.14.0 不随版本提供任何此类适配器。
 
 ## 认证
 
 ```bash
 lv24-seo auth status --json
 lv24-seo auth set --provider gsc --stdin
+lv24-seo auth set --provider gsc_oauth_secret --stdin
 lv24-seo auth login --provider gsc
+lv24-seo auth login --provider yandex --url-only --json
 lv24-seo auth logout --provider gsc
 ```
 
-`auth set` 接受 `gsc`、`yandex`、`metrika`、`bing`、`crux`、`psi`、`smtp` 和 `telegram`。它从 stdin 或隐藏提示读取密钥，存入操作系统钥匙串，并且只打印 `{provider, stored, source}`。密钥值不会被回显、写入日志或写进 `seo.toml`。如果钥匙串和文件回退都不可用，命令会以 `WRITE_DISABLED` 失败。
+`auth set` 接受 `gsc`、`yandex`、`metrika`、`bing`、`crux`、`psi`、`smtp`、`telegram`、`gsc_oauth_secret` 和 `yandex_oauth_secret`。它从 stdin 或隐藏提示读取密钥，存入操作系统钥匙串，并且只打印 `{provider, stored, source}`。密钥值不会被回显、写入日志或写进 `seo.toml`。如果钥匙串和文件回退都不可用，命令会以 `WRITE_DISABLED` 失败。
 
 | 提供商 | 环境变量 |
 |---|---|
@@ -57,7 +59,9 @@ pip install "lv24-seo[secrets]"
 
 没有钥匙串时，无头回退是权限为 `0600` 的 `data/secrets.json`，只有设置 `LV24_SEO_ALLOW_FILE_SECRETS=1` 才启用。回退生效期间每次运行都会警告；在 Windows 上文件系统不会强制该权限模式。
 
-凭据是手动提供的访问令牌和 API 密钥。工具不执行 OAuth 握手、不刷新令牌，也不把服务账号密钥换成访问令牌。`auth status` 只报告是否存在以及存储来源；它不调用 API，因此存在并不证明有效或有权限。
+GSC、Yandex Webmaster 和 Yandex Metrika 可以使用 OAuth 连接器，无需粘贴令牌。`auth login --provider gsc` 执行 Desktop app 回环流程和 S256 PKCE；`auth login --provider yandex|metrika` 使用 `verification_code` redirect，`--url-only` 返回授权 URL，不打开浏览器也不写令牌。令牌按数据源存入钥匙串，并在到期前 60 秒刷新；刷新失败返回 `AUTH_INVALID` 和确切的登录命令。`auth status --json` 增加 `oauth` 对象，`doctor` 增加非致命就绪检查，使用八个稳定代码，因此在尝试登录前就能指出缺少的 client id、secret、token、作用域或 redirect。client id 是 `[auth.gsc]`/`[auth.yandex]` 中的公开配置；client secret 通过 `auth set --provider gsc_oauth_secret|yandex_oauth_secret --stdin` 保存。
+
+GSC 保留服务账号后备用于无人值守运行：引擎把签名的 JWT 换成访问令牌并在到期前刷新。Google 应用处于 **Testing** 时 refresh token 在 7 天后过期。Bing、IndexNow、CrUX 和 PSI 仍使用 API 密钥，因为这些数据源没有 OAuth。`auth status` 只报告是否存在以及存储来源；它不调用 API，因此存在并不证明有效或有权限。
 
 ## 配额、延迟与截断
 
@@ -167,4 +171,4 @@ pip install "lv24-seo[secrets]"
 
 调度器生成器在后端支持时应用同一时区。Cron 依赖 `CRON_TZ`，systemd 把时区写入 `OnCalendar`，Task Scheduler XML 携带固定偏移并给出 DST 警告。参见[自动化与投递](/zh/automation/)。
 
-Source: `_source/engine-data-sources.md`, `_source/engine-cli.md`, `_source/engine-config.md`, `_source/engine-releases-0.12.2.md`, `_source/engine-releases-0.12.0.md`, `_source/engine-releases-0.11.0.md`, `_source/engine-releases-0.10.0.md`, `_source/engine-releases-0.5.3.md`.
+Source: `_source/engine-data-sources.md`, `_source/engine-cli.md`, `_source/engine-config.md`, `_source/engine-auth.md`, `_source/engine-auth-google.md`, `_source/engine-auth-yandex.md`, `_source/engine-releases-0.14.0.md`, `_source/engine-releases-0.13.1.md`, `_source/engine-releases-0.13.0.md`, `_source/engine-releases-0.12.2.md`, `_source/engine-releases-0.12.0.md`, `_source/engine-releases-0.11.0.md`, `_source/engine-releases-0.10.0.md`, `_source/engine-releases-0.5.3.md`.

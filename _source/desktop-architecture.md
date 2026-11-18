@@ -1,17 +1,18 @@
 # Architecture
 
-Status: **implementation contract for `0.9.0` (current release, 2026-11-17; `0.8.0` is the previous
+Status: **implementation contract for `0.9.2` (current release, 2026-11-18; `0.9.1` is the previous
 published line).** The Rust command bridge and product screens are implemented in this repository.
 Where this document describes a control, it is the requirement that implementation must satisfy. The
-pinned engine is `lv24-seo 0.11.0`. `0.9.0` adds the read-only diagnostics commands (Google, Yandex,
-Bing, Metrika and Core Web Vitals) and raises `MIN_ENGINE_VERSION` to `0.11.0`. It keeps the `0.8.0`
-gated `bing_submit` and read-only `bing_sitemaps`/`bing_issues`/`bing_quota`, the `0.7.0` gated
+pinned engine is `lv24-seo 0.14.0`. `0.9.2` adds the read-only Indexing automation card and raises
+`MIN_ENGINE_VERSION` to `0.14.0`. It keeps the `0.9.1` OAuth Connect card (Google Search Console,
+Yandex Webmaster and Metrika), the `0.9.0` read-only diagnostics commands, the `0.8.0` gated
+`bing_submit` and read-only `bing_sitemaps`/`bing_issues`/`bing_quota`, the `0.7.0` gated
 `sitemap_submit`/`indexnow_submit` and the `open_bing_sitescan` opener, the `0.6.0` cancellable
 background runs (`run_cancel`), window-wide run banner and the schedule-install `--allow-write`
 opt-in that engine `0.8.0` requires.
 
 The read-only diagnostics commands listed in section 4 are implemented in `0.9.0` and require engine
-`lv24-seo 0.11.0`.
+`lv24-seo 0.11.0`; the bundle requires `0.14.0` for the OAuth readiness diagnostics.
 
 ## 1. Shape
 
@@ -112,6 +113,7 @@ The command surface is fixed. The generic `cli_run` allow-list is:
 | `doctor` | `doctor --json` | read |
 | `properties` | `properties --json` | read |
 | `auth_status` | `auth status --json` | read |
+| `auth_login` | `auth login --provider <gsc\|yandex\|metrika> [--no-browser] [--port <n>] [--code <code>] [--url-only] --json` | read (the engine stores tokens itself) |
 | `report_weekly` | `report weekly --out <app data>/exports/reports --json` | local write |
 | `report_diff` | `report diff ... --json` | read |
 | `crawl` | `crawl ... --json` | local write |
@@ -149,12 +151,30 @@ The command surface is fixed. The generic `cli_run` allow-list is:
 | `metrika_bytime` | `metrika bytime --days <n> --lag-days <n> [--group day\|week\|month] --json` | read |
 | `cwv_audits` | `cwv audits --url <abs> [--strategy mobile\|desktop] [--category <c> ...] --json` | read |
 | `cwv_history` | `cwv history (--url <abs>\|--origin <abs>) [--device phone\|desktop\|tablet] [--weeks <n>] --json` | read |
+| `indexing_status` | `indexing status [--provider all\|bing\|yandex\|gsc\|indexnow] [--limit <n>] [--live] --json` | read |
+| `indexing_history` | `indexing history [--limit <n>] --json` | read |
+| `schedule_status` | `schedule status --kind weekly\|daily\|indexing [--target <cron\|systemd\|windows>] --json` | read |
 
 Dedicated Tauri commands cover the rest: `shell_status`, `config_read`, `config_validate`,
 `config_write`, `config_patch`, `auth_set` (secret over stdin), `auth_delete`, `write_text_file`,
 `settings_get`, `settings_set`, `pick_config`, `pick_directory`, `pick_log_file`,
-`pick_backup_archive`, `open_path`, `open_bing_sitescan`, `prepare_update`, `update_install`,
-`update_cancel` and `run_cancel`. The webview cannot add a command at runtime.
+`pick_backup_archive`, `open_path`, `open_bing_sitescan`, `open_oauth_url`, `prepare_update`,
+`update_install`, `update_cancel` and `run_cancel`. The webview cannot add a command at runtime.
+
+`auth_login` is read-only for the shell: it starts the engine's OAuth flow, and the engine stores
+the tokens in its own secret store. The envelope carries the provider, flow, scopes, expiry and
+target, never a token. Before the spawn the shell rejects `allowWrite`/`confirm`, `urlOnly` for
+Google, `code` together with `urlOnly`, `port` for Yandex/Metrika, and any field that belongs to
+another command; `port` is bounded to `0..65535` and a code is one non-empty argv element without
+whitespace or control characters. The Google flow blocks for the loopback consent (~180 seconds),
+so the command timeout is 240 seconds; Yandex/Metrika use the same budget for the two calls.
+
+`open_oauth_url` is not a generic URL opener. It accepts exactly an absolute
+`https://oauth.yandex.ru/authorize?...` URL (fixed scheme, host and path, non-empty query, no
+fragment, userinfo or backslash) and hands it to the Tauri opener. The Google consent page is opened
+by the engine process, so it never crosses this command. The Connectors card needs `auth login` from
+engine `0.13.1` or newer; an older engine answers with a typed command/parse error, and the card
+shows that message plus the engine auth guide instead of claiming a connection.
 
 `cli_run` accepts an optional `runId` only for the six long local jobs listed in
 `CliCommandId::cancellable` (`crawl`, `report_weekly`, `logs_analyze`, `backup_create`,
@@ -228,6 +248,19 @@ never cancellable, because each is a bounded read. The Diagnostics screen render
 `no_rows_for_window`, `provider_returned_no_rows` or `low_traffic` — never as a zero row. Bing
 statistics take the site from `providers.bing.site`; the webview cannot pass `--site`.
 
+`indexing_status`, `indexing_history` and `schedule_status` are the read-only indexing automation
+reads. Each has a short allow-list (`provider`/`limit`/`live`, `limit`, and `kind`/`target`
+respectively); the shell rejects a field that belongs to another command, an unknown provider,
+kind or target, an out-of-range limit, `allowWrite` or a confirm token before the engine is
+spawned. All three require the active config and are never cancellable. `indexing status` is asked
+for `provider=all`, 50 rows and `live=true`, so Bing/Yandex quotas are read now rather than from a
+stored snapshot; GSC and IndexNow report their local daily counter. The Integrations card renders
+`meta.limitations` and `meta.data_age_days` for every answer, shows a missing provider as
+**No data yet** instead of the engine's structural zeros, and labels the GSC `indexed_total` as the
+deprecated sitemap aggregate. `schedule status` only reports the host job; `schedule_install` still
+offers the weekly/daily report jobs only, so the indexing job is installed by the engine or the
+host, not by this card.
+
 The engine also requires a non-empty `LV24_SEO_WRITE_SECRET`. The desktop generates 32 random bytes
 from the OS CSPRNG once at startup, stores the 64-character hex value in `AppState` in memory only and
 sets it on every engine child after `env_clear()`; it is never an argv element, a settings value, a log
@@ -264,7 +297,7 @@ The AppImage step is the fallback that keeps an AppImage build from silently dro
 `resource_dir()` points somewhere other than the mounted engine tree.
 
 Nothing is downloaded automatically. The shell runs `lv24-seo version --json`, records the path,
-source and version, and compares the version with `MIN_ENGINE_VERSION` (`0.11.0`). An older engine is
+source and version, and compares the version with `MIN_ENGINE_VERSION` (`0.13.1`). An older engine is
 marked `compatible: false`; the UI treats the engine as offline and shows the standard offline
 notice. It does not silently downgrade or run the command. A newer engine passes the gate but is not
 the release-tested pin.
@@ -328,7 +361,8 @@ file. Values are never displayed.
 ## 7. Long-running calls and failure model
 
 Engine calls are synchronous from the UI's perspective. Each command has a fixed timeout: `crawl`
-600 seconds; `stats`, `report weekly`, `report diff`, `sitemap_submit`, `indexnow_submit`,
+600 seconds; `auth login` 240 seconds (the Google loopback waits ~180 seconds for consent);
+`stats`, `report weekly`, `report diff`, `sitemap_submit`, `indexnow_submit`,
 `bing_submit` and `cwv_audits` 120 seconds; `bing_sitemaps`, `bing_issues`, `bing_quota` and the other
 read-only diagnostics commands 60 seconds; `version`, `config show`, `doctor`, `properties` and
 `auth status` 30 seconds; `auth set`/`auth delete` 120 seconds. A timeout kills the exact child
@@ -371,7 +405,8 @@ Feature-Sliced Design, dependencies pointing downward:
 ```
 app/        root store, providers, router, layout, styles
 pages/      dashboard, reports, settings, configuration, recommendations, not-found
-features/   save-config, secret-set, update, agent-task, backup, schedule, indexing
+features/   save-config, secret-set, connectors, update, agent-task, backup, schedule, indexing,
+            indexing-status
 entities/   config, engine, report, stats, recommendation, update, crawl, logs, workspace
 shared/     CLI transport, desktop settings/files, i18n, UI primitives, formatting, run registry
 ```

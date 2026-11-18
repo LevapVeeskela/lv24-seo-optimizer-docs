@@ -13,9 +13,9 @@ Related: [Reports and diffs](/reports/), [Crawl and audit](/crawl/), [Automation
 
 | Source | Read | Write (gated) | Authentication | Free quota | Data lag |
 |---|---|---|---|---|---|
-| Google Search Console | Search analytics with type/filter/data-state selectors, sites, sitemaps, URL Inspection | Sitemap submit; disabled (`WRITE_DISABLED`, needs the full `webmasters` scope) | Bearer access token (`webmasters.readonly` for reads) or a service-account JSON key | 1,200 QPM per site and per user; 50,000 rows/day/site/type; URL Inspection 2,000/day, 600/min | 2–3 days; `data_age_days` floors at 3 |
-| Yandex Webmaster | Summary, SQI history, indexing, search URLs and events, samples, sitemaps, query history, recrawl queue, queries, diagnostics, broken links | Recrawl queue (gated; one POST per URL, capped to the remaining daily quota) | OAuth token, scope `webmaster:hostinfo` | Free; no published global RPD/RPS; query analytics is fragile above roughly 10k requests/hour | About 4 days |
-| Yandex Metrika | Organic and all-traffic sessions/users; organic pages, search phrases, devices, countries, engagement, goals and bytime | None | OAuth token, scope `metrika:read` | 5,000 requests/day/user; 30 rps/IP; 3 parallel; `/stat/v1/data` 200 requests per 5 minutes; up to 100k rows, 20 metrics and 10 dimensions per request | Reporting API; sampling is reported |
+| Google Search Console | Search analytics with type/filter/data-state selectors, sites, sitemaps, URL Inspection | Sitemap submit; disabled (`WRITE_DISABLED`, needs the full `webmasters` scope) | OAuth connector (Desktop app, loopback + PKCE), a service-account JSON key or a static bearer token | 1,200 QPM per site and per user; 50,000 rows/day/site/type; URL Inspection 2,000/day, 600/min | 2–3 days; `data_age_days` floors at 3 |
+| Yandex Webmaster | Summary, SQI history, indexing, search URLs and events, samples, sitemaps, query history, recrawl queue, queries, diagnostics, broken links | Recrawl queue (gated; one POST per URL, capped to the remaining daily quota) | OAuth connector (`verification_code` + refresh) or a static OAuth token, scope `webmaster:hostinfo` | Free; no published global RPD/RPS; query analytics is fragile above roughly 10k requests/hour | About 4 days |
+| Yandex Metrika | Organic and all-traffic sessions/users; organic pages, search phrases, devices, countries, engagement, goals and bytime | None | OAuth connector (`verification_code` + refresh) or a static OAuth token, scope `metrika:read` | 5,000 requests/day/user; 30 rps/IP; 3 parallel; `/stat/v1/data` 200 requests per 5 minutes; up to 100k rows, 20 metrics and 10 dimensions per request | Reporting API; sampling is reported |
 | Bing Webmaster | Query/page stats, daily traffic, six-month crawl stats, query/page joins, URL and children details, site roles, account sites, crawl issues, quota, sitemap feeds | Sitemap submit, URL submission, IndexNow and quota-aware indexing (all gated) | One API key per user | Free; remaining daily/monthly submission quota is reported by `GetUrlSubmissionQuota`; 500 URLs per batch | Age comes from the newest dated row; empty stats are `no_rows_for_window` |
 | Chrome UX Report (CrUX) | Field p75 LCP, INP, CLS and other metrics; weekly p75 history; collection period | None | API key | 150 QPM per project, cannot be raised | 28-day rolling window; `data_age_days` from `collectionPeriod.lastDate` |
 | PageSpeed Insights (PSI) | Lighthouse lab category scores and up to 100 bounded audits per URL | None | API key optional; keyless works with a lower quota | About 25k requests/day | Live lab run |
@@ -23,18 +23,20 @@ Related: [Reports and diffs](/reports/), [Crawl and audit](/crawl/), [Automation
 | Own crawl | Pages, issues, link graph, sitemap coverage | None | None | Local | Current run |
 | Logs | User-agent bot triage for nginx JSON access logs; not proof of a verified crawler | None | Local file | Local | Log window |
 
-GA4 is an optional integration point, not part of the default path. The shipped providers are GSC, Yandex Webmaster, Yandex Metrika, Bing, CrUX and PSI. Paid SERP or backlink adapters (DataForSEO, SerpApi and others) are planned or documented only; none ships in 0.12.2.
+GA4 is an optional integration point, not part of the default path. The shipped providers are GSC, Yandex Webmaster, Yandex Metrika, Bing, CrUX and PSI. Paid SERP or backlink adapters (DataForSEO, SerpApi and others) are planned or documented only; none ships in 0.14.0.
 
 ## Authentication
 
 ```bash
 lv24-seo auth status --json
 lv24-seo auth set --provider gsc --stdin
+lv24-seo auth set --provider gsc_oauth_secret --stdin
 lv24-seo auth login --provider gsc
+lv24-seo auth login --provider yandex --url-only --json
 lv24-seo auth logout --provider gsc
 ```
 
-`auth set` accepts `gsc`, `yandex`, `metrika`, `bing`, `crux`, `psi`, `smtp` and `telegram`. It reads the secret from stdin or a hidden prompt, stores it in the OS keychain, and prints only `{provider, stored, source}`. The value is never echoed, logged or written to `seo.toml`. If neither the keychain nor the file fallback is available, it fails with `WRITE_DISABLED`.
+`auth set` accepts `gsc`, `yandex`, `metrika`, `bing`, `crux`, `psi`, `smtp`, `telegram`, `gsc_oauth_secret` and `yandex_oauth_secret`. It reads the secret from stdin or a hidden prompt, stores it in the OS keychain, and prints only `{provider, stored, source}`. The value is never echoed, logged or written to `seo.toml`. If neither the keychain nor the file fallback is available, it fails with `WRITE_DISABLED`.
 
 | Provider | Environment variable |
 |---|---|
@@ -57,7 +59,9 @@ pip install "lv24-seo[secrets]"
 
 Without a keychain, the headless fallback is `data/secrets.json` with mode `0600`, enabled only by `LV24_SEO_ALLOW_FILE_SECRETS=1`. Every run warns while that fallback is active, and on Windows the mode is not enforced by the filesystem.
 
-Credentials are manually supplied access tokens and API keys. The tool does not run an OAuth handshake, refresh tokens, or exchange a service-account key for an access token. `auth status` reports presence and storage source only; it makes no API call, so presence does not prove validity or permissions.
+GSC, Yandex Webmaster and Yandex Metrika can use an OAuth connector instead of a pasted token. `auth login --provider gsc` runs a Desktop-app loopback flow with S256 PKCE; `auth login --provider yandex|metrika` uses the `verification_code` redirect, and `--url-only` returns the authorization URL without a browser or a token write. Tokens are stored per provider in the keychain and refreshed within 60 seconds of expiry; a failed refresh returns `AUTH_INVALID` with the exact login command. `auth status --json` adds an `oauth` object and `doctor` adds non-fatal readiness checks with eight stable codes, so a missing client id, secret, token, scope or redirect is named before a login is attempted. The client id is public config in `[auth.gsc]`/`[auth.yandex]`; the client secret is stored with `auth set --provider gsc_oauth_secret|yandex_oauth_secret --stdin`.
+
+GSC keeps the service-account fallback for unattended runs: the engine exchanges the signed JWT for an access token and refreshes it before expiry. A Google OAuth app in **Testing** expires refresh tokens after 7 days. Bing, IndexNow, CrUX and PSI stay API-key based because those providers have no OAuth flow. `auth status` reports presence and storage source only; it makes no API call, so presence does not prove validity or permissions.
 
 ## Quotas, lag and truncation
 
@@ -204,4 +208,4 @@ Optional paid adapters are bring-your-own-key and off by default. They must use 
 
 Scheduler generators apply the same zone where the backend supports it. Cron depends on `CRON_TZ`, systemd writes the zone into `OnCalendar`, and Task Scheduler XML carries a fixed offset with a DST warning. See [Automation and delivery](/automation/).
 
-Source: `_source/engine-data-sources.md`, `_source/engine-cli.md`, `_source/engine-config.md`, `_source/engine-releases-0.12.2.md`, `_source/engine-releases-0.12.0.md`, `_source/engine-releases-0.11.0.md`, `_source/engine-releases-0.10.0.md`, `_source/engine-releases-0.5.3.md`.
+Source: `_source/engine-data-sources.md`, `_source/engine-cli.md`, `_source/engine-config.md`, `_source/engine-auth.md`, `_source/engine-auth-google.md`, `_source/engine-auth-yandex.md`, `_source/engine-releases-0.14.0.md`, `_source/engine-releases-0.13.1.md`, `_source/engine-releases-0.13.0.md`, `_source/engine-releases-0.12.2.md`, `_source/engine-releases-0.12.0.md`, `_source/engine-releases-0.11.0.md`, `_source/engine-releases-0.10.0.md`, `_source/engine-releases-0.5.3.md`.

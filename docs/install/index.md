@@ -74,23 +74,23 @@ lv24-seo auth set --provider gsc --stdin
 lv24-seo auth status --json
 ```
 
-`auth login` prints the provider-specific manual steps; it does not open a browser. `auth set` reads the secret from stdin or a hidden prompt and stores it in the OS keychain, or in the `0600` file fallback when explicitly allowed. Never put a token in argv, a shell history, a repository file or a screenshot. `auth status` reports presence and source only; it never prints the value and does not verify permissions.
+`auth login` runs the provider OAuth connector when a client id is configured: GSC uses a Desktop-app loopback callback with S256 PKCE, and Yandex Webmaster/Metrika use the `verification_code` redirect. `--no-browser` prints the URL, `--code` completes an out-of-band flow, and the Yandex-only `--url-only` returns the authorization URL without writing a token (the desktop uses it for the Connect card). Without a client id, `auth login` prints the manual token steps. `auth set` reads the secret from stdin or a hidden prompt and stores it in the OS keychain, or in the `0600` file fallback when explicitly allowed; OAuth client secrets use `gsc_oauth_secret` or `yandex_oauth_secret`. Never put a token in argv, a shell history, a repository file or a screenshot. `auth status` reports presence and source only; it never prints the value and does not verify permissions.
 
-Supported provider names are `gsc`, `yandex`, `metrika`, `bing`, `crux`, `psi`, `smtp` and `telegram`. Without the `secrets` extra, use provider-specific `LV24_SEO_*` environment variables, for example `LV24_SEO_YANDEX_WEBMASTER_TOKEN`. The headless fallback is `LV24_SEO_ALLOW_FILE_SECRETS=1` plus `data/secrets.json` with `0600` permissions; the engine warns on every run in that mode.
+Supported provider names are `gsc`, `yandex`, `metrika`, `bing`, `crux`, `psi`, `smtp`, `telegram`, `gsc_oauth_secret` and `yandex_oauth_secret`. Without the `secrets` extra, use provider-specific `LV24_SEO_*` environment variables, for example `LV24_SEO_YANDEX_WEBMASTER_TOKEN`. The headless fallback is `LV24_SEO_ALLOW_FILE_SECRETS=1` plus `data/secrets.json` with `0600` permissions; the engine warns on every run in that mode.
 
-GSC also accepts a service account instead of a pasted OAuth token. Set `providers.gsc.service_account_file` to an absolute path or export `LV24_SEO_GSC_SERVICE_ACCOUNT_FILE`; the file wins over a stored `gsc_token`, and the environment wins over the file. The engine signs an RS256 JWT, exchanges it at the key's `token_uri` and refreshes it before expiry, so a long-lived `mcp serve` process survives token expiry. `properties` reports `token_source: service_account_file` and `doctor` adds a non-fatal `gsc_auth` check; neither prints the key. A plain OAuth token keeps working.
+GSC also accepts a service account. Set `providers.gsc.service_account_file` to an absolute path or export `LV24_SEO_GSC_SERVICE_ACCOUNT_FILE`; an OAuth grant wins when it is complete, then the service-account file, then a stored `gsc_token`. The engine signs an RS256 JWT, exchanges it at the key's `token_uri` and refreshes it before expiry, so a long-lived `mcp serve` process survives token expiry. `properties` reports `token_source: oauth_refresh_token|service_account_file|secret` and `doctor` adds a non-fatal `gsc_auth` check; neither prints the key. A plain static token keeps working. A Google OAuth app in **Testing** expires refresh tokens after 7 days, so unattended runs should keep the service account.
 
 ## Desktop install matrix
 
-Desktop `0.9.0` is the current release and bundles `lv24-seo 0.11.0`; it requires engine `0.11.0` or newer, so engine `0.12.2` is compatible. Download the assets from the project's Releases page; `SHA256SUMS.txt` covers every published asset.
+Desktop `0.9.2` is the current release and bundles `lv24-seo 0.14.0`; it requires engine `0.14.0` or newer, so an installed `0.13.x` engine is incompatible. Download the assets from the project's Releases page; `SHA256SUMS.txt` covers every published asset.
 
 | Platform | Assets | Auto-update |
 |---|---|---|
-| Windows 10/11 x64 | NSIS `LV24.SEO.Optimizer_0.9.0_x64-setup.exe` (+ `.sig`), portable `LV24-SEO-Optimizer_0.9.0_x64-portable.zip` (+ `.zip.sha256`) | NSIS only; portable is manual |
-| Linux x64 | `LV24.SEO.Optimizer_0.9.0_amd64.AppImage` (+ `.AppImage.sig`), `LV24.SEO.Optimizer_0.9.0_amd64.deb`, `LV24.SEO.Optimizer-0.9.0-1.x86_64.rpm` | AppImage only; deb/rpm are manual |
-| macOS 13+ arm64/x64 | `LV24.SEO.Optimizer_0.9.0_aarch64.dmg` / `LV24.SEO.Optimizer_0.9.0_x64.dmg` for first install, `LV24.SEO.Optimizer_0.9.0_aarch64.app.tar.gz` / `LV24.SEO.Optimizer_0.9.0_x64.app.tar.gz` (+ `.sig`) for updates | `.app` only; DMG is the first install |
+| Windows 10/11 x64 | NSIS `LV24.SEO.Optimizer_0.9.2_x64-setup.exe` (+ `.sig`), portable `LV24-SEO-Optimizer_0.9.2_x64-portable.zip` (+ `.zip.sha256`) | NSIS only; portable is manual |
+| Linux x64 | `LV24.SEO.Optimizer_0.9.2_amd64.AppImage` (+ `.AppImage.sig`), `LV24.SEO.Optimizer_0.9.2_amd64.deb`, `LV24.SEO.Optimizer-0.9.2-1.x86_64.rpm` | AppImage only; deb/rpm are manual |
+| macOS 13+ arm64/x64 | `LV24.SEO.Optimizer_0.9.2_aarch64.dmg` / `LV24.SEO.Optimizer_0.9.2_x64.dmg` for first install, `LV24.SEO.Optimizer_0.9.2_aarch64.app.tar.gz` / `LV24.SEO.Optimizer_0.9.2_x64.app.tar.gz` (+ `.sig`) for updates | `.app` only; DMG is the first install |
 
-Engine `0.12.2` adds quota-aware indexing automation: the `indexing status|run|history` group, Bing/Yandex/IndexNow/GSC quotas, honest per-URL index counts, the daily `lv24-seo-indexing` job and schema v5. It keeps the 0.11.0 read depth (GSC URL Inspection and sitemaps, Yandex events/sitemaps/history/queue, Bing page/traffic/crawl/URL/joins, organic `metrika`, CrUX history and PSI audits). The desktop `0.9.0` surfaces the 0.11.0 reads in a read-only Diagnostics screen; indexing automation is CLI and scheduler only until desktop `0.9.1`. The [release notes](/release/) list the limits.
+Engine `0.14.0` adds OAuth readiness diagnostics: an `oauth` object in `auth status`, `gsc_oauth`/`yandex_oauth`/`metrika_oauth` checks in `doctor` and eight stable codes, with recorded scopes. It keeps the 0.13.0 connectors, the 0.12.0 indexing automation, 25 CLI commands, 12 MCP tools and schema v5. The desktop `0.9.2` adds the read-only Indexing automation card, bundles engine `0.14.0` and raises `MIN_ENGINE_VERSION` to `0.14.0`. The [release notes](/release/) list the limits.
 
 ### Windows
 
@@ -115,7 +115,7 @@ Use the `aarch64` DMG on Apple silicon and the `x64` DMG on Intel. Open the DMG,
 
 ### Upgrading from desktop 0.1.0
 
-`0.1.0` was a Windows-only preview with no updater, endpoint or public key. Install `0.9.0` manually once (NSIS installer or portable ZIP). Auto-update works from `0.2.0` onward only for Windows NSIS, macOS `.app` and Linux AppImage.
+`0.1.0` was a Windows-only preview with no updater, endpoint or public key. Install `0.9.2` manually once (NSIS installer or portable ZIP). Auto-update works from `0.2.0` onward only for Windows NSIS, macOS `.app` and Linux AppImage.
 
 ## Unsigned builds
 
@@ -146,4 +146,4 @@ Uninstalling the tool does not delete your project. `seo.toml`, `data/`, SQLite 
 - [Config reference](/reference/config/) — every `seo.toml` key.
 - [Security and privacy](/security/) — token storage and write gates.
 
-Source: `_source/engine-README.md`, `_source/engine-cli.md`, `_source/engine-config.md`, `_source/desktop-README.md`, `_source/desktop-releases-0.9.0.md`, `_source/desktop-releases-0.8.0.md`, `_source/desktop-releases-0.7.0.md`, `_source/desktop-releases-0.6.0.md`, `_source/desktop-releases-0.5.0.md`, `_source/desktop-releases-0.4.0.md`, `_source/desktop-releases-0.3.0.md`, `_source/desktop-releases-0.2.3.md`, `_source/desktop-releases-0.2.2.md`, `_source/desktop-releases-0.2.0.md`.
+Source: `_source/engine-README.md`, `_source/engine-cli.md`, `_source/engine-config.md`, `_source/engine-auth.md`, `_source/engine-releases-0.14.0.md`, `_source/engine-releases-0.13.1.md`, `_source/engine-releases-0.13.0.md`, `_source/desktop-README.md`, `_source/desktop-releases-0.9.2.md`, `_source/desktop-releases-0.9.1.md`, `_source/desktop-releases-0.8.0.md`, `_source/desktop-releases-0.7.0.md`, `_source/desktop-releases-0.6.0.md`, `_source/desktop-releases-0.5.0.md`, `_source/desktop-releases-0.4.0.md`, `_source/desktop-releases-0.3.0.md`, `_source/desktop-releases-0.2.3.md`, `_source/desktop-releases-0.2.2.md`, `_source/desktop-releases-0.2.0.md`.

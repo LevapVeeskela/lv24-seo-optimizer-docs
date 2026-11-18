@@ -23,18 +23,20 @@ description: Матрица возможностей провайдеров, а�
 | Собственный обход | Страницы, проблемы, граф ссылок, покрытие карты сайта | Нет | Нет | Локально | Текущий запуск |
 | Логи | Триаж ботов по User-Agent для JSON access-логов nginx; не доказательство проверенного краулера | Нет | Локальный файл | Локально | Окно лога |
 
-GA4 — необязательная точка интеграции, а не часть пути по умолчанию. Поставляемые провайдеры: GSC, Yandex Webmaster, Yandex Metrika, Bing, CrUX и PSI. Платные адаптеры для SERP и ссылок (DataForSEO, SerpApi и другие) запланированы или только описаны; в 0.12.2 ни один не поставляется.
+GA4 — необязательная точка интеграции, а не часть пути по умолчанию. Поставляемые провайдеры: GSC, Yandex Webmaster, Yandex Metrika, Bing, CrUX и PSI. Платные адаптеры для SERP и ссылок (DataForSEO, SerpApi и другие) запланированы или только описаны; в 0.14.0 ни один не поставляется.
 
 ## Аутентификация
 
 ```bash
 lv24-seo auth status --json
 lv24-seo auth set --provider gsc --stdin
+lv24-seo auth set --provider gsc_oauth_secret --stdin
 lv24-seo auth login --provider gsc
+lv24-seo auth login --provider yandex --url-only --json
 lv24-seo auth logout --provider gsc
 ```
 
-`auth set` принимает `gsc`, `yandex`, `metrika`, `bing`, `crux`, `psi`, `smtp` и `telegram`. Секрет читается из stdin или скрытого запроса, сохраняется в системный keychain, а команда печатает только `{provider, stored, source}`. Значение никогда не выводится, не попадает в логи и не записывается в `seo.toml`. Если недоступны ни keychain, ни файловый fallback, команда завершается ошибкой `WRITE_DISABLED`.
+`auth set` принимает `gsc`, `yandex`, `metrika`, `bing`, `crux`, `psi`, `smtp`, `telegram`, `gsc_oauth_secret` и `yandex_oauth_secret`. Секрет читается из stdin или скрытого запроса, сохраняется в системный keychain, а команда печатает только `{provider, stored, source}`. Значение никогда не выводится, не попадает в логи и не записывается в `seo.toml`. Если недоступны ни keychain, ни файловый fallback, команда завершается ошибкой `WRITE_DISABLED`.
 
 | Провайдер | Переменная окружения |
 |---|---|
@@ -57,7 +59,9 @@ pip install "lv24-seo[secrets]"
 
 Без keychain headless-fallback — это `data/secrets.json` с режимом `0600`, включаемый только через `LV24_SEO_ALLOW_FILE_SECRETS=1`. Пока fallback активен, каждый запуск предупреждает; в Windows режим не обеспечивается файловой системой.
 
-Учётные данные — это вручную поставляемые токены доступа и API-ключи. Инструмент не выполняет OAuth-handshake, не обновляет токены и не обменивает ключ сервисного аккаунта на токен доступа. `auth status` сообщает только наличие и источник хранения; API-вызов не выполняется, поэтому наличие не доказывает валидность или права.
+GSC, Yandex Webmaster и Yandex Metrika могут использовать OAuth-коннектор вместо вставленного токена. `auth login --provider gsc` выполняет loopback-поток Desktop-app с S256 PKCE; `auth login --provider yandex|metrika` использует redirect `verification_code`, а `--url-only` возвращает URL авторизации без браузера и записи токена. Токены хранятся по провайдеру в связке ключей и обновляются за 60 секунд до истечения; неудачное обновление возвращает `AUTH_INVALID` с точной командой входа. `auth status --json` добавляет объект `oauth`, а `doctor` — некритичные проверки готовности с восемью стабильными кодами, поэтому отсутствующий client id, secret, token, scope или redirect называется до попытки входа. Client id — публичная конфигурация в `[auth.gsc]`/`[auth.yandex]`; client secret хранится через `auth set --provider gsc_oauth_secret|yandex_oauth_secret --stdin`.
+
+GSC сохраняет резервный сервисный аккаунт для автономных запусков: движок обменивает подписанный JWT на access token и обновляет его до истечения. Google-приложение в **Testing** истекает refresh token через 7 дней. Bing, IndexNow, CrUX и PSI остаются на API-ключах, потому что у этих провайдеров нет OAuth. `auth status` сообщает только наличие и источник хранения; API-вызов не выполняется, поэтому наличие не доказывает валидность или права.
 
 ## Квоты, задержка и усечение
 
@@ -172,4 +176,4 @@ pip install "lv24-seo[secrets]"
 
 Генераторы расписаний применяют ту же зону там, где бэкенд это поддерживает. Cron зависит от `CRON_TZ`, systemd записывает зону в `OnCalendar`, а XML Task Scheduler несёт фиксированное смещение с предупреждением о DST. См. [Автоматизация и доставка](/ru/automation/).
 
-Source: `_source/engine-data-sources.md`, `_source/engine-cli.md`, `_source/engine-config.md`, `_source/engine-releases-0.12.2.md`, `_source/engine-releases-0.12.0.md`, `_source/engine-releases-0.11.0.md`, `_source/engine-releases-0.10.0.md`, `_source/engine-releases-0.5.3.md`.
+Source: `_source/engine-data-sources.md`, `_source/engine-cli.md`, `_source/engine-config.md`, `_source/engine-auth.md`, `_source/engine-auth-google.md`, `_source/engine-auth-yandex.md`, `_source/engine-releases-0.14.0.md`, `_source/engine-releases-0.13.1.md`, `_source/engine-releases-0.13.0.md`, `_source/engine-releases-0.12.2.md`, `_source/engine-releases-0.12.0.md`, `_source/engine-releases-0.11.0.md`, `_source/engine-releases-0.10.0.md`, `_source/engine-releases-0.5.3.md`.

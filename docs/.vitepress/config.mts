@@ -48,7 +48,7 @@ interface SidebarLabels {
 
 const ROUTE_GROUPS: string[][] = [
   ['/start/', '/install/', '/desktop/'],
-  ['/providers/', '/reports/', '/crawl/', '/automation/', '/mcp/'],
+  ['/providers/', '/indexing/', '/reports/', '/crawl/', '/automation/', '/mcp/'],
   ['/security/', '/architecture/', '/troubleshooting/', '/release/'],
   ['/reference/cli/', '/reference/config/', '/faq/'],
 ];
@@ -74,6 +74,7 @@ const enSidebar: SidebarLabels = {
     '/install/': 'Install',
     '/desktop/': 'Desktop app',
     '/providers/': 'Data sources',
+    '/indexing/': 'Indexing automation',
     '/reports/': 'Reports and diffs',
     '/crawl/': 'Crawl and audit',
     '/automation/': 'Automation and delivery',
@@ -95,6 +96,7 @@ const ruSidebar: SidebarLabels = {
     '/install/': 'Установка',
     '/desktop/': 'Приложение',
     '/providers/': 'Источники данных',
+    '/indexing/': 'Автоматизация индексации',
     '/reports/': 'Отчёты и диффы',
     '/crawl/': 'Обход и аудит',
     '/automation/': 'Автоматизация и доставка',
@@ -116,6 +118,7 @@ const zhSidebar: SidebarLabels = {
     '/install/': '安装',
     '/desktop/': '桌面应用',
     '/providers/': '数据源',
+    '/indexing/': '索引自动化',
     '/reports/': '报告与差异',
     '/crawl/': '抓取与审计',
     '/automation/': '自动化与投递',

@@ -24,6 +24,10 @@ description: seo.toml 的位置与优先级、所有键及默认值，以及密�
 |---|---|
 | `LV24_SEO_DATA_DIR` | `storage.data_dir` |
 | `LV24_SEO_GSC_PROPERTY` | `providers.gsc.property` |
+| `LV24_SEO_GSC_CLIENT_ID` | `auth.gsc.client_id` |
+| `LV24_SEO_GSC_REDIRECT_URI` | `auth.gsc.redirect_uri` |
+| `LV24_SEO_YANDEX_CLIENT_ID` | `auth.yandex.client_id` |
+| `LV24_SEO_YANDEX_REDIRECT_URI` | `auth.yandex.redirect_uri` |
 | `LV24_SEO_YANDEX_HOST_ID` | `providers.yandex_webmaster.host_id` |
 | `LV24_SEO_YANDEX_METRIKA_COUNTER` | `providers.yandex_metrika.counter` |
 | `LV24_SEO_REPORT_LOCALE` | `report.locale` |
@@ -60,6 +64,27 @@ description: seo.toml 的位置与优先级、所有键及默认值，以及密�
 |---|---|---|---|
 | `property` | string | `""` | `sc-domain:example.com` 或 `https://example.com/`。 |
 | `auth` | string | `"keychain"` | 保留标签。会被接受但被忽略：凭据依次从环境、系统钥匙串、显式启用的文件后备中解析。 |
+
+### `[auth.gsc]`
+
+Google Search Console OAuth 连接器的公开客户端配置。client secret 绝不保存在这里。
+
+| 键 | 类型 | 默认值 | 说明 |
+|---|---|---|---|
+| `client_id` | string | `""` | Google Cloud **Desktop app** 客户端 id。`LV24_SEO_GSC_CLIENT_ID` 可覆盖。 |
+| `scopes` | 字符串列表 | `["https://www.googleapis.com/auth/webmasters.readonly"]` | 默认只读；不请求 Search Console 写入作用域。 |
+| `redirect_uri` | string | `""` | 可选的固定回环 URI，例如 `http://127.0.0.1:8123/callback`；手动 `--code` 交换需要精确重复 redirect 时使用。 |
+
+### `[auth.yandex]`
+
+Yandex Webmaster 和 Metrika OAuth 连接器的公开客户端配置。一个应用可同时携带两个作用域；两个
+引擎使用独立令牌槽。
+
+| 键 | 类型 | 默认值 | 说明 |
+|---|---|---|---|
+| `client_id` | string | `""` | Yandex OAuth 应用 ClientID。`LV24_SEO_YANDEX_CLIENT_ID` 可覆盖。 |
+| `scopes` | 字符串列表 | `["webmaster:hostinfo", "metrika:read"]` | 只请求应用被允许的作用域。 |
+| `redirect_uri` | string | `"https://oauth.yandex.ru/verification_code"` | API-access 应用在此显示短验证码；不需要回环服务器。 |
 
 ### `[providers.yandex_webmaster]`
 
@@ -204,8 +229,13 @@ URL 和每个 Yandex 请求一个 URL。计划的 `lv24-seo indexing run --allow
 | 提供方 | `auth set --provider` | 环境变量 |
 |---|---|---|
 | Google Search Console | `gsc` | `LV24_SEO_GSC_TOKEN` |
+| Google OAuth client secret | `gsc_oauth_secret` | — |
 | Yandex Webmaster | `yandex` | `LV24_SEO_YANDEX_WEBMASTER_TOKEN` |
 | Yandex Metrika | `metrika` | `LV24_SEO_YANDEX_METRIKA_TOKEN` |
+| Yandex OAuth client secret | `yandex_oauth_secret` | — |
+| GSC 记录的作用域 | `gsc_token_scopes` | — |
+| Yandex Webmaster 记录的作用域 | `yandex_token_scopes` | — |
+| Yandex Metrika 记录的作用域 | `yandex_metrika_token_scopes` | — |
 | Bing Webmaster | `bing` | `LV24_SEO_BING_API_KEY` |
 | Chrome UX Report | `crux` | `LV24_SEO_CRUX_API_KEY` |
 | PageSpeed Insights | `psi` | `LV24_SEO_PSI_API_KEY` |
@@ -213,8 +243,7 @@ URL 和每个 Yandex 请求一个 URL。计划的 `lv24-seo indexing run --allow
 | Telegram | `telegram` | `LV24_SEO_TELEGRAM_BOT_TOKEN` |
 
 受控写入还需要 `LV24_SEO_WRITE_SECRET`，即与执行应用命令相同的 shell 中的长随机值。
-`auth status` 报告存在性和来源，从不报告值，也不校验权限或发起网络调用。`auth login` 只打印
-手动说明。
+`auth status` 报告存在性和来源，从不报告值，也不校验权限或发起网络调用。`auth login` 在配置了 client id 时运行 Google 或 Yandex OAuth 连接器；否则只打印手动说明。`auth status --json` 和 `doctor --json` 还会用八个稳定代码分类 OAuth 就绪状态；记录的作用域保存在 `gsc_token_scopes`、`yandex_token_scopes` 和 `yandex_metrika_token_scopes`（位于 `OAUTH_SECRET_NAMES`）。OAuth 访问令牌、刷新令牌和到期时间按数据源名称存储（`gsc_access_token`、`gsc_refresh_token`、`gsc_token_expires_at`、`yandex_*`、`yandex_metrika_*`）；`auth logout` 删除它们并保留 client secret。
 
 ## 时区与语言
 
@@ -338,4 +367,4 @@ indexnow_daily_limit = 1000
 - [自动化与投递](/zh/automation/)
 - [故障排查](/zh/troubleshooting/)
 
-Source: `_source/engine-config.md`, `_source/engine-data-sources.md`, `_source/engine-releases-0.12.0.md`, `_source/engine-releases-0.5.2.md`; 引擎仓库中 0.12.2 的配置模型。
+Source: `_source/engine-config.md`, `_source/engine-data-sources.md`, `_source/engine-auth.md`, `_source/engine-auth-google.md`, `_source/engine-auth-yandex.md`, `_source/engine-releases-0.14.0.md`, `_source/engine-releases-0.13.0.md`, `_source/engine-releases-0.12.0.md`, `_source/engine-releases-0.5.2.md`; 引擎仓库中 0.14.0 的配置模型。

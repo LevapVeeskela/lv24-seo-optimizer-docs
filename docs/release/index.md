@@ -1,6 +1,6 @@
 ---
 title: Releases and updates
-description: Engine 0.12.2 and desktop 0.9.0 releases, the 0.12.0 indexing automation, 0.11.0, 0.10.0 and older history, signed auto-update matrix, release pipeline, version pinning and rollback.
+description: Engine 0.14.0 and desktop 0.9.2 releases, OAuth readiness diagnostics and the indexing card, the 0.13.0 OAuth connectors, 0.12.0 indexing automation, older history, signed auto-update matrix, release pipeline, version pinning and rollback.
 ---
 
 # Releases and updates
@@ -9,10 +9,181 @@ The current releases are:
 
 | Product | Version | Released | Notes |
 |---|---|---|---|
-| Engine | `lv24-seo 0.12.2` | 2026-11-17 | Quota-aware indexing automation across Bing, Yandex, IndexNow and GSC, the 0.12.1 client-lifecycle fix and the 0.12.2 Yandex 5xx mapping; 25 CLI commands, 12 MCP tools and schema v5 |
-| Desktop | `0.9.0` | 2026-11-17 | Read-only Diagnostics screen with five tabs and 18 allow-listed commands, bundled engine 0.11.0 and `MIN_ENGINE_VERSION` 0.11.0 |
+| Engine | `lv24-seo 0.14.0` | 2026-11-18 | OAuth readiness diagnostics in `auth status` and `doctor`, eight stable codes and recorded scopes; keeps the 0.13.0 connectors, 25 CLI commands, 12 MCP tools and schema v5 |
+| Desktop | `0.9.2` | 2026-11-18 | Read-only Indexing automation card, bundled engine 0.14.0 and `MIN_ENGINE_VERSION` 0.14.0 |
 
-The desktop version and the engine version are independent, but the desktop pins an exact engine and refuses one below its minimum. `0.9.0` bundles `0.11.0` and requires at least `0.11.0`, so an installed `0.10.x` engine is reported as incompatible. Engine `0.12.2` passes that gate; indexing automation stays CLI/scheduler-only until desktop `0.9.1` adds the status card.
+The desktop version and the engine version are independent, but the desktop pins an exact engine and refuses one below its minimum. `0.9.2` bundles `0.14.0` and requires at least `0.14.0`, so an installed `0.13.x` engine is reported as incompatible. `0.9.1` is the previous release. OAuth tokens are stored by the engine in the OS keychain; the desktop never receives or renders one. The Indexing automation card is read-only: it renders `indexing status`, `indexing history` and `schedule status` and has no write, confirm or `--allow-write` control.
+
+## Engine 0.14.0
+
+Released on 2026-11-18. It makes OAuth failures self-diagnosable: `auth status` and `doctor` can
+say exactly which prerequisite is missing instead of returning a generic error. The CLI stays at
+25 top-level commands (18 groups + 7 commands), MCP at 12 tools and SQLite at schema v5.
+
+### OAuth readiness diagnostics
+
+What changed:
+
+- **`auth status --json`.** Adds an `oauth` object for `gsc`, `yandex` and `metrika`. Each entry carries `state`, `detail`, `client_id_present`, `client_secret_present`, `access_token_present`, `refresh_token_present`, `expires_at`, `scopes_recorded`, `next_action` and `limitations`. The existing `providers`/`present`/`missing` fields are unchanged.
+- **`doctor --json`.** Adds `gsc_oauth`, `yandex_oauth` and `metrika_oauth` checks with `id`, `ok`, `detail`, `code` and `next_action`. A missing app is a warning with the registration link, never a crash. The checks are non-fatal: `healthy` and the exit code still depend only on the existing fatal checks. A provider that is not configured is labelled optional.
+- **Stable states.** The checks are offline: they read the config and the secret store, never the provider.
+- **Precedence.** Redirect, then client id, then client secret, then token, then scope. The first actionable fix is the one shown.
+- **Recorded scopes.** `gsc_token_scopes`, `yandex_token_scopes` and `yandex_metrika_token_scopes` store the granted scopes space-separated and live in `OAUTH_SECRET_NAMES`; the public `SECRET_NAMES` tuple stays stable. Login and refresh record the provider's list (or the requested list when the response omits it); `auth logout` deletes it.
+- **Not changed.** No new required dependency, no provider call in the readiness checks, no change to the existing token/secret names or the login/logout behavior.
+
+The eight stable codes:
+
+| Code | Meaning | Fix |
+|---|---|---|
+| `oauth_client_missing` | `[auth.<provider>].client_id` is empty or a documented placeholder | Register an app and set the client id (Google Desktop app, or Yandex OAuth app) |
+| `oauth_client_secret_missing` | Client id is set but the client secret is absent | `auth set --provider gsc_oauth_secret\|yandex_oauth_secret --stdin` |
+| `oauth_token_missing` | Client id and secret are present, but no access or refresh token exists | `auth login --provider gsc\|yandex\|metrika` |
+| `oauth_token_expired` | The stored expiry is in the past; says whether a refresh is available | Run any read command, or log in again when no refresh token exists |
+| `oauth_scope_missing` | Recorded token scopes do not include the configured scopes | Log in again and grant the scope, or remove it from `[auth.*].scopes` |
+| `oauth_scope_unknown` | No scope was recorded (a grant stored before scope recording); a warning, never a false pass | Run a login or refresh once to record the scopes |
+| `oauth_redirect_invalid` | Google redirect is not loopback, or Yandex is not `verification_code` | Clear `[auth.*].redirect_uri` or set a valid value |
+| `oauth_ready` | Client id, secret, token, scopes and redirect all check out | Nothing to do |
+
+Verification recorded for this release:
+
+| Check | Result |
+|---|---|
+| PyPI / npm / MCP Registry | `lv24-seo 0.14.0` published |
+| GitHub Release | `v0.14.0`; release workflow run `44203408208` |
+| Local gate | `ruff check`, `ruff format --check`, `mypy src`, MCP registry `--check` and full offline `pytest -q` green on the release commit |
+| Tests | `tests/unit/test_oauth_status.py` covers all states for the three providers, scope round-trip/delete, the redirect matrix, `auth status` backward compatibility, `doctor` codes and the no-token-in-output/repr/log rule |
+| Provider calls | none: the readiness checks are offline |
+
+Known limits in 0.14.0:
+
+- Redirect configuration is checked before the token state, so a wrong redirect must be fixed before the login advice is shown.
+- `oauth_scope_unknown` is a warning: a token created before scope recording cannot prove its permissions.
+- A provider that is not configured still appears as an `ok:false` OAuth check in `doctor`, with an "optional" note; it does not change `healthy` or the exit code.
+- Live OAuth consent remains untested until a real Google Desktop client and Yandex OAuth app are registered.
+
+## Engine 0.13.1
+
+Released on 2026-11-18. Two releases on the same day add OAuth connectors for Google Search Console,
+Yandex Webmaster and Yandex Metrika, then add the URL-only Yandex mode the desktop Connect card
+needs. The CLI stays at 25 top-level commands (18 groups + 7 commands), MCP at 12 tools and SQLite
+at schema v5.
+
+### 0.13.0 - OAuth connectors for Google and Yandex
+
+What changed:
+
+- **Google Search Console.** `auth login --provider gsc [--no-browser] [--port N] [--code CODE] [--json]` uses a Google Cloud **Desktop app** client, a loopback callback on `127.0.0.1:<port>/callback`, S256 PKCE and a random `state`; `access_type=offline` plus `prompt=consent` obtain a refresh token. Access token, refresh token and expiry live in the OS keychain; the client secret is set once with `auth set --provider gsc_oauth_secret --stdin`. `OAuthTokenProvider` refreshes within 60 seconds of expiry under a lock and reads the store on every call, so a running MCP process sees a CLI login. `--no-browser` prints the URL to stderr so stdout stays one JSON document, and `--code` reuses the stored PKCE verifier with `--port` or `[auth.gsc].redirect_uri` to repeat the redirect exactly. Credential precedence is OAuth grant, then service-account file, then the static `gsc_token`; `doctor` recognises an OAuth grant.
+- **Yandex Webmaster and Metrika.** `auth login --provider yandex|metrika [--no-browser] [--code CODE] [--json]` uses one Yandex OAuth app that can carry `webmaster:hostinfo` and `metrika:read`, with separate token slots so either engine can be revoked independently. API-access apps use the `https://oauth.yandex.ru/verification_code` redirect: the user approves access, Yandex shows a short code, and the CLI exchanges it, which works on a desktop, over SSH and on a VPS without a loopback server. The exchange is form-encoded, refresh uses `grant_type=refresh_token`, and a failed refresh maps to `AUTH_INVALID` with the exact `auth login` next action. `auth logout --provider yandex|metrika` removes the matching OAuth tokens.
+- **Configuration and secrets.** `[auth.gsc]` and `[auth.yandex]` carry `client_id`, `scopes` and `redirect_uri`; `LV24_SEO_GSC_CLIENT_ID`, `LV24_SEO_GSC_REDIRECT_URI`, `LV24_SEO_YANDEX_CLIENT_ID` and `LV24_SEO_YANDEX_REDIRECT_URI` override them. Client secrets are never part of the config: `OAUTH_SECRET_NAMES` keeps the public `SECRET_NAMES` tuple stable while `auth set --provider gsc_oauth_secret|yandex_oauth_secret --stdin` stores the companion secret. `auth login` text output says `OAuth login for ...` and shows scopes/expiry; JSON carries no tokens.
+- **Not changed.** No new required dependency (the existing `httpx` client and the OS keychain are used), no CLI count, MCP, schema or config-version change. Bing Webmaster, IndexNow, CrUX and PSI stay key-based because those providers have no OAuth flow; existing service-account, static-token and API-key paths keep working.
+
+Verification recorded for this release:
+
+| Check | Result |
+|---|---|
+| PyPI / npm / MCP Registry | `lv24-seo 0.13.0` published |
+| Release workflow | run `44194701424` green |
+| Local gate | `ruff check`, `ruff format --check`, `mypy src`, MCP registry `--check` and full offline `pytest -q` green on the release commit |
+| OAuth suites | 34 Google OAuth tests and 32 Yandex OAuth tests: PKCE/state/URL, a real `127.0.0.1` loopback callback, code exchange and refresh against `httpx.MockTransport`, expiry margins, store/delete, service precedence, CLI `--code`/`--no-browser`, missing secrets, error mapping and token-free envelopes/reprs |
+| Live consent | not exercised: no Google Cloud Desktop client or Yandex OAuth app was registered at release time |
+
+Known limits in 0.13.0:
+
+- Google OAuth apps in **Testing** issue refresh tokens that expire after 7 days; unattended GSC automation should keep the service account. A public app needs Google verification for the sensitive `webmasters.readonly` scope.
+- The Yandex `verification_code` flow cannot verify `state` across separate `--no-browser` and `--code` commands; the code is short-lived (10 minutes) and the client secret is still required. A single interactive command is the recommended path.
+- A long-running MCP process caches its provider client; a token that expires mid-process is refreshed on the next client build.
+- Bing, IndexNow, CrUX and PSI have no OAuth connector by design.
+- Live consent was not exercised at release time; registration steps are in the Google and Yandex auth guides.
+
+### 0.13.1 - Yandex connector URL-only mode
+
+What changed:
+
+- `auth login --provider yandex|metrika --url-only --json` returns `{provider, flow, authorization_url, scopes, target}` and does not open a browser, print to stderr, exchange a code or write a token. The desktop shows the URL, the user approves access, and a second call with `--code <code>` completes the grant.
+- `--url-only` is Yandex-only; `--provider gsc` keeps the loopback flow. The interactive flow and `--code` are unchanged.
+- A placeholder client id (for example `your-client-id`) is rejected with the setup action instead of starting a doomed authorization.
+
+Verification recorded for this release:
+
+| Check | Result |
+|---|---|
+| PyPI / npm / MCP Registry | `lv24-seo 0.13.1` published |
+| Release workflow | run `44195481192` green |
+| Unit test | `login_yandex(..., url_only=True)` returns the authorization URL and stores no token |
+| Local gate | `ruff check`, `ruff format --check`, `mypy src`, MCP registry `--check` and full `pytest -q` green |
+| Live consent | still pending a registered Yandex OAuth app/client ID |
+
+Known limits in 0.13.1:
+
+- `--url-only` does not verify `state` across the separate URL and code steps; the verification code is short-lived and the client secret is still required.
+- Live consent remains unverified until a real Google Cloud Desktop client and Yandex OAuth app are configured.
+- No API, CLI count, MCP, schema or config change from 0.13.0.
+
+## Desktop 0.9.2
+
+Released on 2026-11-18. It adds the read-only **Indexing automation** card to Integrations, bundles
+`lv24-seo 0.14.0` and raises `MIN_ENGINE_VERSION` to `0.14.0`, so an installed `0.13.x` engine is
+reported as incompatible. It adds no write surface.
+
+What changed:
+
+- **Indexing automation card.** The Integrations screen renders `indexing status`, `indexing history` and `schedule status`; it has no write, confirm or `--allow-write` control.
+- **Schedule.** Shows `Scheduled`/the host state and the documented **Daily 04:00** cadence for the `lv24-seo-indexing` job.
+- **Per provider.** Bing, Yandex, GSC and IndexNow rows with `submitted`, `indexed` (GSC only), `pending`, and quota: Bing daily/monthly remaining, Yandex remaining, GSC/IndexNow used/limit. A provider with no state shows "No data yet", never a zero.
+- **Last run and history.** The newest `indexing history` row with status, submitted/checked counts and up to five `error_items` (URL, code, message); a compact 7/30-day day/provider table from `indexing history --limit 30`.
+- **Honesty.** Every render includes `data_age_days` and `limitations`; the GSC `indexed_total` aggregate is labelled deprecated and kept separate from the per-URL verdict. Bing/Yandex/IndexNow show no per-URL indexed count instead of inventing one.
+- **Compatibility and bridge.** If the engine answers `INVALID_COMMAND`, the card shows "Indexing status needs engine >= 0.13.1" and hides the tables. `indexing_status` (`provider`, `limit`, `live`), `indexing_history` (`limit`) and `schedule_status` (`kind`, `target`) are allow-listed; the Rust layer validates every value, rejects write flags and cross-command arguments and uses a 120 s timeout. `--live` is the only provider call; a missing credential becomes a limitation, not a failure.
+- **Engine and contracts.** The bundled onedir sidecar is `lv24-seo 0.14.0`; contracts (`config.schema.json`, CLI fixtures including `stats`) are regenerated from `0.14.0`. The Windows x64 reviewed pin records the built `0.14.0` executable (`33d2611c…02d0`, 14,580,661 bytes); Linux and macOS pins remain `null` and are covered by rebuild-aware CI checksum reports.
+
+Verification recorded for this release:
+
+| Check | Result |
+|---|---|
+| GitHub Release | [`v0.9.2`](https://github.com/LevapVeeskela/lv24-seo-optimizer-desktop/releases/tag/v0.9.2); assets are produced by the manual **Desktop build** workflow with `engine_version=0.14.0` (verify the tag's `latest.json` and `SHA256SUMS.txt`) |
+| Local gate | `npm run typecheck`, `npm test`, `npm run build`, `npm run contract:check`, `cargo fmt --check`, `cargo clippy --all-targets -- -D warnings` and `cargo test` green on the release commit |
+| Tests | 784 Vitest tests and 169 Rust tests passed |
+| Contracts | up to date at engine `0.14.0` |
+| Sidecar pin | Windows x64 verified against the pinned SHA-256 (`33d2611c0766c2b1160c80c35cfd51b86f6fbb7e26a9bb508aec0a32053b02d0`, 14,580,661 bytes); Linux and macOS covered by rebuild-aware reports |
+
+Known limits in 0.9.2:
+
+- The card is read-only: it shows the schedule state but cannot install, edit or run the job.
+- `--live` reads Bing and Yandex quotas on refresh; a missing credential is shown as a limitation.
+- Bing, Yandex and IndexNow do not expose a per-URL indexed count; the card shows no value with `no_per_url_index_count` instead of inventing one.
+- The GSC `contents[].indexed` aggregate is deprecated and can be zero.
+- An engine older than `0.14.0` is reported as incompatible.
+
+## Desktop 0.9.1
+
+Released on 2026-11-18. It adds the OAuth Connect card to Integrations, bundles `lv24-seo 0.13.1` and raises `MIN_ENGINE_VERSION` to `0.13.1`, so an installed `0.12.x` engine is reported as incompatible. It adds no new write surface.
+
+What changed:
+
+- **Connect card.** Integrations gains a **Connectors** card for Google Search Console, Yandex Webmaster and Yandex Metrika. Tokens are stored by the engine in the OS keychain; the desktop never receives, renders or logs one.
+- **Google Search Console.** **Connect** runs `auth login --provider gsc`. The engine opens the system browser, starts a `127.0.0.1` loopback callback with S256 PKCE and waits for consent; the card shows a "complete the sign-in in your browser" hint and refreshes `auth status` on success. A missing client id or secret shows the engine's `next_action` and the auth guide instead of a generic failure.
+- **Yandex Webmaster and Metrika.** **Connect** calls `auth login --provider yandex|metrika --url-only` and shows the authorization URL with an **Open Yandex** button. After approving access, the user pastes the code from `https://oauth.yandex.ru/verification_code` and clicks **Finish**; the code is cleared from state after the exchange. The two engines use separate token slots.
+- **Status and bridge.** The card reads `auth status` (`gsc_oauth`, `yandex_oauth`, `metrika_oauth`) and shows `Connected`, `Not connected` or `Not checked`. The client secret is configured once with `auth set --provider gsc_oauth_secret|yandex_oauth_secret --stdin`; the UI has no secret field. `auth_login` is allow-listed with `provider`, `noBrowser`, `port`, `code` and `urlOnly`; the Rust layer rejects write flags, cross-provider combinations and invalid ports or codes before spawning the engine, and `open_oauth_url` accepts only `https://oauth.yandex.ru/authorize?...`.
+- **Engine and contracts.** The bundled onedir sidecar is `lv24-seo 0.13.1`; contracts (`config.schema.json`, CLI fixtures including `stats`) are regenerated from `0.13.1`. The Windows x64 reviewed pin records the built `0.13.1` executable; Linux and macOS pins remain `null` and are covered by rebuild-aware CI checksum reports.
+
+Verification recorded for this release:
+
+| Check | Result |
+|---|---|
+| Published assets | 18 assets on `v0.9.1`; `latest.json` reports `0.9.1` and `SHA256SUMS.txt` has 17 lines |
+| Release workflow | run `44199591548` green |
+| Local gate | `npm run typecheck`, `npm test`, `npm run build`, `npm run contract:check`, `cargo fmt --check`, `cargo clippy --all-targets -- -D warnings` and `cargo test` green on the release commit |
+| Tests | 763 Vitest tests and 167 Rust tests passed |
+| Contracts | up to date at engine `0.13.1` |
+| Sidecar pin | Windows x64 verified against the pinned SHA-256 (`0b02b8a0…`, 14,567,729 bytes); Linux and macOS covered by rebuild-aware reports |
+
+Known limits in 0.9.1:
+
+- **Live OAuth consent is not yet verified**: no Google Cloud Desktop client or Yandex OAuth app was registered at release time. The card shows the engine's setup error until a real client id/secret is configured.
+- Google OAuth apps in **Testing** issue refresh tokens that expire after 7 days; the service account remains the unattended GSC path. A public app needs Google verification for `webmasters.readonly`.
+- The Yandex `verification_code` flow cannot verify `state` across the separate URL-only and code steps; the code is short-lived and the client secret is still required.
+- Bing Webmaster, IndexNow, CrUX and PSI remain key-based; the card does not offer OAuth for them.
+- `MIN_ENGINE_VERSION` is `0.13.1`, so a `0.12.x` engine is rejected. The Connect card has no write controls: no `--allow-write`, confirm token or provider write path.
+- No indexing status card: `indexing status|run|history` remain CLI and scheduler only.
 
 ## Engine 0.12.2
 
@@ -897,8 +1068,9 @@ The Windows NSIS path has now been verified end-to-end nine times: `0.2.0 → 0.
 and `0.7.0 → 0.8.0`. For the ninth run, an installed `0.7.0` build updated through the Rust updater,
 downloaded and verified the signed package, installed it, relaunched, and reported **Desktop 0.8.0**
 with **Engine 0.10.0** and the engine ready; the Bing URL submission, sitemap, crawl-issue and quota
-cards loaded. `0.8.0 → 0.9.0` is the next in-app update source. Any `0.2.x` install with the in-app
-updater can jump straight to `0.9.0`; `0.1.0` has no updater and needs one manual install.
+cards loaded. `0.9.1 → 0.9.2` is the next in-app update source; no in-app update run is recorded for
+`0.9.2` in the release notes. Any `0.2.x` install with the in-app updater can jump straight to
+`0.9.2`; `0.1.0` has no updater and needs one manual install.
 
 The `0.2.1 → 0.2.2` update runs the old `0.2.1` updater, which does not include the new tracked-PID
 cleanup. If a sidecar is active during that first update, retry after it exits or install `0.2.2`
@@ -912,12 +1084,12 @@ approves the `desktop-release` environment; a non-owner run is skipped.
 
 | Input | Default | Meaning |
 |---|---|---|
-| `engine_version` | `0.11.0` | Exact engine bundled in the sidecar |
+| `engine_version` | `0.14.0` | Exact engine bundled in the sidecar |
 | `signed` | `false` | Request OS signing/notarization; not configured in this zero-spend repository |
 | `publish` | `false` | Create a GitHub release after every matrix build passes |
 | `tag` | Empty | `vX.Y.Z` release tag; required when `publish=true` |
 
-The default matches the `0.9.0` pin. The release gate rejects a manifest mismatch if a different version is passed.
+The default matches the `0.9.2` pin. The release gate rejects a manifest mismatch if a different version is passed.
 
 | Runner | Target | Bundles |
 |---|---|---|
@@ -932,7 +1104,7 @@ days; the GitHub release is the durable distribution channel.
 ## Sidecar pin and checksums
 
 The release sidecar is a PyInstaller **onedir** tree, built on the matching host; PyInstaller does not cross-compile. The engine, Python, Pydantic, Typer and
-PyInstaller versions are pinned in `scripts/cli-checksums.json`. `0.9.0` pins engine `0.11.0` (up from `0.10.0`), Python `3.12`, Pydantic `2.14.3`, Typer `0.29.0` and PyInstaller
+PyInstaller versions are pinned in `scripts/cli-checksums.json`. `0.9.2` pins engine `0.14.0` (up from `0.13.1`), Python `3.12`, Pydantic `2.14.3`, Typer `0.29.0` and PyInstaller
 `6.22.3`.
 
 PyInstaller onedir output is not byte-reproducible. The checksum policy is therefore split:
@@ -946,9 +1118,9 @@ PyInstaller onedir output is not byte-reproducible. The checksum policy is there
   shipped target: matching target name, `hashPolicy: "rebuild"`, `ok: true`, a 64-hex
   hash, a positive size and the exact engine version.
 
-For `0.9.0`, Windows x64 has a reviewed local pin (`db02d1b3…`, 14,478,498 bytes); Linux and macOS were rebuilt by the release workflow
+For `0.9.2`, Windows x64 has a reviewed local pin (`33d2611c…02d0`, 14,580,661 bytes); Linux and macOS were rebuilt by the release workflow
 with passing rebuild-aware checksum reports, and their reviewed pins remain `null` until a local build is
-reviewed on those hosts. The `0.8.0` Windows pin did not carry over because the executable changes with
+reviewed on those hosts. The `0.9.1` Windows pin did not carry over because the executable changes with
 the engine.
 The checksum reports are CI evidence, not release assets. `SHA256SUMS.txt` covers the installers,
 updater packages, signatures and `latest.json`; the sidecar executable is inside those packages and
@@ -959,7 +1131,7 @@ is not listed separately. Users who install manually verify the downloaded asset
 node scripts/verify-sidecar.mjs \
   --root src-tauri/engine \
   --target x86_64-pc-windows-msvc \
-  --engine-version 0.11.0
+  --engine-version 0.14.0
 ```
 
 ## `latest.json`, signing and publishing
@@ -991,18 +1163,25 @@ uploaded manifest. A rerun reuses an existing draft, clears its assets and refus
 The desktop version must agree in `package.json`, `src-tauri/tauri.conf.json`, `src-tauri/Cargo.toml`, the Git tag and the release title. The engine pin lives
 in `scripts/cli-checksums.json`; the workflow passes `engine_version` explicitly and the release gate requires it to match the manifest.
 
-`MIN_ENGINE_VERSION` in `src-tauri/src/commands.rs` is `0.11.0` in the current source. The `0.9.0` bundle ships engine `0.11.0`,
-so the minimum matches the bundled engine and a `0.10.x` engine is reported as incompatible. The shell accepts an engine at least that new and marks an older one
+`MIN_ENGINE_VERSION` in `src-tauri/src/commands.rs` is `0.14.0` in the current source. The `0.9.2` bundle ships engine `0.14.0`,
+so the minimum matches the bundled engine and a `0.13.x` engine is reported as incompatible. The shell accepts an engine at least that new and marks an older one
 offline with a notice. A newer engine passes the gate but is not the release-tested pin. A development build may use `LV24_SEO_BIN` with another version; the UI
 labels it external and still checks the minimum. A `PATH` engine is used only when `LV24_SEO_ALLOW_PATH_ENGINE=1`.
 
 ## One-time 0.1.0 upgrade
 
-`0.1.0` has no updater, endpoint or public key. It cannot discover or install `0.9.0`. Download and install `0.9.0` manually once (NSIS installer or portable
-ZIP on Windows). After that, the `0.9.0` installation can auto-update to later releases when it uses an auto-update-capable bundle.
+`0.1.0` has no updater, endpoint or public key. It cannot discover or install `0.9.2`. Download and install `0.9.2` manually once (NSIS installer or portable
+ZIP on Windows). After that, the `0.9.2` installation can auto-update to later releases when it uses an auto-update-capable bundle.
 
 ## Earlier releases
 
+- **Engine 0.14.0** added OAuth readiness diagnostics: the `auth status` `oauth` object, `doctor` OAuth checks and eight stable codes, with recorded scopes and no provider call.
+- **Desktop 0.9.2** added the read-only Indexing automation card, bundled engine `0.14.0` and raised `MIN_ENGINE_VERSION` to `0.14.0`.
+- **Engine 0.13.0** added OAuth connectors for Google Search Console and Yandex Webmaster/Metrika,
+  keychain tokens, `[auth.gsc]`/`[auth.yandex]` and the `auth set --provider *_oauth_secret` path,
+  without changing the CLI count, MCP tools or schema.
+- **Desktop 0.9.1** added the OAuth Connect card, bundled engine `0.13.1` and raised
+  `MIN_ENGINE_VERSION` to `0.13.1`; it added no write surface.
 - **Engine 0.11.0** added full-platform read depth: GSC URL Inspection, sitemaps and filtered search
   analytics; Yandex events/sitemaps/history/queue and gated recrawl; Bing page/traffic/crawl/URL/joins;
   organic Metrika; CrUX history and PSI audits; 24 CLI commands and 12 tools.
@@ -1072,4 +1251,4 @@ those protections system-wide.
 
 See [Security and privacy](/security/) for updater trust and [Architecture](/architecture/) for the sidecar layout.
 
-Source: `_source/engine-releases-0.12.2.md`, `_source/engine-releases-0.12.1.md`, `_source/engine-releases-0.12.0.md`, `_source/engine-releases-0.11.0.md`, `_source/engine-releases-0.10.0.md`, `_source/engine-releases-0.9.0.md`, `_source/engine-releases-0.8.0.md`, `_source/engine-releases-0.7.0.md`, `_source/engine-releases-0.6.0.md`, `_source/engine-releases-0.5.3.md`, `_source/engine-releases-0.5.2.md`, `_source/desktop-releases-0.9.0.md`, `_source/desktop-releases-0.8.0.md`, `_source/desktop-releases-0.7.0.md`, `_source/desktop-releases-0.6.0.md`, `_source/desktop-releases-0.5.0.md`, `_source/desktop-releases-0.4.0.md`, `_source/desktop-releases-0.3.0.md`, `_source/desktop-releases-0.2.3.md`, `_source/desktop-releases-0.2.2.md`, `_source/desktop-releases-0.2.1.md`, `_source/desktop-releases-0.2.0.md`, `_source/desktop-release.md`, `_source/desktop-security.md`.
+Source: `_source/engine-releases-0.14.0.md`, `_source/engine-CHANGELOG.md`, `_source/engine-releases-0.13.1.md`, `_source/engine-releases-0.13.0.md`, `_source/engine-releases-0.12.2.md`, `_source/engine-releases-0.12.1.md`, `_source/engine-releases-0.12.0.md`, `_source/engine-releases-0.11.0.md`, `_source/engine-releases-0.10.0.md`, `_source/engine-releases-0.9.0.md`, `_source/engine-releases-0.8.0.md`, `_source/engine-releases-0.7.0.md`, `_source/engine-releases-0.6.0.md`, `_source/engine-releases-0.5.3.md`, `_source/engine-releases-0.5.2.md`, `_source/desktop-releases-0.9.2.md`, `_source/desktop-releases-0.9.2-update.md`, `_source/desktop-releases-0.9.1.md`, `_source/desktop-releases-0.9.0.md`, `_source/desktop-releases-0.8.0.md`, `_source/desktop-releases-0.7.0.md`, `_source/desktop-releases-0.6.0.md`, `_source/desktop-releases-0.5.0.md`, `_source/desktop-releases-0.4.0.md`, `_source/desktop-releases-0.3.0.md`, `_source/desktop-releases-0.2.3.md`, `_source/desktop-releases-0.2.2.md`, `_source/desktop-releases-0.2.1.md`, `_source/desktop-releases-0.2.0.md`, `_source/desktop-release.md`, `_source/desktop-security.md`.

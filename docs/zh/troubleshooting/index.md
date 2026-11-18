@@ -9,7 +9,7 @@ description: 使用稳定错误码诊断认证、存储、抓取、报告、MCP�
 `PROPERTY_NOT_FOUND` 没有专用退出码。每个 CLI 命令都接受 `--json`：
 
 ```json
-{"ok": false, "error": {"code": "AUTH_REQUIRED", "message": "Google Search Console token is missing", "retryable": false, "next_action": "lv24-seo auth login --provider gsc"}, "meta": {"version": "0.12.2"}, "warnings": ["gsc: token missing"]}
+{"ok": false, "error": {"code": "AUTH_REQUIRED", "message": "Google Search Console token is missing", "retryable": false, "next_action": "lv24-seo auth login --provider gsc"}, "meta": {"version": "0.14.0"}, "warnings": ["gsc: token missing"]}
 ```
 
 MCP 工具以 `structuredContent` 返回同一信封，并在失败时设置 `isError: true`。桌面把
@@ -46,19 +46,37 @@ lv24-seo auth set --provider gsc
 printf '%s' "$TOKEN" | lv24-seo auth set --provider gsc --stdin
 ```
 
-`auth set` 接受 `gsc`、`yandex`、`metrika`、`bing`、`crux`、`psi`、`smtp` 和
-`telegram`。Webmaster 令牌用 `auth set --provider yandex` 保存，Metrika 令牌用
+`auth set` 接受 `gsc`、`yandex`、`metrika`、`bing`、`crux`、`psi`、`smtp`、
+`telegram`、`gsc_oauth_secret` 和 `yandex_oauth_secret`。Webmaster 令牌用 `auth set --provider yandex` 保存，Metrika 令牌用
 `auth set --provider metrika` 或 `LV24_SEO_YANDEX_METRIKA_TOKEN`。
-`auth login --provider gsc|yandex` 不打开浏览器，也不写任何内容；它只打印手动步骤。
+`auth login --provider gsc|yandex|metrika` 在配置了 `[auth.<provider>].client_id` 时运行 OAuth 连接器；否则只打印手动步骤。`--no-browser` 打印 URL，`--code` 完成外部流程，`--url-only`（仅 Yandex）返回授权 URL 且不写令牌。
 
 401 表示令牌过期、被撤销、格式错误或来自错误账户——请替换。403 表示凭据有效但缺少
 权限：修复属性或主机访问，而不是重新认证。对 Yandex，请把
 `providers.yandex_webmaster.host_id` 与确切 id（`https:example.com:443`，不是 URL）
 比较；未验证主机会表现为 403。
 
-当前引擎没有 OAuth 刷新流程，也没有服务账号认证。`auth set --provider gsc` 保存一个
-字符串并作为 `Authorization: Bearer` 发送；这是 Google access token，通常只有约一小
-时寿命。每次运行前保存新的令牌。`auth status` 只报告 `present` 和来源（`env`、
+### OAuth 登录失败
+
+| 症状 | 原因 | 修复 |
+|---|---|---|
+| `AUTH_REQUIRED ... client secret is missing` | OAuth 应用密钥未保存 | 运行 `auth set --provider gsc_oauth_secret\|yandex_oauth_secret --stdin` |
+| `AUTH_REQUIRED ... client_id is not configured` | 没有公开 client id | 设置 `[auth.gsc].client_id` / `[auth.yandex].client_id` 或 `LV24_SEO_*_CLIENT_ID` |
+| Google 页面出现 `redirect_uri_mismatch` | 客户端不是 **Desktop app**，或 URL 与 `--code` 之间 redirect 变化 | 创建 Desktop-app 客户端，或固定 `[auth.gsc].redirect_uri` |
+| 约一周后出现 `invalid_grant` | Google 应用处于 **Testing**；refresh token 只有 7 天 | 发布应用、重新登录，或使用服务账号 |
+| `access_denied` | 账户不是测试用户，或同意被取消 | 把账户加入测试用户并重试 |
+| 回调超时 | 浏览器在另一台机器，或防火墙阻止 `127.0.0.1` | 使用 `--no-browser` 加 `--code`，或固定 `--port` |
+| Yandex `AUTH_INVALID` 且 `invalid_grant` | 验证码一次性/已过期，或 refresh token 被撤销 | 重新运行 `auth login --provider yandex` |
+| `INVALID_INPUT: no Yandex authorization code was provided` | 缺少 `--code`；代码不会从管道读取 | 用 `--code <code>` 重试 |
+| Yandex 作用域错误 | 应用缺少 `webmaster:hostinfo` 或 `metrika:read` | 添加作用域并重新授权 |
+
+Yandex `verification_code` 流程无法在分开的 URL-only 和 `--code` 调用之间验证 `state`；代码只有 10 分钟有效，且仍需要 client secret。
+
+### OAuth 就绪状态
+
+`auth status --json` 增加 `oauth` 对象，`doctor --json` 增加 `gsc_oauth`、`yandex_oauth` 和 `metrika_oauth` 检查。它们离线且非致命，返回 `oauth_client_missing`、`oauth_client_secret_missing`、`oauth_token_missing`、`oauth_token_expired`、`oauth_scope_missing`、`oauth_scope_unknown`、`oauth_redirect_invalid` 或 `oauth_ready` 之一，并在 `next_action` 给出第一个操作。优先级为 redirect、client id、client secret、token、scope；每个代码的精确修复见 [OAuth 连接器](/zh/reference/cli/#oauth-就绪诊断)。
+
+当前引擎支持 OAuth 授权、静态令牌和 GSC 服务账号。`auth set --provider gsc` 保存一个字符串并作为 `Authorization: Bearer` 发送；这是 Google access token，通常只有约一小时寿命。无人值守运行请设置 `providers.gsc.service_account_file` 或 `LV24_SEO_GSC_SERVICE_ACCOUNT_FILE`；引擎签署 RS256 JWT、交换并在到期前刷新。`auth status` 只报告 `present` 和来源（`env`、
 `keyring`、`file`），绝不显示值。环境变量令牌是只读的：只要它存在，`auth set` 和
 `auth logout` 就返回 `WRITE_DISABLED`。
 
@@ -131,7 +149,7 @@ sitemap 50,000 个 URL；索引遍历限制为 20 个文档、深度 2。
 
 内存有界：页面响应体上限 5 MB，保留的页面文本上限 20,000 字符，请求预算为
 `1 + max_urls * (max_redirects + 1)`。`word_count` 仍使用完整可见文本。如果抓取太大
-或太慢，降低 `--max-urls` 并分段抓取。`0.9.0` 没有恢复或任务队列；桌面抓取超时为
+或太慢，降低 `--max-urls` 并分段抓取。`0.9.2` 没有恢复或任务队列；桌面抓取超时为
 600 秒，窗口横幅中有 **Cancel** 按钮。
 
 ## `--days` 限制
@@ -176,7 +194,7 @@ lv24-seo install --client vscode --print
 | 症状 | 原因 | 修复 |
 |---|---|---|
 | 文件看起来有效，却提示 “not valid JSON” | UTF-8 BOM，常见于 PowerShell 5.1 | 重写为无 BOM，或删除文件后重试 |
-| `No such command 'mcp'` | 旧构建没有 `mcp serve` | 升级到 0.12.2 |
+| `No such command 'mcp'` | 旧构建没有 `mcp serve` | 升级到 0.14.0 |
 | GUI 客户端无法启动服务器 | 应用不继承 shell 的 `PATH` | 在 `command` 中写绝对 `uvx` 路径 |
 | VS Code 什么都不显示 | `install` 写入 `mcpServers`；VS Code 使用 `servers` | 重命名键或使用 VS Code 专用块 |
 
@@ -224,14 +242,14 @@ shell 报告自己的代码，绝不重用引擎代码。
 外壳按以下顺序解析引擎：`LV24_SEO_BIN`（仅绝对路径）、内置 `engine/lv24-seo/`、扁平
 `lv24-seo/`、同级 `lv24-seo/`，最后仅当 `LV24_SEO_ALLOW_PATH_ENGINE=1` 时使用
 `PATH`。它运行 `lv24-seo version --json`，并与 `MIN_ENGINE_VERSION` 比较；当前源码中
-该值为 `0.11.0`。
+该值为 `0.14.0`。
 
 旧引擎标记为 `compatible: false`；UI 将其视为离线，不运行命令。不会自动下载任何内容。
 
 | 症状 | 修复 |
 |---|---|
 | 找不到引擎 | 重新安装，或把 `LV24_SEO_BIN` 设为绝对可执行路径 |
-| 引擎太旧 | 安装 0.11.0 或更新版本 |
+| 引擎太旧 | 安装 0.14.0 或更新版本 |
 | 显示 external engine | 设置 `LV24_SEO_BIN` 时属正常 |
 
 除非设置 `LV24_SEO_ALLOW_PATH_ENGINE=1`，否则 `PATH` 中偶然出现的 `lv24-seo` 会被
@@ -325,4 +343,4 @@ actual (redacted --json envelope):
 
 写入门禁见[安全与隐私](/zh/security/)，更新器行为见[发布与更新](/zh/release/)。
 
-Source: `_source/engine-troubleshooting.md`, `_source/engine-releases-0.12.2.md`, `_source/engine-releases-0.12.0.md`, `_source/engine-releases-0.11.0.md`, `_source/engine-releases-0.5.3.md`, `_source/desktop-releases-0.9.0.md`, `_source/desktop-releases-0.2.2.md`, `_source/desktop-releases-0.2.3.md`, `_source/desktop-releases-0.2.1.md`, `_source/desktop-releases-0.2.0.md`, `_source/desktop-security.md`, `_source/desktop-architecture.md`.
+Source: `_source/engine-troubleshooting.md`, `_source/engine-auth.md`, `_source/engine-auth-google.md`, `_source/engine-auth-yandex.md`, `_source/engine-releases-0.14.0.md`, `_source/engine-releases-0.13.1.md`, `_source/engine-releases-0.13.0.md`, `_source/engine-releases-0.12.2.md`, `_source/engine-releases-0.12.0.md`, `_source/engine-releases-0.11.0.md`, `_source/engine-releases-0.5.3.md`, `_source/desktop-releases-0.9.2.md`, `_source/desktop-releases-0.9.1.md`, `_source/desktop-releases-0.9.0.md`, `_source/desktop-releases-0.2.2.md`, `_source/desktop-releases-0.2.3.md`, `_source/desktop-releases-0.2.1.md`, `_source/desktop-releases-0.2.0.md`, `_source/desktop-security.md`, `_source/desktop-architecture.md`.

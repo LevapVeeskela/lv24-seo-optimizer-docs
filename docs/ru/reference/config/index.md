@@ -27,6 +27,10 @@ Linux и соответствующее расположение platformdirs в
 |---|---|
 | `LV24_SEO_DATA_DIR` | `storage.data_dir` |
 | `LV24_SEO_GSC_PROPERTY` | `providers.gsc.property` |
+| `LV24_SEO_GSC_CLIENT_ID` | `auth.gsc.client_id` |
+| `LV24_SEO_GSC_REDIRECT_URI` | `auth.gsc.redirect_uri` |
+| `LV24_SEO_YANDEX_CLIENT_ID` | `auth.yandex.client_id` |
+| `LV24_SEO_YANDEX_REDIRECT_URI` | `auth.yandex.redirect_uri` |
 | `LV24_SEO_YANDEX_HOST_ID` | `providers.yandex_webmaster.host_id` |
 | `LV24_SEO_YANDEX_METRIKA_COUNTER` | `providers.yandex_metrika.counter` |
 | `LV24_SEO_REPORT_LOCALE` | `report.locale` |
@@ -66,6 +70,28 @@ JSON-строка на запись, когда stderr не терминал (pi
 |---|---|---|---|
 | `property` | string | `""` | `sc-domain:example.com` или `https://example.com/`. |
 | `auth` | string | `"keychain"` | Зарезервированная метка. Принимается, но игнорируется: учётные данные берутся из окружения, затем из связки ключей ОС, затем из явно включённого файлового резерва. |
+
+### `[auth.gsc]`
+
+Публичная конфигурация клиента для OAuth-коннектора Google Search Console. Client secret здесь
+никогда не хранится.
+
+| Ключ | Тип | Умолчание | Примечания |
+|---|---|---|---|
+| `client_id` | string | `""` | Client id приложения Google Cloud типа **Desktop app**. `LV24_SEO_GSC_CLIENT_ID` переопределяет его. |
+| `scopes` | список строк | `["https://www.googleapis.com/auth/webmasters.readonly"]` | По умолчанию только чтение; область записи Search Console не запрашивается. |
+| `redirect_uri` | string | `""` | Необязательный фиксированный loopback URI, например `http://127.0.0.1:8123/callback`; нужен, когда ручной обмен `--code` должен точно повторить redirect. |
+
+### `[auth.yandex]`
+
+Публичная конфигурация клиента для OAuth-коннекторов Yandex Webmaster и Metrika. Одно приложение
+может нести обе области; движки хранят отдельные слоты токенов.
+
+| Ключ | Тип | Умолчание | Примечания |
+|---|---|---|---|
+| `client_id` | string | `""` | ClientID приложения Яндекс OAuth. `LV24_SEO_YANDEX_CLIENT_ID` переопределяет его. |
+| `scopes` | список строк | `["webmaster:hostinfo", "metrika:read"]` | Запрашивайте только области, разрешённые приложению. |
+| `redirect_uri` | string | `"https://oauth.yandex.ru/verification_code"` | Приложения с API-доступом показывают здесь короткий код; loopback-сервер не нужен. |
 
 ### `[providers.yandex_webmaster]`
 
@@ -216,8 +242,13 @@ Bing, `quota_remainder` Яндекса, 500 URL на пакет Bing и один
 | Провайдер | `auth set --provider` | Переменная окружения |
 |---|---|---|
 | Google Search Console | `gsc` | `LV24_SEO_GSC_TOKEN` |
+| Google OAuth client secret | `gsc_oauth_secret` | — |
 | Yandex Webmaster | `yandex` | `LV24_SEO_YANDEX_WEBMASTER_TOKEN` |
 | Yandex Metrika | `metrika` | `LV24_SEO_YANDEX_METRIKA_TOKEN` |
+| Yandex OAuth client secret | `yandex_oauth_secret` | — |
+| Записанные scope GSC | `gsc_token_scopes` | — |
+| Записанные scope Yandex Webmaster | `yandex_token_scopes` | — |
+| Записанные scope Yandex Metrika | `yandex_metrika_token_scopes` | — |
 | Bing Webmaster | `bing` | `LV24_SEO_BING_API_KEY` |
 | Chrome UX Report | `crux` | `LV24_SEO_CRUX_API_KEY` |
 | PageSpeed Insights | `psi` | `LV24_SEO_PSI_API_KEY` |
@@ -226,7 +257,7 @@ Bing, `quota_remainder` Яндекса, 500 URL на пакет Bing и один
 
 Для защищённых записей также нужен `LV24_SEO_WRITE_SECRET` — длинное случайное значение в той же
 оболочке, где выполняется применение. `auth status` показывает наличие и источник, но не значение,
-и не проверяет права или сеть. `auth login` только печатает инструкции.
+и не проверяет права или сеть. `auth login` запускает OAuth-коннектор Google или Яндекса, когда настроен client id; без него печатаются только ручные инструкции. `auth status --json` и `doctor --json` дополнительно классифицируют готовность OAuth восемью стабильными кодами; записанные scope хранятся в `gsc_token_scopes`, `yandex_token_scopes` и `yandex_metrika_token_scopes` (в `OAUTH_SECRET_NAMES`). OAuth access token, refresh token и срок хранятся под именами провайдера (`gsc_access_token`, `gsc_refresh_token`, `gsc_token_expires_at`, `yandex_*`, `yandex_metrika_*`); `auth logout` удаляет их и сохраняет client secret.
 
 ## Часовой пояс и локаль
 
@@ -354,4 +385,4 @@ Telegram-бота держите в хранилище секретов, а не
 - [Автоматизация и доставка](/ru/automation/)
 - [Устранение неполадок](/ru/troubleshooting/)
 
-Source: `_source/engine-config.md`, `_source/engine-data-sources.md`, `_source/engine-releases-0.12.0.md`, `_source/engine-releases-0.5.2.md`; модель конфигурации 0.12.2 в репозитории движка.
+Source: `_source/engine-config.md`, `_source/engine-data-sources.md`, `_source/engine-auth.md`, `_source/engine-auth-google.md`, `_source/engine-auth-yandex.md`, `_source/engine-releases-0.14.0.md`, `_source/engine-releases-0.13.0.md`, `_source/engine-releases-0.12.0.md`, `_source/engine-releases-0.5.2.md`; модель конфигурации 0.14.0 в репозитории движка.

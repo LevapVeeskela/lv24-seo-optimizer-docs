@@ -5,8 +5,8 @@ description: Threat model, secret handling, write gates, SSRF defenses, desktop 
 
 # Security and privacy
 
-LV24 SEO Optimizer is local-first. The engine (`lv24-seo 0.12.2`) does the provider, crawl, storage and report work. The desktop app
-(`0.9.0`) is a UI and process shell around that engine; it does not reimplement provider clients and does not proxy provider traffic.
+LV24 SEO Optimizer is local-first. The engine (`lv24-seo 0.14.0`) does the provider, crawl, storage and report work. The desktop app
+(`0.9.2`) is a UI and process shell around that engine; it does not reimplement provider clients and does not proxy provider traffic.
 
 This page separates the two products and the two kinds of signing:
 
@@ -48,9 +48,18 @@ There are no token command-line flags. `auth set` reads a hidden prompt or stdin
 ```bash
 lv24-seo auth status --json
 printf '%s' "$TOKEN" | lv24-seo auth set --provider gsc --stdin
+printf '%s' "$CLIENT_SECRET" | lv24-seo auth set --provider gsc_oauth_secret --stdin
 ```
 
-`auth status` reports `present`, the source (`env`, `keyring`, `file`, `missing`) and an expiry when known. It never prints a value. An
+OAuth connectors (`auth login --provider gsc|yandex|metrika`) store access tokens, refresh tokens,
+expiry stamps and the client secret in the same secret store. Google uses a loopback `127.0.0.1`
+callback with S256 PKCE and a random `state`; Yandex uses the `verification_code` page. The callback
+accepts one request, verifies `state` and never logs the request path because it carries the code.
+The PKCE verifier is deleted after the exchange. No token is written to `seo.toml`, an envelope, a
+log or a `repr()`; `auth status` reports presence and source only, and `--json` login output omits
+every token.
+
+`auth status` also reports an `oauth` object and `doctor` adds non-fatal `gsc_oauth`/`yandex_oauth`/`metrika_oauth` checks; they classify the missing prerequisite and never print a token or client secret. `auth status` reports `present`, the source (`env`, `keyring`, `file`, `missing`) and an expiry when known. It never prints a value. An
 environment token is read-only: `auth set` and `auth logout` return `WRITE_DISABLED` while it is set. The desktop shows the same source,
 explains that removing a file secret does not remove an environment variable, and does not offer a delete action that cannot work. An
 `auth logout` that reports `deleted: false` is shown as “nothing was deleted”, not as success.
@@ -70,7 +79,9 @@ MCP host) and a plain line otherwise. The MCP transport logs to stderr only; std
 callers must still avoid logging raw credentials. `config show` masks secret-looking keys as `***`, and the desktop must not “unredact” it.
 
 The desktop does not retain secrets in the webview. Token input is a password field, sent once over IPC and immediately piped to
-`lv24-seo auth set --provider <p> --stdin`. The Rust layer zeroizes its buffer after the child exits. The value is not written to a log, a MobX store,
+`lv24-seo auth set --provider <p> --stdin`. The OAuth Connect card never receives a token: the engine performs the exchange and
+keeps the grant in the keychain, while the desktop reads only `auth status`. `auth_login` is allow-listed with `provider`, `noBrowser`,
+`port`, `code` and `urlOnly`, and `open_oauth_url` accepts only the Yandex authorization host. The Rust layer zeroizes its buffer after the child exits. The value is not written to a log, a MobX store,
 localStorage, the clipboard, a crash report or a support bundle. On Linux the CLI runner inherits the session-bus and XDG variables that
 Secret Service needs, while unrelated host variables stay filtered; the value itself still travels only over stdin.
 
@@ -241,4 +252,4 @@ sending. A secret that was exposed should be rotated, not merely deleted from th
 
 See [Architecture](/architecture/) for the trust boundaries and [Releases and updates](/release/) for the signed updater matrix.
 
-Source: `_source/engine-security.md`, `_source/desktop-security.md`, `_source/engine-architecture.md`, `_source/desktop-architecture.md`, `_source/engine-releases-0.12.2.md`, `_source/engine-releases-0.12.0.md`, `_source/engine-releases-0.11.0.md`, `_source/engine-releases-0.5.3.md`, `_source/desktop-releases-0.9.0.md`, `_source/desktop-releases-0.2.2.md`, `_source/desktop-releases-0.2.3.md`.
+Source: `_source/engine-security.md`, `_source/desktop-security.md`, `_source/engine-architecture.md`, `_source/desktop-architecture.md`, `_source/engine-auth.md`, `_source/engine-releases-0.14.0.md`, `_source/engine-releases-0.13.1.md`, `_source/engine-releases-0.13.0.md`, `_source/engine-releases-0.12.2.md`, `_source/engine-releases-0.12.0.md`, `_source/engine-releases-0.11.0.md`, `_source/engine-releases-0.5.3.md`, `_source/desktop-releases-0.9.2.md`, `_source/desktop-releases-0.9.1.md`, `_source/desktop-releases-0.9.0.md`, `_source/desktop-releases-0.2.2.md`, `_source/desktop-releases-0.2.3.md`.

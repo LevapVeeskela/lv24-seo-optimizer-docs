@@ -9,7 +9,7 @@ description: Диагностика аутентификации, хранили
 `PROPERTY_NOT_FOUND` нет отдельного кода. Каждая CLI-команда принимает `--json`:
 
 ```json
-{"ok": false, "error": {"code": "AUTH_REQUIRED", "message": "Google Search Console token is missing", "retryable": false, "next_action": "lv24-seo auth login --provider gsc"}, "meta": {"version": "0.12.2"}, "warnings": ["gsc: token missing"]}
+{"ok": false, "error": {"code": "AUTH_REQUIRED", "message": "Google Search Console token is missing", "retryable": false, "next_action": "lv24-seo auth login --provider gsc"}, "meta": {"version": "0.14.0"}, "warnings": ["gsc: token missing"]}
 ```
 
 MCP-инструменты возвращают тот же конверт как `structuredContent` и ставят
@@ -49,11 +49,10 @@ lv24-seo auth set --provider gsc
 printf '%s' "$TOKEN" | lv24-seo auth set --provider gsc --stdin
 ```
 
-`auth set` принимает `gsc`, `yandex`, `metrika`, `bing`, `crux`, `psi`, `smtp` и
-`telegram`. Токен Webmaster сохраняйте через `auth set --provider yandex`, токен
+`auth set` принимает `gsc`, `yandex`, `metrika`, `bing`, `crux`, `psi`, `smtp`,
+`telegram`, `gsc_oauth_secret` и `yandex_oauth_secret`. Токен Webmaster сохраняйте через `auth set --provider yandex`, токен
 Metrika — через `auth set --provider metrika` или `LV24_SEO_YANDEX_METRIKA_TOKEN`.
-`auth login --provider gsc|yandex` не открывает браузер и ничего не пишет; он печатает
-ручные шаги.
+`auth login --provider gsc|yandex|metrika` запускает OAuth-коннектор, когда настроен `[auth.<provider>].client_id`; без него печатаются ручные шаги. `--no-browser` печатает URL, `--code` завершает внешний поток, а `--url-only` (только Яндекс) возвращает URL авторизации без записи токена.
 
 401 означает, что токен истёк, отозван, повреждён или принадлежит другому аккаунту —
 замените его. 403 означает, что учётные данные валидны, но не хватает прав: исправляйте
@@ -61,10 +60,27 @@ Metrika — через `auth set --provider metrika` или `LV24_SEO_YANDEX_MET
 `providers.yandex_webmaster.host_id` с точным id (`https:example.com:443`, не URL);
 неподтверждённый хост выглядит как 403.
 
-В текущем движке нет OAuth refresh flow и аутентификации сервисного аккаунта.
-`auth set --provider gsc` сохраняет одну строку, которая отправляется как
-`Authorization: Bearer`; это Google access token, живущий обычно около часа. Сохраняйте
-свежий токен на каждый запуск. `auth status` показывает `present` и источник (`env`,
+### Ошибки OAuth-входа
+
+| Симптом | Причина | Исправление |
+|---|---|---|
+| `AUTH_REQUIRED ... client secret is missing` | Секрет OAuth-приложения не сохранён | Выполните `auth set --provider gsc_oauth_secret\|yandex_oauth_secret --stdin` |
+| `AUTH_REQUIRED ... client_id is not configured` | Нет публичного client id | Задайте `[auth.gsc].client_id` / `[auth.yandex].client_id` или `LV24_SEO_*_CLIENT_ID` |
+| `redirect_uri_mismatch` на странице Google | Клиент не **Desktop app** или redirect изменился между URL и `--code` | Создайте Desktop-app клиент или закрепите `[auth.gsc].redirect_uri` |
+| `invalid_grant` примерно через неделю | Приложение Google в **Testing**; refresh token живёт 7 дней | Опубликуйте приложение, войдите заново или используйте сервисный аккаунт |
+| `access_denied` | Аккаунт не тестовый пользователь или согласие отменено | Добавьте аккаунт как тестового пользователя и повторите |
+| Callback не приходит | Браузер на другой машине или firewall блокирует `127.0.0.1` | Используйте `--no-browser` и `--code` либо фиксированный `--port` |
+| `AUTH_INVALID` с `invalid_grant` у Яндекса | Код одноразовый/истёк или refresh token отозван | Повторите `auth login --provider yandex` |
+| `INVALID_INPUT: no Yandex authorization code was provided` | Нет `--code`; код не читается из pipe | Повторите с `--code <code>` |
+| Ошибка области Яндекса | В приложении нет `webmaster:hostinfo` или `metrika:read` | Добавьте область и авторизуйтесь заново |
+
+Поток Яндекса `verification_code` не проверяет `state` между отдельными вызовами URL-only и `--code`; код живёт 10 минут, и client secret всё равно нужен.
+
+### Состояния готовности OAuth
+
+`auth status --json` добавляет объект `oauth`, а `doctor --json` — проверки `gsc_oauth`, `yandex_oauth` и `metrika_oauth`. Они офлайн и некритичны и возвращают один из кодов `oauth_client_missing`, `oauth_client_secret_missing`, `oauth_token_missing`, `oauth_token_expired`, `oauth_scope_missing`, `oauth_scope_unknown`, `oauth_redirect_invalid` или `oauth_ready` с первым действием в `next_action`. Приоритет: redirect, client id, client secret, token, scope; точное исправление каждого кода — в [OAuth-коннекторах](/ru/reference/cli/#диагностика-готовности-oauth).
+
+Движок поддерживает OAuth-грант, статический токен и сервисный аккаунт GSC. `auth set --provider gsc` сохраняет одну строку, которая отправляется как `Authorization: Bearer`; это Google access token, живущий обычно около часа. Для автономных запусков задайте `providers.gsc.service_account_file` или `LV24_SEO_GSC_SERVICE_ACCOUNT_FILE`; движок подписывает RS256 JWT, обменивает его и обновляет до истечения. `auth status` показывает `present` и источник (`env`,
 `keyring`, `file`), но никогда значение. Токен из окружения только для чтения:
 `auth set` и `auth logout` возвращают `WRITE_DISABLED`, пока он задан.
 
@@ -149,7 +165,7 @@ gzip-тела. Обычные страницы сохраняют лимит 5 �
 символов, бюджет запросов — `1 + max_urls * (max_redirects + 1)`. `word_count`
 по-прежнему считается по полному видимому тексту. Если обход слишком большой или
 медленный, уменьшите `--max-urls` и обходите сайт частями. Возобновления и очереди
-заданий в `0.9.0` нет; у приложения таймаут обхода 600 секунд и кнопка **Cancel** в баннере окна.
+заданий в `0.9.2` нет; у приложения таймаут обхода 600 секунд и кнопка **Cancel** в баннере окна.
 
 ## Ограничения `--days`
 
@@ -196,7 +212,7 @@ lv24-seo install --client vscode --print
 | Симптом | Причина | Исправление |
 |---|---|---|
 | «not valid JSON», хотя файл выглядит валидным | UTF-8 BOM, часто от PowerShell 5.1 | Перепишите без BOM или удалите файл и повторите |
-| `No such command 'mcp'` | Старая сборка без `mcp serve` | Обновитесь до 0.12.2 |
+| `No such command 'mcp'` | Старая сборка без `mcp serve` | Обновитесь до 0.14.0 |
 | GUI-клиент не запускает сервер | Приложение не наследует `PATH` оболочки | Укажите абсолютный путь `uvx` в `command` |
 | VS Code ничего не показывает | `install` пишет `mcpServers`; VS Code использует `servers` | Переименуйте ключ или используйте блок для VS Code |
 
@@ -247,7 +263,7 @@ LV24_SEO_BIN=/absolute/path/to/lv24-seo npx @lv24/seo version --json
 Оболочка ищет движок в порядке: `LV24_SEO_BIN` (только абсолютный), встроенный
 `engine/lv24-seo/`, плоский `lv24-seo/`, соседний `lv24-seo/`, затем `PATH` только при
 `LV24_SEO_ALLOW_PATH_ENGINE=1`. Она запускает `lv24-seo version --json` и сравнивает
-результат с `MIN_ENGINE_VERSION`, который в текущем исходнике равен `0.11.0`.
+результат с `MIN_ENGINE_VERSION`, который в текущем исходнике равен `0.14.0`.
 
 Старый движок помечается `compatible: false`; UI считает его offline и не запускает
 команду. Ничего не скачивается автоматически.
@@ -255,7 +271,7 @@ LV24_SEO_BIN=/absolute/path/to/lv24-seo npx @lv24/seo version --json
 | Симптом | Исправление |
 |---|---|
 | Движок не найден | Переустановите приложение или задайте абсолютный `LV24_SEO_BIN` |
-| Движок слишком старый | Установите движок 0.11.0 или новее |
+| Движок слишком старый | Установите движок 0.14.0 или новее |
 | Метка external engine | Ожидаемо, если задан `LV24_SEO_BIN` |
 
 Случайный `lv24-seo` в `PATH` игнорируется, если не задан
@@ -364,4 +380,4 @@ actual (redacted --json envelope):
 
 См. [Безопасность и приватность](/ru/security/) для write-гейтов и [Релизы и обновление](/ru/release/) для поведения updater.
 
-Source: `_source/engine-troubleshooting.md`, `_source/engine-releases-0.12.2.md`, `_source/engine-releases-0.12.0.md`, `_source/engine-releases-0.11.0.md`, `_source/engine-releases-0.5.3.md`, `_source/desktop-releases-0.9.0.md`, `_source/desktop-releases-0.2.2.md`, `_source/desktop-releases-0.2.3.md`, `_source/desktop-releases-0.2.1.md`, `_source/desktop-releases-0.2.0.md`, `_source/desktop-security.md`, `_source/desktop-architecture.md`.
+Source: `_source/engine-troubleshooting.md`, `_source/engine-auth.md`, `_source/engine-auth-google.md`, `_source/engine-auth-yandex.md`, `_source/engine-releases-0.14.0.md`, `_source/engine-releases-0.13.1.md`, `_source/engine-releases-0.13.0.md`, `_source/engine-releases-0.12.2.md`, `_source/engine-releases-0.12.0.md`, `_source/engine-releases-0.11.0.md`, `_source/engine-releases-0.5.3.md`, `_source/desktop-releases-0.9.2.md`, `_source/desktop-releases-0.9.1.md`, `_source/desktop-releases-0.9.0.md`, `_source/desktop-releases-0.2.2.md`, `_source/desktop-releases-0.2.3.md`, `_source/desktop-releases-0.2.1.md`, `_source/desktop-releases-0.2.0.md`, `_source/desktop-security.md`, `_source/desktop-architecture.md`.
