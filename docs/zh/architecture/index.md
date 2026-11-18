@@ -7,9 +7,9 @@ description: 引擎包结构、数据源信封、存储、报告快照、桌面 
 
 产品有一个权威引擎和一个外壳：
 
-- `lv24-seo 0.14.1` 负责数据源客户端、抓取、分析、报告、存储、MCP 工具、CLI 命令、
+- `lv24-seo 0.15.1` 负责数据源客户端、抓取、分析、报告、存储、MCP 工具、CLI 命令、
   索引自动化和自动化。
-- 桌面应用 `0.9.4` 是 React webview 加 Rust 进程外壳。它渲染界面、编辑配置并启动
+- 桌面应用 `0.9.5` 是 React webview 加 Rust 进程外壳。它渲染界面、编辑配置并启动
   内置引擎；不重新实现引擎行为。
 
 当两者指向同一工作区时，共享同一份 SQLite 历史。
@@ -202,7 +202,7 @@ MobX store 保存根状态、引擎状态、配置草稿、报告数据、建议
 6. `PATH`，仅当设置 `LV24_SEO_ALLOW_PATH_ENGINE=1`。
 
 不会自动下载任何内容。外壳运行 `lv24-seo version --json`，记录路径、来源和版本，并与
-`MIN_ENGINE_VERSION`（当前源码中为 `0.14.1`）比较。旧引擎标记为 `compatible: false`；
+`MIN_ENGINE_VERSION`（当前源码中为 `0.15.1`）比较。旧引擎标记为 `compatible: false`；
 UI 将其视为离线并显示提示。更新的引擎通过门禁，但不是发布测试的固定版本。
 
 ## 数据流
@@ -235,4 +235,4 @@ UI 将其视为离线并显示提示。更新的引擎通过门禁，但不是�
 
 控制措施见[安全与隐私](/zh/security/)，打包方式见[发布与更新](/zh/release/)。
 
-Source: `_source/engine-architecture.md`, `_source/desktop-architecture.md`, `_source/engine-auth.md`, `_source/engine-releases-0.14.1.md`, `_source/engine-releases-0.14.0.md`, `_source/engine-releases-0.13.1.md`, `_source/engine-releases-0.13.0.md`, `_source/engine-releases-0.12.2.md`, `_source/engine-releases-0.12.0.md`, `_source/engine-releases-0.11.0.md`, `_source/engine-releases-0.5.3.md`, `_source/desktop-releases-0.9.4.md`, `_source/desktop-releases-0.9.3.md`, `_source/desktop-releases-0.9.2.md`, `_source/desktop-releases-0.9.1.md`, `_source/desktop-releases-0.9.0.md`, `_source/desktop-releases-0.2.2.md`, `_source/desktop-release.md`.
+Source: `_source/engine-architecture.md`, `_source/desktop-architecture.md`, `_source/engine-auth.md`, `_source/engine-releases-0.15.1.md`, `_source/engine-releases-0.15.0.md`, `_source/engine-releases-0.14.1.md`, `_source/engine-releases-0.14.0.md`, `_source/engine-releases-0.13.1.md`, `_source/engine-releases-0.13.0.md`, `_source/engine-releases-0.12.2.md`, `_source/engine-releases-0.12.0.md`, `_source/engine-releases-0.11.0.md`, `_source/engine-releases-0.5.3.md`, `_source/desktop-releases-0.9.5.md`, `_source/desktop-releases-0.9.4.md`, `_source/desktop-releases-0.9.3.md`, `_source/desktop-releases-0.9.2.md`, `_source/desktop-releases-0.9.1.md`, `_source/desktop-releases-0.9.0.md`, `_source/desktop-releases-0.2.2.md`, `_source/desktop-release.md`.

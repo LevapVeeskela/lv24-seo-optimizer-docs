@@ -9,7 +9,7 @@ description: 使用稳定错误码诊断认证、存储、抓取、报告、MCP�
 `PROPERTY_NOT_FOUND` 没有专用退出码。每个 CLI 命令都接受 `--json`：
 
 ```json
-{"ok": false, "error": {"code": "AUTH_REQUIRED", "message": "Google Search Console token is missing", "retryable": false, "next_action": "lv24-seo auth login --provider gsc"}, "meta": {"version": "0.14.1"}, "warnings": ["gsc: token missing"]}
+{"ok": false, "error": {"code": "AUTH_REQUIRED", "message": "Google Search Console token is missing", "retryable": false, "next_action": "lv24-seo auth login --provider gsc"}, "meta": {"version": "0.15.1"}, "warnings": ["gsc: token missing"]}
 ```
 
 MCP 工具以 `structuredContent` 返回同一信封，并在失败时设置 `isError: true`。桌面把
@@ -62,6 +62,7 @@ printf '%s' "$TOKEN" | lv24-seo auth set --provider gsc --stdin
 |---|---|---|
 | `AUTH_REQUIRED ... client secret is missing` | OAuth 应用密钥未保存 | 运行 `auth set --provider gsc_oauth_secret\|yandex_oauth_secret --stdin` |
 | `AUTH_REQUIRED ... client_id is not configured` | 没有公开 client id | 设置 `[auth.gsc].client_id` / `[auth.yandex].client_id` 或 `LV24_SEO_*_CLIENT_ID` |
+| `CONFIG_INVALID ... placeholder client id` | 使用了文档示例 id | 注册真实的 Google Desktop client 或 Yandex OAuth 应用并使用其 id |
 | Google 页面出现 `redirect_uri_mismatch` | 客户端不是 **Desktop app**，或 URL 与 `--code` 之间 redirect 变化 | 创建 Desktop-app 客户端，或固定 `[auth.gsc].redirect_uri` |
 | 约一周后出现 `invalid_grant` | Google 应用处于 **Testing**；refresh token 只有 7 天 | 发布应用、重新登录，或使用服务账号 |
 | `access_denied` | 账户不是测试用户，或同意被取消 | 把账户加入测试用户并重试 |
@@ -149,7 +150,7 @@ sitemap 50,000 个 URL；索引遍历限制为 20 个文档、深度 2。
 
 内存有界：页面响应体上限 5 MB，保留的页面文本上限 20,000 字符，请求预算为
 `1 + max_urls * (max_redirects + 1)`。`word_count` 仍使用完整可见文本。如果抓取太大
-或太慢，降低 `--max-urls` 并分段抓取。`0.9.4` 没有恢复或任务队列；桌面抓取超时为
+或太慢，降低 `--max-urls` 并分段抓取。`0.9.5` 没有恢复或任务队列；桌面抓取超时为
 600 秒，窗口横幅中有 **Cancel** 按钮。
 
 ## `--days` 限制
@@ -194,7 +195,7 @@ lv24-seo install --client vscode --print
 | 症状 | 原因 | 修复 |
 |---|---|---|
 | 文件看起来有效，却提示 “not valid JSON” | UTF-8 BOM，常见于 PowerShell 5.1 | 重写为无 BOM，或删除文件后重试 |
-| `No such command 'mcp'` | 旧构建没有 `mcp serve` | 升级到 0.14.1 |
+| `No such command 'mcp'` | 旧构建没有 `mcp serve` | 升级到 0.15.1 |
 | GUI 客户端无法启动服务器 | 应用不继承 shell 的 `PATH` | 在 `command` 中写绝对 `uvx` 路径 |
 | VS Code 什么都不显示 | `install` 写入 `mcpServers`；VS Code 使用 `servers` | 重命名键或使用 VS Code 专用块 |
 
@@ -242,14 +243,14 @@ shell 报告自己的代码，绝不重用引擎代码。
 外壳按以下顺序解析引擎：`LV24_SEO_BIN`（仅绝对路径）、内置 `engine/lv24-seo/`、扁平
 `lv24-seo/`、同级 `lv24-seo/`，最后仅当 `LV24_SEO_ALLOW_PATH_ENGINE=1` 时使用
 `PATH`。它运行 `lv24-seo version --json`，并与 `MIN_ENGINE_VERSION` 比较；当前源码中
-该值为 `0.14.1`。
+该值为 `0.15.1`。
 
 旧引擎标记为 `compatible: false`；UI 将其视为离线，不运行命令。不会自动下载任何内容。
 
 | 症状 | 修复 |
 |---|---|
 | 找不到引擎 | 重新安装，或把 `LV24_SEO_BIN` 设为绝对可执行路径 |
-| 引擎太旧 | 安装 0.14.1 或更新版本 |
+| 引擎太旧 | 安装 0.15.1 或更新版本 |
 | 显示 external engine | 设置 `LV24_SEO_BIN` 时属正常 |
 
 除非设置 `LV24_SEO_ALLOW_PATH_ENGINE=1`，否则 `PATH` 中偶然出现的 `lv24-seo` 会被
@@ -343,4 +344,4 @@ actual (redacted --json envelope):
 
 写入门禁见[安全与隐私](/zh/security/)，更新器行为见[发布与更新](/zh/release/)。
 
-Source: `_source/engine-troubleshooting.md`, `_source/engine-auth.md`, `_source/engine-auth-google.md`, `_source/engine-auth-yandex.md`, `_source/engine-releases-0.14.1.md`, `_source/engine-releases-0.14.0.md`, `_source/engine-releases-0.13.1.md`, `_source/engine-releases-0.13.0.md`, `_source/engine-releases-0.12.2.md`, `_source/engine-releases-0.12.0.md`, `_source/engine-releases-0.11.0.md`, `_source/engine-releases-0.5.3.md`, `_source/desktop-releases-0.9.4.md`, `_source/desktop-releases-0.9.3.md`, `_source/desktop-releases-0.9.2.md`, `_source/desktop-releases-0.9.1.md`, `_source/desktop-releases-0.9.0.md`, `_source/desktop-releases-0.2.2.md`, `_source/desktop-releases-0.2.3.md`, `_source/desktop-releases-0.2.1.md`, `_source/desktop-releases-0.2.0.md`, `_source/desktop-security.md`, `_source/desktop-architecture.md`.
+Source: `_source/engine-troubleshooting.md`, `_source/engine-auth.md`, `_source/engine-auth-google.md`, `_source/engine-auth-yandex.md`, `_source/engine-releases-0.15.1.md`, `_source/engine-releases-0.15.0.md`, `_source/engine-releases-0.14.1.md`, `_source/engine-releases-0.14.0.md`, `_source/engine-releases-0.13.1.md`, `_source/engine-releases-0.13.0.md`, `_source/engine-releases-0.12.2.md`, `_source/engine-releases-0.12.0.md`, `_source/engine-releases-0.11.0.md`, `_source/engine-releases-0.5.3.md`, `_source/desktop-releases-0.9.5.md`, `_source/desktop-releases-0.9.4.md`, `_source/desktop-releases-0.9.3.md`, `_source/desktop-releases-0.9.2.md`, `_source/desktop-releases-0.9.1.md`, `_source/desktop-releases-0.9.0.md`, `_source/desktop-releases-0.2.2.md`, `_source/desktop-releases-0.2.3.md`, `_source/desktop-releases-0.2.1.md`, `_source/desktop-releases-0.2.0.md`, `_source/desktop-security.md`, `_source/desktop-architecture.md`.

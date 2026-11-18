@@ -88,8 +88,8 @@ lv24-seo crawl --start https://example.com/ --max-urls 500 --json
 | 严重程度 | 规则 id |
 |---|---|
 | `critical` | `noindex-on-200`, `robots-blocked`, `server-error`, `sitemap-url-noindex` |
-| `high` | `broken-internal-link`, `canonical-mismatch`, `client-error`, `hreflang-not-reciprocal`, `hreflang-target-not-ok`, `jsonld-event-required`, `jsonld-required`, `mixed-content`, `redirect-chain`, `sitemap-url-not-ok`, `soft-404`, `title-duplicate`, `title-missing` |
-| `medium` | `canonical-missing`, `h1-missing`, `hreflang-missing-x-default`, `html-lang-missing`, `html-lang-mismatch`, `image-alt-missing`, `meta-description-duplicate`, `meta-description-missing`, `thin-content` |
+| `high` | `broken-internal-link`, `canonical-mismatch`, `client-error`, `hreflang-not-reciprocal`, `hreflang-target-not-ok`, `jsonld-event-required`, `jsonld-required`, `mixed-content`, `redirect-chain`, `sitemap-url-not-ok`, `soft-404`, `title-duplicate`, `title-missing`, `tls-certificate` |
+| `medium` | `a11y-basics`, `canonical-missing`, `h1-missing`, `hreflang-missing-x-default`, `html-lang-missing`, `html-lang-mismatch`, `image-alt-missing`, `meta-description-duplicate`, `meta-description-missing`, `schema-required`, `security-headers`, `thin-content` |
 | `low` | `jsonld-organization-duplicate`, `h1-multiple`, `jsonld-organization`, `title-length` |
 
 两个启发式值得了解：
@@ -99,10 +99,21 @@ lv24-seo crawl --start https://example.com/ --max-urls 500 --json
 
 规则报告抓取观察到的事实。它们不会把未抓取的 URL 说成失效，也不能替代对业务意图的人工判断。
 
+### 安全、TLS、Schema.org 与可访问性（0.15.0）
+
+规则集现在为 **34** 条（此前 30 条），发现仍自动。四个新规则包：
+
+- **`security-headers`（medium）。** 对状态 200 的 HTML 页面检查 HSTS（HTTPS 上 `max-age` 至少 180 天）、CSP（缺失或含 `unsafe-inline`/`unsafe-eval`）、X-Frame-Options（除非 CSP 声明 `frame-ancestors`）、X-Content-Type-Options（`nosniff`）、Referrer-Policy（非 `unsafe-url`）、Permissions-Policy，以及每个 `Set-Cookie` 的 cookie 标志：HTTPS 上的 `Secure`、`HttpOnly`、`SameSite=None` 且无 `Secure`。cookie 值绝不进入发现。
+- **`tls-certificate`（high）。** 使用 fetcher 捕获的 `PageData.tls` 和 `PageData.fetched_at`：不可读证书（`unknown`）、已过期/14 天内/30 天内到期、TLS 1.0/1.1、SAN/CN 主机名不匹配（支持单层通配符）以及 RC4/3DES/NULL/EXPORT 套件。到期时间与页面抓取时间比较，而不是报告时间。
+- **`schema-required`（medium）。** 检查 Product、Offer、BreadcrumbList、FAQPage（含嵌套 Question name/acceptedAnswer）、Recipe、JobPosting、VideoObject、LocalBusiness、Course 和 SoftwareApplication 的必需属性。展开 `@graph` 容器和 `@type` 列表；空值视为缺失；每页发现数量有上限。不与 `jsonld-required`、`jsonld-event` 或 `jsonld-organization` 重叠。
+- **`a11y-basics`（medium）。** 输入缺少 label、`aria-label`、`aria-labelledby` 或 `title`；按钮缺少可见文本或可访问名称；链接缺少文本、可访问名称或图片 alt；缺少 `<main>` 或跳过链接；标题层级跳跃大于一。
+
+这些是启发式，不是完整的安全或 WCAG 符合性审计。`tls-certificate` 在 fetcher 未捕获 TLS 事实时报告 `unknown`，而不是静默通过；`schema-required` 只检查列出的类型，不把嵌套 `Product.offers` 当作独立项；`a11y-basics` 是子集，重复 href 保留第一个锚点的可访问名称数据；`security-headers` 只检查存在性和少数弱值，不检查完整 CSP 策略质量。
+
 ## 已保存的页面与问题
 
 `lv24-seo init` 创建 `<config dir>/data` 并写入锚定到配置的相对 `data_dir`。目录存在时，`crawl` 打开 `data/seo.sqlite3`，并按抓取属性 id 保存页面和问题。周报读取最近的已保存问题用于问题部分；没有存储的抓取仍返回完整 JSON，但不持久化任何内容。
 
 不带 `--json` 时，CLI 打印简短的人类可读摘要。带 `--json` 时，信封包含 `summary`、`issues`、`graph`、`errors`、`blocked` 和 `sitemap_coverage`。MCP `seo_crawl_site` 按 `include_rules` 过滤问题，返回列表最多 500 条，并在 `meta` 中报告 `issues_shown`、`issues_truncated` 和 `issues_filtered_by`。
 
-Source: `_source/engine-data-sources.md`, `_source/engine-cli.md`, `_source/engine-releases-0.5.2.md`.
+Source: `_source/engine-data-sources.md`, `_source/engine-cli.md`, `_source/engine-releases-0.15.0.md`, `_source/engine-releases-0.5.2.md`.

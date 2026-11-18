@@ -459,6 +459,10 @@ lv24-seo auth login --provider yandex --url-only --json
 - **优先级与后备。** GSC 依次选择 OAuth 授权、服务账号文件、静态 `gsc_token`。Yandex 保留静态 `yandex_webmaster_token` / `yandex_metrika_token` 路径，并在存有 refresh token 和到期时间时刷新。Bing、IndexNow、CrUX 和 PSI 按设计没有 OAuth 连接器。
 - **Testing 模式限制。** Google OAuth 应用处于 **Testing** 时，refresh token 在 7 天后过期，每日任务一周后会以 `invalid_grant` 失败。发布应用、每周重新登录，或为无人值守运行使用服务账号。
 
+### 占位 client id
+
+本指南中的示例（`0123456789abcdef0123456789abcdef`、`1234567890-abc.apps.googleusercontent.com`、`your-*-client-id`）不是已注册的数据源应用。引擎 `0.15.1` 在构建同意 URL 前以 `CONFIG_INVALID` 拒绝它们，`yandex_oauth.authorization_url()` 对每个调用方执行同样的检查。请注册真实的 Google Desktop client 或 Yandex OAuth 应用并使用其 id；`auth status` 和 `doctor` 会把占位符报告为 `oauth_client_missing`。桌面 `0.9.5` 在就绪状态为 `oauth_client_missing`、`oauth_client_secret_missing` 或 `oauth_redirect_invalid` 时禁用 **Connect**。
+
 ### OAuth 就绪诊断
 
 `auth status --json` 为 `gsc`、`yandex` 和 `metrika` 增加 `oauth` 对象，包含 `state`、`detail`、

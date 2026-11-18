@@ -17,6 +17,8 @@ the read-only Indexing automation card is implemented in `0.9.2` and requires en
 Connect card shows engine `0.14.0` OAuth readiness in `0.9.3` and never renders a token. `0.9.4`
 bundles engine `0.14.1`, which registers Windows scheduled jobs through a hidden `.vbs` launcher
 (`wscript.exe //B //Nologo`), so no console window appears; the launcher contains no secret.
+`0.9.5` bundles engine `0.15.1`, whose new crawl rules are read-only: security headers, TLS,
+Schema.org and accessibility checks never write provider or local state.
 `0.7.0` added the gated `sitemap_submit` and `indexnow_submit` commands (engine `0.9.0`), one
 external-URL allow-list for `open_bing_sitescan`, and a per-session in-memory write secret.
 `0.6.0` added exact-process cancellation for the six long local jobs (`run_cancel`) and made

@@ -9,10 +9,70 @@ description: Релизы движка 0.14.0 и приложения 0.9.2, д�
 
 | Продукт | Версия | Дата | Примечания |
 |---|---|---|---|
-| Движок | `lv24-seo 0.14.1` | 2026-11-18 | Скрытые задания Планировщика Windows через сгенерированный `.vbs`-лаунчер и `wscript.exe //B //Nologo`; сохранены 25 команд CLI, 12 инструментов MCP и схема v5 |
-| Приложение | `0.9.4` | 2026-11-18 | Включает движок 0.14.1 и `MIN_ENGINE_VERSION` 0.14.1; задание 04:00 больше не открывает окно консоли |
+| Движок | `lv24-seo 0.15.1` | 2026-11-18 | Отклоняет документированные placeholder client id OAuth до построения URL согласия; сохранены четыре набора правил 0.15.0, 25 команд CLI, 12 инструментов MCP и схема v5 |
+| Приложение | `0.9.5` | 2026-11-18 | Включает движок 0.15.1 и `MIN_ENGINE_VERSION` 0.15.1; добавлены четыре набора правил обхода и защита от placeholder client id |
 
-Версия приложения и версия движка независимы, но приложение закрепляет точный движок и отказывается работать с версией ниже минимальной. `0.9.4` включает `0.14.1` и требует минимум `0.14.1`, поэтому установленный движок `0.14.0` считается несовместимым. `0.9.3` — предыдущий релиз, добавивший состояния готовности Connect; `0.9.4` скрывает задания Планировщика Windows и не меняет карточки. OAuth-токены хранит движок в связке ключей ОС; приложение никогда не получает и не отображает их. Карточка Indexing automation только для чтения: она рендерит `indexing status`, `indexing history` и `schedule status` и не имеет записи, подтверждения или `--allow-write`.
+Версия приложения и версия движка независимы, но приложение закрепляет точный движок и отказывается работать с версией ниже минимальной. `0.9.5` включает `0.15.1` и требует минимум `0.15.1`, поэтому установленный движок `0.15.0` считается несовместимым. `0.9.4` — предыдущий релиз, скрывший задания Планировщика Windows; `0.9.5` добавляет четыре набора правил обхода и отключает Connect, пока OAuth-клиент не настроен. OAuth-токены хранит движок в связке ключей ОС; приложение никогда не получает и не отображает их. Карточка Indexing automation только для чтения: она рендерит `indexing status`, `indexing history` и `schedule status` и не имеет записи, подтверждения или `--allow-write`.
+
+## Движок 0.15.1
+
+Выпущен 2026-11-18. Патч: client id, скопированный из документации, отклоняется до построения URL
+согласия, вместо открытия страницы провайдера с HTTP 400. CLI остаётся 25 команд, MCP — 12
+инструментов, схема SQLite — v5.
+
+### Placeholder client id в OAuth
+
+Что изменилось:
+
+- **Документированные примеры отклоняются.** Список включает `0123456789abcdef0123456789abcdef` (Яндекс), `1234567890-abc.apps.googleusercontent.com` (Google) и `your-google-client-id` / `your-yandex-client-id`. Они возвращают `CONFIG_INVALID` со ссылкой на регистрацию и точным ключом конфигурации до построения URL согласия.
+- **Проверка в коннекторе.** `yandex_oauth.authorization_url()` проверяет значение сам, а не только CLI-обёртка, поэтому защищены все вызывающие. Реальные client id не затронуты.
+- **Готовность согласуется.** `auth status` и `doctor` уже сообщают placeholder как `oauth_client_missing`.
+- **Защита в приложении.** Desktop `0.9.5` отключает **Connect**, пока готовность — `oauth_client_missing`, `oauth_client_secret_missing` или `oauth_redirect_invalid`, и игнорирует второй клик **Open**, пока первый выполняется, поэтому неверная настройка не открывает повторные вкладки согласия.
+- **Не изменилось.** Нет новых зависимостей, вызовов провайдера и изменений write gate. Потоки токенов/refresh и реальные client id прежние.
+
+Проверки, записанные для этого релиза:
+
+| Проверка | Результат |
+|---|---|
+| PyPI / npm / MCP Registry | `lv24-seo 0.15.1` опубликован; GitHub Release — Latest |
+| Релизный workflow | запуск `44385097574` |
+| Локальный гейт | `ruff check`, `ruff format --check`, `mypy src`, registry `--check` и полный офлайн `pytest -q` зелёные |
+| Тесты | документированные placeholder, проверка `authorization_url()` и неизменный путь реального client id; полный офлайн-набор зелёный |
+
+Известные ограничения 0.15.1:
+
+- Синтаксически корректный, но незарегистрированный 32-hex client id Яндекса нельзя определить локально; провайдер всё равно ответит 400. Зарегистрируйте приложение и используйте его ClientID.
+- `oauth_client_secret_missing` по-прежнему требует `auth set --provider yandex_oauth_secret --stdin` (или Google-эквивалент), прежде чем Connect заработает.
+
+## Движок 0.15.0
+
+Выпущен 2026-11-18. Обходчик получает четыре набора правил, закрывающих пробелы аудита из обзора
+`siteaudit-mcp`. Без новых зависимостей, вызовов провайдера и изменений write gate.
+
+### Четыре набора правил обхода
+
+- **`security-headers` (medium).** Для HTML-страниц со статусом 200 проверяются HSTS (`max-age` не меньше 180 дней на HTTPS), CSP (отсутствие или `unsafe-inline`/`unsafe-eval`), X-Frame-Options (если CSP не содержит `frame-ancestors`), X-Content-Type-Options (`nosniff`), Referrer-Policy (не `unsafe-url`), Permissions-Policy и флаги cookie из каждого `Set-Cookie`: `Secure` на HTTPS, `HttpOnly`, `SameSite=None` без `Secure`. Значения cookie никогда не попадают в находку.
+- **`tls-certificate` (high).** Fetcher записывает протокол, шифр, срок сертификата, издателя, subject и SAN в `PageData.tls`. Правило сообщает нечитаемый сертификат как `unknown`, истечение (просрочен, через 14 дней, через 30 дней), TLS 1.0/1.1, несовпадение имени с SAN/CN (поддерживается одноуровневый wildcard) и шифры RC4/3DES/NULL/EXPORT. Срок сравнивается с `fetched_at` страницы, поэтому результат детерминирован.
+- **`schema-required` (medium).** Обязательные свойства для Product, Offer, BreadcrumbList, FAQPage (включая вложенные Question name/acceptedAnswer), Recipe, JobPosting, VideoObject, LocalBusiness, Course и SoftwareApplication. Контейнеры `@graph` и списки `@type` разворачиваются; пустые значения считаются отсутствующими; находки ограничены на страницу. Не пересекается с `jsonld-required`, `jsonld-event` и `jsonld-organization`.
+- **`a11y-basics` (medium).** Input без label, `aria-label`, `aria-labelledby` или `title`; кнопки без видимого текста или доступного имени; ссылки без текста, имени или alt изображения; отсутствие `<main>` или skip link; скачки уровня заголовков больше одного.
+
+`FetchResult`/`PageData` теперь несут `tls`, `set_cookie` (все значения) и `fetched_at`; `PageData` также несёт `link_details`, `inputs`, `buttons`, `headings`, `has_main` и `has_skip_link`. Набор правил растёт с 30 до **34**, обнаружение остаётся автоматическим.
+
+Проверки, записанные для этого релиза:
+
+| Проверка | Результат |
+|---|---|
+| PyPI / npm / MCP Registry | `lv24-seo 0.15.0` опубликован |
+| Релизный workflow | запуск `44383306623` |
+| Локальный гейт | `ruff check`, `ruff format --check`, `mypy src`, registry `--check` и полный офлайн `pytest -q` зелёные |
+| Тесты | положительные/отрицательные/граничные, некорректный ввод, JSON-safe details и discovery для каждого правила; тесты fetcher для TLS и Set-Cookie |
+
+Известные ограничения 0.15.0:
+
+- `security-headers` проверяет наличие и несколько слабых значений, а не полное качество CSP.
+- `tls-certificate` требует TLS-факты от fetcher; страница без них — `unknown`, а не тихий успех.
+- `schema-required` проверяет только перечисленные типы; вложенные `Product.offers` не считаются отдельными элементами.
+- `a11y-basics` — эвристическое подмножество, а не аудит соответствия WCAG; при дублирующихся href сохраняются данные первого якоря.
 
 ## Движок 0.14.1
 
@@ -149,6 +209,35 @@ Yandex Webmaster и Yandex Metrika, а затем режим URL-only для Я�
 - `--url-only` не проверяет `state` между отдельными шагами URL и кода; код недолговечен, и client secret всё равно нужен.
 - Живое согласие не проверено, пока не настроены реальный Google Cloud Desktop client и приложение Яндекс OAuth.
 - По сравнению с 0.13.0 нет изменений API, числа команд CLI, MCP, схемы или конфигурации.
+
+## Приложение 0.9.5
+
+Выпущено 2026-11-18. Включает `lv24-seo 0.15.1` и поднимает `MIN_ENGINE_VERSION` до `0.15.1`,
+поэтому установленный движок `0.15.0` считается несовместимым. `0.9.4` — предыдущий релиз.
+
+Что изменилось:
+
+- **Четыре набора правил обхода.** Встроенный движок добавляет `security-headers`, `tls-certificate`, `schema-required` и `a11y-basics`; набор растёт с 30 до 34. Отчёт и экран Diagnostics показывают новые issue ID без изменения UI.
+- **Placeholder client id.** Документированные примеры `0123456789abcdef0123456789abcdef`, `1234567890-abc.apps.googleusercontent.com` и `your-*-client-id` возвращают `CONFIG_INVALID` до построения URL согласия.
+- **Защита Connect.** Карточка Connect отключает **Connect**, пока готовность — `oauth_client_missing`, `oauth_client_secret_missing` или `oauth_redirect_invalid`, и игнорирует второй клик **Open**, пока первый выполняется, поэтому неверная настройка не открывает повторные вкладки.
+- **Движок и контракты.** Sidecar — `lv24-seo 0.15.1`; контракты перегенерированы из `0.15.1`. Пин Windows x64 — `cd70636a…1922` (14 607 761 байт); Linux и macOS — `null` и rebuild-aware отчёты.
+- **Не изменилось.** Карточка Indexing automation только для чтения, состояния Connect, скрытый лаунчер заданий Windows, двухфазные ворота записи, MCP на 12 инструментов и схема SQLite v5.
+
+Проверки, записанные для этого релиза:
+
+| Проверка | Результат |
+|---|---|
+| GitHub Release | [`v0.9.5`](https://github.com/LevapVeeskela/lv24-seo-optimizer-desktop/releases/tag/v0.9.5); 18 ассетов |
+| Релизный workflow | запуск `44388939536` зелёный |
+| Локальный гейт | `npm run typecheck`, `npm test`, `npm run build`, `npm run contract:check`, `cargo fmt --check`, `cargo clippy --all-targets -- -D warnings` и `cargo test` зелёные |
+| Тесты | полные наборы Vitest и Rust прошли |
+| Контракты и пин | движок `0.15.1`; Windows x64 SHA-256 `cd70636a4f490c3ab592fb3b16ac2456d9cf9e57f08c676e05b84110ff361922`, 14 607 761 байт |
+
+Известные ограничения 0.9.5:
+
+- Новые правила — эвристики, а не полный аудит безопасности или соответствия WCAG; точные границы — в заметках движка.
+- Существующие задания от `0.9.3` или старше всё ещё требуют однократной переустановки для скрытого лаунчера.
+- Движок старше `0.15.1` считается несовместимым.
 
 ## Приложение 0.9.4
 
@@ -1040,7 +1129,7 @@ Manual-only — намеренно. Пакет deb или rpm принадлеж
 и `0.7.0 → 0.8.0`. В девятом запуске установленная сборка `0.7.0` обновилась через Rust-обновлятор,
 скачала и проверила подписанный пакет, установила его, перезапустилась и сообщила **Desktop 0.8.0**
 с **Engine 0.10.0** и готовым движком; загрузились карточки отправки URL, sitemap, проблем обхода и
-квоты Bing. `0.9.3 → 0.9.4` — следующий источник обновления. Любая установка `0.2.x` с обновлятором может сразу перейти на `0.9.4`; у `0.1.0` нет обновлятора, нужна одна ручная установка.
+квоты Bing. `0.9.4 → 0.9.5` — следующий источник обновления. Любая установка `0.2.x` с обновлятором может сразу перейти на `0.9.5`; у `0.1.0` нет обновлятора, нужна одна ручная установка.
 
 Обновление `0.2.1 → 0.2.2` выполняет старый обновлятор `0.2.1`, в котором нет новой очистки
 отслеживаемых PID. Если во время первого обновления активен sidecar, повторите после его выхода
@@ -1055,12 +1144,12 @@ Workflow приложения ручной и owner-gated. У него нет т
 
 | Вход | Значение по умолчанию | Смысл |
 |---|---|---|
-| `engine_version` | `0.14.1` | Точная версия движка в sidecar |
+| `engine_version` | `0.15.1` | Точная версия движка в sidecar |
 | `signed` | `false` | Запросить подпись/нотаризацию ОС; в этом zero-spend репозитории не настроено |
 | `publish` | `false` | Создать GitHub release после прохождения всей матрицы |
 | `tag` | Пусто | Тег релиза `vX.Y.Z`; обязателен при `publish=true` |
 
-Значение по умолчанию соответствует пину `0.9.4`. Релизный гейт отклоняет несоответствие
+Значение по умолчанию соответствует пину `0.9.5`. Релизный гейт отклоняет несоответствие
 манифеста, если передана другая версия.
 
 | Runner | Target | Пакеты |
@@ -1078,7 +1167,7 @@ Workflow приложения ручной и owner-gated. У него нет т
 
 Релизный sidecar — дерево PyInstaller **onedir**, собранное на соответствующем хосте; PyInstaller не
 кросс-компилирует. Версии движка, Python, Pydantic, Typer и PyInstaller закреплены в
-`scripts/cli-checksums.json`. `0.9.4` включает движок `0.14.1` (выше `0.14.0`), Python `3.12`, Pydantic `2.14.3`,
+`scripts/cli-checksums.json`. `0.9.5` включает движок `0.15.1` (выше `0.14.1`), Python `3.12`, Pydantic `2.14.3`,
 Typer `0.29.0` и PyInstaller `6.22.3`.
 
 Вывод PyInstaller onedir не байт-воспроизводим. Поэтому политика контрольных сумм разделена:
@@ -1092,9 +1181,9 @@ Typer `0.29.0` и PyInstaller `6.22.3`.
   target: совпадение имени target, `hashPolicy: "rebuild"`, `ok: true`, 64-hex хеш, положительный
   размер и точную версию движка.
 
-Для `0.9.4` Windows x64 имеет проверенный локальный пин (`2bdf0077…0503`, 14 582 464 байт); sidecar для Linux и macOS пересобраны релизным
+Для `0.9.5` Windows x64 имеет проверенный локальный пин (`cd70636a…1922`, 14 607 761 байт); sidecar для Linux и macOS пересобраны релизным
 workflow с пройденными rebuild-aware отчётами, а их проверенные пины остаются `null`, пока локальная сборка
-не будет проверена на этих хостах. Windows-пин `0.9.3`
+не будет проверена на этих хостах. Windows-пин `0.9.4`
 не переносился, потому что исполняемый файл меняется вместе с движком. Отчёты контрольных сумм — доказательства CI, а не релизные артефакты.
 `SHA256SUMS.txt` покрывает установщики, пакеты обновления, подписи и `latest.json`; исполняемый
 файл sidecar находится внутри этих пакетов и отдельно не указан. При ручной установке сверяйте
@@ -1104,7 +1193,7 @@ workflow с пройденными rebuild-aware отчётами, а их пр�
 node scripts/verify-sidecar.mjs \
   --root src-tauri/engine \
   --target x86_64-pc-windows-msvc \
-  --engine-version 0.14.1
+  --engine-version 0.15.1
 ```
 
 ## `latest.json`, подпись и публикация
@@ -1141,7 +1230,7 @@ node scripts/verify-sidecar.mjs \
 `scripts/cli-checksums.json`; workflow передаёт `engine_version` явно, а релизный гейт требует
 совпадения с манифестом.
 
-`MIN_ENGINE_VERSION` в `src-tauri/src/commands.rs` в текущем исходнике равен `0.14.1`. Сборка `0.9.4`
+`MIN_ENGINE_VERSION` в `src-tauri/src/commands.rs` в текущем исходнике равен `0.15.1`. Сборка `0.9.5`
 включает движок `0.14.0`, поэтому минимум совпадает с движком сборки, а движок `0.13.x` считается
 несовместимым. Оболочка
 принимает движок не старше этой версии и помечает более старый как offline с уведомлением. Более
@@ -1151,13 +1240,16 @@ node scripts/verify-sidecar.mjs \
 
 ## Однократное обновление с 0.1.0
 
-У `0.1.0` нет updater, endpoint и публичного ключа. Он не может найти или установить `0.9.4`.
-Скачайте и установите `0.9.4` вручную один раз (NSIS-установщик или portable ZIP в Windows).
-После этого установка `0.9.4` может автоматически обновляться до следующих релизов, если
+У `0.1.0` нет updater, endpoint и публичного ключа. Он не может найти или установить `0.9.5`.
+Скачайте и установите `0.9.5` вручную один раз (NSIS-установщик или portable ZIP в Windows).
+После этого установка `0.9.5` может автоматически обновляться до следующих релизов, если
 использует пакет с поддержкой автообновления.
 
 ## Предыдущие релизы
 
+- **Движок 0.15.1** отклоняет документированные placeholder client id OAuth с `CONFIG_INVALID` до URL согласия; реальные id и потоки токенов не изменились.
+- **Движок 0.15.0** добавил четыре набора правил обхода (`security-headers`, `tls-certificate`, `schema-required`, `a11y-basics`) и увеличил набор с 30 до 34.
+- **Приложение 0.9.5** включает движок `0.15.1` и `MIN_ENGINE_VERSION` `0.15.1`, добавляет четыре набора правил и отключает Connect, пока OAuth-клиент не настроен.
 - **Движок 0.14.1** скрыл задания Планировщика Windows за сгенерированным `.vbs`-лаунчером и `wscript.exe //B //Nologo`, с тремя артефактами статуса и однократной переустановкой.
 - **Приложение 0.9.4** включает движок `0.14.1` и `MIN_ENGINE_VERSION` `0.14.1`; задание 04:00 больше не открывает окно консоли, карточки не изменились.
 - **Приложение 0.9.3** добавило состояния готовности OAuth в карточку Connect, нейтральный резерв «unavailable» и правило «ни одного токена или секрета в рендере»; движок `0.14.0` и пин sidecar не изменились.
@@ -1239,4 +1331,4 @@ Gatekeeper ожидаемы; сверьте контрольную сумму и
 
 См. [Безопасность и приватность](/ru/security/) для доверия к обновлениям и [Архитектуру](/ru/architecture/) для раскладки sidecar.
 
-Source: `_source/engine-releases-0.14.1.md`, `_source/engine-releases-0.14.0.md`, `_source/engine-CHANGELOG.md`, `_source/engine-releases-0.13.1.md`, `_source/engine-releases-0.13.0.md`, `_source/engine-releases-0.12.2.md`, `_source/engine-releases-0.12.1.md`, `_source/engine-releases-0.12.0.md`, `_source/engine-releases-0.11.0.md`, `_source/engine-releases-0.10.0.md`, `_source/engine-releases-0.9.0.md`, `_source/engine-releases-0.8.0.md`, `_source/engine-releases-0.7.0.md`, `_source/engine-releases-0.6.0.md`, `_source/engine-releases-0.5.3.md`, `_source/engine-releases-0.5.2.md`, `_source/desktop-releases-0.9.4.md`, `_source/desktop-releases-0.9.4-update.md`, `_source/desktop-releases-0.9.3.md`, `_source/desktop-releases-0.9.3-update.md`, `_source/desktop-releases-0.9.2.md`, `_source/desktop-releases-0.9.1.md`, `_source/desktop-releases-0.9.0.md`, `_source/desktop-releases-0.8.0.md`, `_source/desktop-releases-0.7.0.md`, `_source/desktop-releases-0.6.0.md`, `_source/desktop-releases-0.5.0.md`, `_source/desktop-releases-0.4.0.md`, `_source/desktop-releases-0.3.0.md`, `_source/desktop-releases-0.2.3.md`, `_source/desktop-releases-0.2.2.md`, `_source/desktop-releases-0.2.1.md`, `_source/desktop-releases-0.2.0.md`, `_source/desktop-release.md`, `_source/desktop-security.md`.
+Source: `_source/engine-releases-0.15.1.md`, `_source/engine-releases-0.15.0.md`, `_source/engine-releases-0.14.1.md`, `_source/engine-releases-0.14.0.md`, `_source/engine-CHANGELOG.md`, `_source/engine-releases-0.13.1.md`, `_source/engine-releases-0.13.0.md`, `_source/engine-releases-0.12.2.md`, `_source/engine-releases-0.12.1.md`, `_source/engine-releases-0.12.0.md`, `_source/engine-releases-0.11.0.md`, `_source/engine-releases-0.10.0.md`, `_source/engine-releases-0.9.0.md`, `_source/engine-releases-0.8.0.md`, `_source/engine-releases-0.7.0.md`, `_source/engine-releases-0.6.0.md`, `_source/engine-releases-0.5.3.md`, `_source/engine-releases-0.5.2.md`, `_source/desktop-releases-0.9.5.md`, `_source/desktop-releases-0.9.5-update.md`, `_source/desktop-releases-0.9.4.md`, `_source/desktop-releases-0.9.4-update.md`, `_source/desktop-releases-0.9.3.md`, `_source/desktop-releases-0.9.3-update.md`, `_source/desktop-releases-0.9.2.md`, `_source/desktop-releases-0.9.1.md`, `_source/desktop-releases-0.9.0.md`, `_source/desktop-releases-0.8.0.md`, `_source/desktop-releases-0.7.0.md`, `_source/desktop-releases-0.6.0.md`, `_source/desktop-releases-0.5.0.md`, `_source/desktop-releases-0.4.0.md`, `_source/desktop-releases-0.3.0.md`, `_source/desktop-releases-0.2.3.md`, `_source/desktop-releases-0.2.2.md`, `_source/desktop-releases-0.2.1.md`, `_source/desktop-releases-0.2.0.md`, `_source/desktop-release.md`, `_source/desktop-security.md`.

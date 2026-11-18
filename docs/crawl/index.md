@@ -88,8 +88,8 @@ Rules are pure functions of the crawl context: no network, no clock, no filesyst
 | Severity | Rule ids |
 |---|---|
 | `critical` | `noindex-on-200`, `robots-blocked`, `server-error`, `sitemap-url-noindex` |
-| `high` | `broken-internal-link`, `canonical-mismatch`, `client-error`, `hreflang-not-reciprocal`, `hreflang-target-not-ok`, `jsonld-event-required`, `jsonld-required`, `mixed-content`, `redirect-chain`, `sitemap-url-not-ok`, `soft-404`, `title-duplicate`, `title-missing` |
-| `medium` | `canonical-missing`, `h1-missing`, `hreflang-missing-x-default`, `html-lang-missing`, `html-lang-mismatch`, `image-alt-missing`, `meta-description-duplicate`, `meta-description-missing`, `thin-content` |
+| `high` | `broken-internal-link`, `canonical-mismatch`, `client-error`, `hreflang-not-reciprocal`, `hreflang-target-not-ok`, `jsonld-event-required`, `jsonld-required`, `mixed-content`, `redirect-chain`, `sitemap-url-not-ok`, `soft-404`, `title-duplicate`, `title-missing`, `tls-certificate` |
+| `medium` | `a11y-basics`, `canonical-missing`, `h1-missing`, `hreflang-missing-x-default`, `html-lang-missing`, `html-lang-mismatch`, `image-alt-missing`, `meta-description-duplicate`, `meta-description-missing`, `schema-required`, `security-headers`, `thin-content` |
 | `low` | `jsonld-organization-duplicate`, `h1-multiple`, `jsonld-organization`, `title-length` |
 
 Two heuristics are worth knowing:
@@ -99,10 +99,21 @@ Two heuristics are worth knowing:
 
 Rules report what the crawl observed. They do not claim that an unvisited URL is broken, and they do not replace a manual review of business intent.
 
+### Security, TLS, schema and accessibility (0.15.0)
+
+The rule set is now **34** rules (up from 30), discovered automatically. The four new packs are:
+
+- **`security-headers` (medium).** Status-200 HTML pages are checked for HSTS (`max-age` at least 180 days on HTTPS), CSP (missing or `unsafe-inline`/`unsafe-eval`), X-Frame-Options (unless CSP has `frame-ancestors`), X-Content-Type-Options (`nosniff`), Referrer-Policy (not `unsafe-url`), Permissions-Policy, and cookie flags from every `Set-Cookie`: `Secure` on HTTPS, `HttpOnly`, and `SameSite=None` without `Secure`. Cookie values are never included in a finding.
+- **`tls-certificate` (high).** Uses fetcher-captured `PageData.tls` and `PageData.fetched_at`: unreadable certificate (`unknown`), expired/expiring within 14 or 30 days, TLS 1.0/1.1, SAN/CN hostname mismatch (single-label wildcard supported) and RC4/3DES/NULL/EXPORT ciphers. Expiry is compared with the page fetch time, not the report time.
+- **`schema-required` (medium).** Required properties for Product, Offer, BreadcrumbList, FAQPage (including nested Question name/acceptedAnswer), Recipe, JobPosting, VideoObject, LocalBusiness, Course and SoftwareApplication. `@graph` containers and `@type` lists are flattened; blank values count as missing; findings are capped per page. It does not overlap `jsonld-required`, `jsonld-event` or `jsonld-organization`.
+- **`a11y-basics` (medium).** Inputs without a label, `aria-label`, `aria-labelledby` or `title`; buttons without visible text or an accessible name; links with no text, accessible name or image alt; a missing `<main>` or skip link; heading-level jumps greater than one.
+
+These are heuristics, not a full security or WCAG conformance audit. `tls-certificate` reports `unknown` when the fetcher did not capture TLS facts rather than passing silently; `schema-required` checks only the listed types and does not inspect nested `Product.offers` as separate items; `a11y-basics` is a subset and duplicate hrefs keep the first anchor's accessible-name data; `security-headers` checks presence and a few weak values, not full CSP policy quality.
+
 ## Stored pages and issues
 
 `lv24-seo init` creates `<config dir>/data` and writes a relative `data_dir` anchored to the config file. When the data directory exists, `crawl` opens `data/seo.sqlite3` and stores pages and issues under the crawl property id. The weekly report reads the latest stored issues for its issues section; a crawl without a store still returns the full JSON payload but persists nothing.
 
 The CLI prints a short human summary without `--json`. With `--json`, the envelope contains `summary`, `issues`, `graph`, `errors`, `blocked` and `sitemap_coverage`. MCP `seo_crawl_site` filters issues by `include_rules`, caps the returned list at 500 and reports `issues_shown`, `issues_truncated` and `issues_filtered_by` in `meta`.
 
-Source: `_source/engine-data-sources.md`, `_source/engine-cli.md`, `_source/engine-releases-0.5.2.md`.
+Source: `_source/engine-data-sources.md`, `_source/engine-cli.md`, `_source/engine-releases-0.15.0.md`, `_source/engine-releases-0.5.2.md`.

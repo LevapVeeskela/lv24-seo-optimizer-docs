@@ -9,10 +9,69 @@ description: 引擎 0.14.0 与桌面 0.9.2 发行说明、OAuth 就绪诊断和�
 
 | 产品 | 版本 | 发布日期 | 说明 |
 |---|---|---|---|
-| 引擎 | `lv24-seo 0.14.1` | 2026-11-18 | 通过生成的 `.vbs` 启动器和 `wscript.exe //B //Nologo` 隐藏 Windows 计划任务；保留 25 个 CLI 命令、12 个 MCP 工具和模式 v5 |
-| 桌面 | `0.9.4` | 2026-11-18 | 捆绑引擎 0.14.1 和 `MIN_ENGINE_VERSION` 0.14.1；04:00 任务不再打开控制台窗口 |
+| 引擎 | `lv24-seo 0.15.1` | 2026-11-18 | 在构建同意 URL 前拒绝文档中的占位 OAuth client id；保留 0.15.0 的四个规则包、25 个 CLI 命令、12 个 MCP 工具和模式 v5 |
+| 桌面 | `0.9.5` | 2026-11-18 | 捆绑引擎 0.15.1 和 `MIN_ENGINE_VERSION` 0.15.1；加入四个抓取规则包和占位 client id 防护 |
 
-桌面版本与引擎版本相互独立，但桌面固定精确引擎，并拒绝低于最低版本的引擎。`0.9.4` 捆绑 `0.14.1` 并要求至少 `0.14.1`，因此已安装的 `0.14.0` 引擎会被报告为不兼容。`0.9.3` 是上一个版本，加入了 Connect 就绪状态；`0.9.4` 隐藏 Windows 计划任务，卡片不变。OAuth 令牌由引擎存入系统钥匙串；桌面从不接收或渲染。Indexing automation 卡片为只读：渲染 `indexing status`、`indexing history` 和 `schedule status`，没有写入、确认或 `--allow-write` 控件。
+桌面版本与引擎版本相互独立，但桌面固定精确引擎，并拒绝低于最低版本的引擎。`0.9.5` 捆绑 `0.15.1` 并要求至少 `0.15.1`，因此已安装的 `0.15.0` 引擎会被报告为不兼容。`0.9.4` 是上一个版本，隐藏了 Windows 计划任务；`0.9.5` 加入四个抓取规则包，并在 OAuth 客户端缺失或配置错误时禁用 Connect。OAuth 令牌由引擎存入系统钥匙串；桌面从不接收或渲染。Indexing automation 卡片为只读：渲染 `indexing status`、`indexing history` 和 `schedule status`，没有写入、确认或 `--allow-write` 控件。
+
+## 引擎 0.15.1
+
+2026-11-18 发布。补丁版本：从文档复制的 client id 在构建同意 URL 之前被拒绝，而不是打开返回
+HTTP 400 的数据源页面。CLI 仍为 25 个顶层命令，MCP 仍为 12 个工具，SQLite 模式仍为 v5。
+
+### OAuth 占位 client id
+
+变更：
+
+- **文档示例被拒绝。** 占位列表包括 `0123456789abcdef0123456789abcdef`（Yandex）、`1234567890-abc.apps.googleusercontent.com`（Google）以及 `your-google-client-id` / `your-yandex-client-id`。它们在构建同意 URL 之前返回 `CONFIG_INVALID`，并给出注册链接和确切的配置键。
+- **连接器内检查。** `yandex_oauth.authorization_url()` 自己检查该值，而不只是 CLI 包装层，因此所有调用方都受到保护。真实 client id 不受影响。
+- **就绪状态一致。** `auth status` 和 `doctor` 已把占位符报告为 `oauth_client_missing`。
+- **桌面保护。** 桌面 `0.9.5` 在就绪状态为 `oauth_client_missing`、`oauth_client_secret_missing` 或 `oauth_redirect_invalid` 时禁用 **Connect**，并在第一次 **Open** 进行中忽略第二次点击，因此错误配置不会打开重复的同意标签页。
+- **未改变。** 没有新的依赖、数据源调用或写入门控变更。令牌/刷新流程和真实 client id 不变。
+
+本版本记录的验证：
+
+| 检查 | 结果 |
+|---|---|
+| PyPI / npm / MCP Registry | `lv24-seo 0.15.1` 已发布；GitHub Release 为 Latest |
+| 发布工作流 | 运行 `44385097574` |
+| 本地门禁 | `ruff check`、`ruff format --check`、`mypy src`、registry `--check` 和完整离线 `pytest -q` 通过 |
+| 测试 | 文档占位符、`authorization_url()` 检查和未改变的真实 client-id 路径；完整离线测试集通过 |
+
+0.15.1 的已知限制：
+
+- 语法有效但未注册的 32 位十六进制 Yandex client id 无法在本地检测；数据源仍会返回 400。请注册应用并使用其 ClientID。
+- `oauth_client_secret_missing` 仍需要 `auth set --provider yandex_oauth_secret --stdin`（或 Google 等价命令）才能让 Connect 工作。
+
+## 引擎 0.15.0
+
+2026-11-18 发布。抓取器新增四个规则包，补齐 `siteaudit-mcp` 审查中发现的审计缺口。没有新依赖、
+数据源调用或写入门控变更。
+
+### 四个抓取规则包
+
+- **`security-headers`（medium）。** 对状态 200 的 HTML 页面检查 HSTS（HTTPS 上 `max-age` 至少 180 天）、CSP（缺失或含 `unsafe-inline`/`unsafe-eval`）、X-Frame-Options（除非 CSP 声明 `frame-ancestors`）、X-Content-Type-Options（`nosniff`）、Referrer-Policy（非 `unsafe-url`）、Permissions-Policy，以及每个 `Set-Cookie` 的 cookie 标志：HTTPS 上的 `Secure`、`HttpOnly`、`SameSite=None` 且无 `Secure`。cookie 值绝不进入发现。
+- **`tls-certificate`（high）。** Fetcher 在 `PageData.tls` 中记录协议、加密套件、证书到期、签发者、subject 和 SAN。规则报告不可读证书为 `unknown`、到期（已过期、14 天内、30 天内）、TLS 1.0/1.1、SAN/CN 主机名不匹配（支持单层通配符）以及 RC4/3DES/NULL/EXPORT 套件。到期时间使用页面 `fetched_at`，因此结果确定。
+- **`schema-required`（medium）。** 检查 Product、Offer、BreadcrumbList、FAQPage（含嵌套 Question name/acceptedAnswer）、Recipe、JobPosting、VideoObject、LocalBusiness、Course 和 SoftwareApplication 的必需属性。展开 `@graph` 容器和 `@type` 列表；空值视为缺失；每页发现数量有上限。不与 `jsonld-required`、`jsonld-event` 或 `jsonld-organization` 重叠。
+- **`a11y-basics`（medium）。** 输入缺少 label、`aria-label`、`aria-labelledby` 或 `title`；按钮缺少可见文本或可访问名称；链接缺少文本、可访问名称或图片 alt；缺少 `<main>` 或跳过链接；标题层级跳跃大于一。
+
+`FetchResult`/`PageData` 现在携带 `tls`、`set_cookie`（每个值）和 `fetched_at`；`PageData` 还携带 `link_details`、`inputs`、`buttons`、`headings`、`has_main` 和 `has_skip_link`。规则集从 30 增至 **34**，发现仍自动。
+
+本版本记录的验证：
+
+| 检查 | 结果 |
+|---|---|
+| PyPI / npm / MCP Registry | `lv24-seo 0.15.0` 已发布 |
+| 发布工作流 | 运行 `44383306623` |
+| 本地门禁 | `ruff check`、`ruff format --check`、`mypy src`、registry `--check` 和完整离线 `pytest -q` 通过 |
+| 测试 | 每个规则的正向/负向/边界、畸形输入、JSON-safe details 和发现测试；TLS 与 Set-Cookie 的 fetcher 测试 |
+
+0.15.0 的已知限制：
+
+- `security-headers` 只检查存在性和少数弱值，不检查完整 CSP 策略质量。
+- `tls-certificate` 需要 fetcher 捕获的 TLS 事实；没有这些事实的页面为 `unknown`，而不是静默通过。
+- `schema-required` 只检查列出的类型；嵌套 `Product.offers` 不作为独立项。
+- `a11y-basics` 是启发式子集，不是 WCAG 符合性审计；重复 href 保留第一个锚点的可访问名称数据。
 
 ## 引擎 0.14.1
 
@@ -148,6 +207,35 @@ OAuth 连接器，随后加入桌面 Connect 卡片所需的 Yandex URL-only 模
 - `--url-only` 不会在分开的 URL 和代码步骤之间验证 `state`；验证代码很短命，且仍需要 client secret。
 - 在配置真实的 Google Cloud Desktop client 和 Yandex OAuth 应用之前，实时同意仍未验证。
 - 相对 0.13.0 没有 API、CLI 数量、MCP、模式或配置变更。
+
+## 桌面 0.9.5
+
+2026-11-18 发布。捆绑 `lv24-seo 0.15.1` 并把 `MIN_ENGINE_VERSION` 提升到 `0.15.1`，因此已安装的
+`0.15.0` 引擎会被报告为不兼容。`0.9.4` 是上一个版本。
+
+变更：
+
+- **四个抓取规则包。** 捆绑引擎新增 `security-headers`、`tls-certificate`、`schema-required` 和 `a11y-basics`；规则集从 30 增至 34。报告和 Diagnostics 屏幕无需 UI 改动即可显示新的 issue ID。
+- **占位 client id。** 文档示例 `0123456789abcdef0123456789abcdef`、`1234567890-abc.apps.googleusercontent.com` 和 `your-*-client-id` 在构建同意 URL 之前返回 `CONFIG_INVALID`。
+- **Connect 保护。** Connect 卡片在就绪状态为 `oauth_client_missing`、`oauth_client_secret_missing` 或 `oauth_redirect_invalid` 时禁用 **Connect**，并在第一次 **Open** 进行中忽略第二次点击，因此错误配置不会打开重复的同意标签页。
+- **引擎与契约。** Sidecar 为 `lv24-seo 0.15.1`；契约从 `0.15.1` 重新生成。Windows x64 固定为 `cd70636a…1922`（14,607,761 字节）；Linux 和 macOS 为 `null`，由 rebuild-aware 报告覆盖。
+- **未改变。** 只读 Indexing automation 卡片、Connect 就绪状态、隐藏的 Windows 计划任务启动器、两阶段写入门控、12 个 MCP 工具和 SQLite 模式 v5。
+
+本版本记录的验证：
+
+| 检查 | 结果 |
+|---|---|
+| GitHub Release | [`v0.9.5`](https://github.com/LevapVeeskela/lv24-seo-optimizer-desktop/releases/tag/v0.9.5)；18 个资产 |
+| 发布工作流 | 运行 `44388939536` 通过 |
+| 本地门禁 | 发布提交上 `npm run typecheck`、`npm test`、`npm run build`、`npm run contract:check`、`cargo fmt --check`、`cargo clippy --all-targets -- -D warnings` 和 `cargo test` 通过 |
+| 测试 | 完整 Vitest 和 Rust 测试集通过 |
+| 契约与固定 | 引擎 `0.15.1`；Windows x64 SHA-256 `cd70636a4f490c3ab592fb3b16ac2456d9cf9e57f08c676e05b84110ff361922`，14,607,761 字节 |
+
+0.9.5 的已知限制：
+
+- 新规则是启发式，不是完整的安全或 WCAG 符合性审计；确切边界见引擎说明。
+- 由 `0.9.3` 或更早版本创建的现有计划任务仍需要重新安装一次以使用隐藏启动器。
+- 低于 `0.15.1` 的引擎会被报告为不兼容。
 
 ## 桌面 0.9.4
 
@@ -991,7 +1079,7 @@ Windows NSIS 路径现已完成九次端到端验证：`0.2.0 → 0.2.1`、`0.2.
 `0.2.2 → 0.2.3`、`0.2.3 → 0.3.0`、`0.3.0 → 0.4.0`、`0.4.0 → 0.5.0`、`0.5.0 → 0.6.0`、`0.6.0 → 0.7.0`
 和 `0.7.0 → 0.8.0`。第九次运行中，已安装的 `0.7.0` 通过 Rust 更新器升级，下载并验证已签名包，安装并重启后
 报告 **Desktop 0.8.0**、**Engine 0.10.0** 且引擎就绪；Bing URL 提交、站点地图、抓取问题和配额卡片已加载。
-`0.9.3 → 0.9.4` 是下一个应用内更新来源。任何带应用内更新器的 `0.2.x` 安装都可直接升级到 `0.9.4`；
+`0.9.4 → 0.9.5` 是下一个应用内更新来源。任何带应用内更新器的 `0.2.x` 安装都可直接升级到 `0.9.5`；
 `0.1.0` 没有更新器，需要一次手动安装。
 
 `0.2.1 → 0.2.2` 更新由旧的 `0.2.1` 更新器执行，其中没有新的受跟踪 PID 清理。如果首次更新期间
@@ -1005,12 +1093,12 @@ Windows NSIS 路径现已完成九次端到端验证：`0.2.0 → 0.2.1`、`0.2.
 
 | 输入 | 默认值 | 含义 |
 |---|---|---|
-| `engine_version` | `0.14.1` | sidecar 中捆绑的精确引擎版本 |
+| `engine_version` | `0.15.1` | sidecar 中捆绑的精确引擎版本 |
 | `signed` | `false` | 请求操作系统签名/公证；此零支出仓库未配置 |
 | `publish` | `false` | 所有矩阵构建通过后创建 GitHub release |
 | `tag` | 空 | `vX.Y.Z` 发布标签；`publish=true` 时必填 |
 
-默认值与 `0.9.4` 固定版本一致。如果传入不同版本，发布门控会拒绝清单不匹配。
+默认值与 `0.9.5` 固定版本一致。如果传入不同版本，发布门控会拒绝清单不匹配。
 
 | Runner | Target | 包 |
 |---|---|---|
@@ -1025,8 +1113,8 @@ Windows NSIS 路径现已完成九次端到端验证：`0.2.0 → 0.2.1`、`0.2.
 ## Sidecar 固定与校验和
 
 发布 sidecar 是 PyInstaller **onedir** 树，在匹配的主机上构建；PyInstaller 不交叉编译。引擎、
-Python、Pydantic、Typer 和 PyInstaller 版本固定在 `scripts/cli-checksums.json`。`0.9.4` 捆绑
-引擎 `0.14.1`（高于 `0.14.0`）、Python `3.12`、Pydantic `2.14.3`、Typer `0.29.0` 和 PyInstaller `6.22.3`。
+Python、Pydantic、Typer 和 PyInstaller 版本固定在 `scripts/cli-checksums.json`。`0.9.5` 捆绑
+引擎 `0.15.1`（高于 `0.14.1`）、Python `3.12`、Pydantic `2.14.3`、Typer `0.29.0` 和 PyInstaller `6.22.3`。
 
 PyInstaller onedir 输出不是字节可复现的。因此校验和政策分为三部分：
 
@@ -1037,8 +1125,8 @@ PyInstaller onedir 输出不是字节可复现的。因此校验和政策分为�
 - **发布门控 — 基于报告。** 发布 job 要求每个交付 target 都有有效报告：target 名称匹配、
   `hashPolicy: "rebuild"`、`ok: true`、64 位十六进制哈希、正大小和精确引擎版本。
 
-对于 `0.9.4`，Windows x64 有已审查的本地固定值（`2bdf0077…0503`，14,582,464 字节）；Linux 和 macOS sidecar 由发布 workflow 重新构建并通过
-rebuild-aware 报告，其已审查固定值仍为 `null`，直到在这些主机上审查本地构建。`0.9.3` 的 Windows 固定值没有沿用，因为可执行文件随引擎变化。校验和报告是 CI 证据，不是发布产物。
+对于 `0.9.5`，Windows x64 有已审查的本地固定值（`cd70636a…1922`，14,607,761 字节）；Linux 和 macOS sidecar 由发布 workflow 重新构建并通过
+rebuild-aware 报告，其已审查固定值仍为 `null`，直到在这些主机上审查本地构建。`0.9.4` 的 Windows 固定值没有沿用，因为可执行文件随引擎变化。校验和报告是 CI 证据，不是发布产物。
 `SHA256SUMS.txt` 覆盖安装器、更新包、签名和 `latest.json`；sidecar 可执行文件位于这些包内，
 不单独列出。手动安装的用户应使用 `SHA256SUMS.txt` 校验下载的产物。
 
@@ -1046,7 +1134,7 @@ rebuild-aware 报告，其已审查固定值仍为 `null`，直到在这些主�
 node scripts/verify-sidecar.mjs \
   --root src-tauri/engine \
   --target x86_64-pc-windows-msvc \
-  --engine-version 0.14.1
+  --engine-version 0.15.1
 ```
 
 ## `latest.json`、签名与发布
@@ -1078,7 +1166,7 @@ node scripts/verify-sidecar.mjs \
 和发布标题中一致。引擎固定值位于 `scripts/cli-checksums.json`；workflow 显式传入
 `engine_version`，发布门控要求它与清单一致。
 
-当前源码中 `src-tauri/src/commands.rs` 的 `MIN_ENGINE_VERSION` 为 `0.14.1`。`0.9.4` 捆绑引擎
+当前源码中 `src-tauri/src/commands.rs` 的 `MIN_ENGINE_VERSION` 为 `0.15.1`。`0.9.5` 捆绑引擎
 `0.14.0`，因此最低版本与捆绑引擎一致，`0.13.x` 引擎会被视为不兼容。外壳接受不低于该
 版本的引擎，并把更旧版本标记为离线并显示通知。更新的引擎会通过门控，但不是发布测试过的固定
 版本。开发构建可通过 `LV24_SEO_BIN` 使用其他版本；UI 会将其标记为外部并仍检查最低版本。只有
@@ -1086,12 +1174,15 @@ node scripts/verify-sidecar.mjs \
 
 ## 从 0.1.0 一次性升级
 
-`0.1.0` 没有更新器、端点和公钥。它无法发现或安装 `0.9.4`。请手动下载并安装一次 `0.9.4`
-（Windows 上的 NSIS 安装器或便携 ZIP）。之后，`0.9.4` 安装在使用支持自动更新的包类型时，
+`0.1.0` 没有更新器、端点和公钥。它无法发现或安装 `0.9.5`。请手动下载并安装一次 `0.9.5`
+（Windows 上的 NSIS 安装器或便携 ZIP）。之后，`0.9.5` 安装在使用支持自动更新的包类型时，
 可以自动更新到后续版本。
 
 ## 更早的版本
 
+- **引擎 0.15.1** 在构建同意 URL 前以 `CONFIG_INVALID` 拒绝文档中的占位 OAuth client id；真实 id 和令牌流程不变。
+- **引擎 0.15.0** 新增四个抓取规则包（`security-headers`、`tls-certificate`、`schema-required`、`a11y-basics`），规则集从 30 增至 34。
+- **桌面 0.9.5** 捆绑引擎 `0.15.1` 和 `MIN_ENGINE_VERSION` `0.15.1`，加入四个规则包，并在 OAuth 客户端缺失或配置错误时禁用 Connect。
 - **引擎 0.14.1** 通过生成的 `.vbs` 启动器和 `wscript.exe //B //Nologo` 隐藏 Windows 计划任务，提供三个状态产物和一次性重装。
 - **桌面 0.9.4** 捆绑引擎 `0.14.1` 和 `MIN_ENGINE_VERSION` `0.14.1`；04:00 任务不再打开控制台窗口，卡片不变。
 - **桌面 0.9.3** 在 Connect 卡片中加入 OAuth 就绪状态、中性 unavailable 后备，并且不渲染任何令牌或密钥；引擎 `0.14.0` 和 sidecar 固定不变。
@@ -1157,4 +1248,4 @@ sha256sum -c SHA256SUMS.txt --ignore-missing
 
 更新信任见[安全与隐私](/zh/security/)，sidecar 布局见[架构](/zh/architecture/)。
 
-Source: `_source/engine-releases-0.14.1.md`, `_source/engine-releases-0.14.0.md`, `_source/engine-CHANGELOG.md`, `_source/engine-releases-0.13.1.md`, `_source/engine-releases-0.13.0.md`, `_source/engine-releases-0.12.2.md`, `_source/engine-releases-0.12.1.md`, `_source/engine-releases-0.12.0.md`, `_source/engine-releases-0.11.0.md`, `_source/engine-releases-0.10.0.md`, `_source/engine-releases-0.9.0.md`, `_source/engine-releases-0.8.0.md`, `_source/engine-releases-0.7.0.md`, `_source/engine-releases-0.6.0.md`, `_source/engine-releases-0.5.3.md`, `_source/engine-releases-0.5.2.md`, `_source/desktop-releases-0.9.4.md`, `_source/desktop-releases-0.9.4-update.md`, `_source/desktop-releases-0.9.3.md`, `_source/desktop-releases-0.9.3-update.md`, `_source/desktop-releases-0.9.2.md`, `_source/desktop-releases-0.9.1.md`, `_source/desktop-releases-0.9.0.md`, `_source/desktop-releases-0.8.0.md`, `_source/desktop-releases-0.7.0.md`, `_source/desktop-releases-0.6.0.md`, `_source/desktop-releases-0.5.0.md`, `_source/desktop-releases-0.4.0.md`, `_source/desktop-releases-0.3.0.md`, `_source/desktop-releases-0.2.3.md`, `_source/desktop-releases-0.2.2.md`, `_source/desktop-releases-0.2.1.md`, `_source/desktop-releases-0.2.0.md`, `_source/desktop-release.md`, `_source/desktop-security.md`.
+Source: `_source/engine-releases-0.15.1.md`, `_source/engine-releases-0.15.0.md`, `_source/engine-releases-0.14.1.md`, `_source/engine-releases-0.14.0.md`, `_source/engine-CHANGELOG.md`, `_source/engine-releases-0.13.1.md`, `_source/engine-releases-0.13.0.md`, `_source/engine-releases-0.12.2.md`, `_source/engine-releases-0.12.1.md`, `_source/engine-releases-0.12.0.md`, `_source/engine-releases-0.11.0.md`, `_source/engine-releases-0.10.0.md`, `_source/engine-releases-0.9.0.md`, `_source/engine-releases-0.8.0.md`, `_source/engine-releases-0.7.0.md`, `_source/engine-releases-0.6.0.md`, `_source/engine-releases-0.5.3.md`, `_source/engine-releases-0.5.2.md`, `_source/desktop-releases-0.9.5.md`, `_source/desktop-releases-0.9.5-update.md`, `_source/desktop-releases-0.9.4.md`, `_source/desktop-releases-0.9.4-update.md`, `_source/desktop-releases-0.9.3.md`, `_source/desktop-releases-0.9.3-update.md`, `_source/desktop-releases-0.9.2.md`, `_source/desktop-releases-0.9.1.md`, `_source/desktop-releases-0.9.0.md`, `_source/desktop-releases-0.8.0.md`, `_source/desktop-releases-0.7.0.md`, `_source/desktop-releases-0.6.0.md`, `_source/desktop-releases-0.5.0.md`, `_source/desktop-releases-0.4.0.md`, `_source/desktop-releases-0.3.0.md`, `_source/desktop-releases-0.2.3.md`, `_source/desktop-releases-0.2.2.md`, `_source/desktop-releases-0.2.1.md`, `_source/desktop-releases-0.2.0.md`, `_source/desktop-release.md`, `_source/desktop-security.md`.

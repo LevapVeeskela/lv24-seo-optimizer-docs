@@ -72,7 +72,8 @@ Every key below is optional. An absent provider block means "not configured", no
 ### `[auth.gsc]`
 
 Public client configuration for the Google Search Console OAuth connector. The client secret is
-never stored here.
+never stored here. The example client id in the docs is rejected as a placeholder; register a real
+Desktop app and use its id.
 
 | Key | Type | Default | Notes |
 |---|---|---|---|
@@ -388,4 +389,4 @@ Telegram bot token in the secret store, not in this file.
 - [Automation and delivery](/automation/)
 - [Troubleshooting](/troubleshooting/)
 
-Source: `_source/engine-config.md`, `_source/engine-data-sources.md`, `_source/engine-auth.md`, `_source/engine-auth-google.md`, `_source/engine-auth-yandex.md`, `_source/engine-releases-0.14.0.md`, `_source/engine-releases-0.13.0.md`, `_source/engine-releases-0.12.0.md`, `_source/engine-releases-0.5.2.md`; 0.14.0 config model in the engine repository.
+Source: `_source/engine-config.md`, `_source/engine-data-sources.md`, `_source/engine-auth.md`, `_source/engine-auth-google.md`, `_source/engine-auth-yandex.md`, `_source/engine-releases-0.15.1.md`, `_source/engine-releases-0.15.0.md`, `_source/engine-releases-0.14.0.md`, `_source/engine-releases-0.13.0.md`, `_source/engine-releases-0.12.0.md`, `_source/engine-releases-0.5.2.md`; 0.14.0 config model in the engine repository.

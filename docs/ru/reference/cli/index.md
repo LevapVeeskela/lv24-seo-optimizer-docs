@@ -517,6 +517,10 @@ lv24-seo auth login --provider yandex --url-only --json
 - **Приоритет и резервы.** GSC выбирает OAuth-грант, затем файл сервисного аккаунта, затем статический `gsc_token`. Яндекс сохраняет путь статических `yandex_webmaster_token` / `yandex_metrika_token` и обновляет токен, когда сохранены refresh token и срок. У Bing, IndexNow, CrUX и PSI нет OAuth-коннектора по дизайну.
 - **Ограничение режима Testing.** Google-приложение в статусе **Testing** выдаёт refresh token, истекающий через 7 дней, поэтому ежедневное задание через неделю падает с `invalid_grant`. Опубликуйте приложение, повторяйте вход раз в неделю или используйте сервисный аккаунт для автономных запусков.
 
+### Placeholder client id
+
+Примеры из этого руководства (`0123456789abcdef0123456789abcdef`, `1234567890-abc.apps.googleusercontent.com`, `your-*-client-id`) не являются зарегистрированными приложениями. Движок `0.15.1` отклоняет их с `CONFIG_INVALID` до построения URL согласия, и `yandex_oauth.authorization_url()` применяет ту же проверку для всех вызывающих. Зарегистрируйте реальный Google Desktop client или приложение Яндекс OAuth и используйте его id; `auth status` и `doctor` сообщают placeholder как `oauth_client_missing`. Desktop `0.9.5` отключает **Connect**, пока готовность — `oauth_client_missing`, `oauth_client_secret_missing` или `oauth_redirect_invalid`.
+
 ### Диагностика готовности OAuth
 
 `auth status --json` добавляет объект `oauth` для `gsc`, `yandex` и `metrika` с `state`, `detail`,

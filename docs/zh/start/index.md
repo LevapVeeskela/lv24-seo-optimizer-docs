@@ -71,11 +71,11 @@ CLI 信封为 `{ok, data, meta, warnings}`。当输入缺失、被截断或采�
 
 ## 可选桌面端
 
-桌面端是 `0.9.4`，内置 `lv24-seo 0.14.1`；它要求引擎 `0.14.1` 或更新，因此已安装的 `0.14.0` 引擎不兼容。当你不想记参数时它很有用：在应用内创建或选择 `seo.toml`，通过 OAuth Connect 卡片连接 GSC、Yandex Webmaster 或 Metrika，查看仪表板和只读 Indexing automation 卡片，通过带校验的表单编辑配置，运行有边界的抓取，分析 nginx 日志，分诊任务，创建或恢复可移植备份，扫描组合文件夹，比较并导出带归因摘要和 CWV 卡片的周报，在只读 Diagnostics 屏幕中读取 GSC 检查/站点地图、Yandex 事件/站点地图/队列、Bing 页面/流量/抓取/URL/关联、自然搜索 Metrika 页面/目标/维度和 CWV 审计/历史，向 Bing 提交 URL 或站点地图，读取 Bing 配额、站点地图源和抓取问题，运行 IndexNow，打开官方 Bing Site Scan 页面，并把有边界的建议复制为给智能体的 Markdown 提示词。索引自动化仅限 CLI 和调度器；`0.9.4` 增加连接器，而不是索引状态卡片。长时间引擎任务在后台运行，带窗口级横幅和 **Cancel** 按钮；提供商写入不可取消。Windows NSIS、macOS `.app` 和 Linux AppImage 可以自动更新；便携 ZIP、deb 和 rpm 仅手动更新。更新器只停止它启动的 sidecar，如果无法停止会以 `UPDATE_ENGINE_BUSY` 阻止安装。
+桌面端是 `0.9.5`，内置 `lv24-seo 0.15.1`；它要求引擎 `0.15.1` 或更新，因此已安装的 `0.15.0` 引擎不兼容。当你不想记参数时它很有用：在应用内创建或选择 `seo.toml`，通过 OAuth Connect 卡片连接 GSC、Yandex Webmaster 或 Metrika，查看仪表板和只读 Indexing automation 卡片，通过带校验的表单编辑配置，运行有边界的抓取，分析 nginx 日志，分诊任务，创建或恢复可移植备份，扫描组合文件夹，比较并导出带归因摘要和 CWV 卡片的周报，在只读 Diagnostics 屏幕中读取 GSC 检查/站点地图、Yandex 事件/站点地图/队列、Bing 页面/流量/抓取/URL/关联、自然搜索 Metrika 页面/目标/维度和 CWV 审计/历史，向 Bing 提交 URL 或站点地图，读取 Bing 配额、站点地图源和抓取问题，运行 IndexNow，打开官方 Bing Site Scan 页面，并把有边界的建议复制为给智能体的 Markdown 提示词。索引自动化仅限 CLI 和调度器；`0.9.5` 增加连接器，而不是索引状态卡片。长时间引擎任务在后台运行，带窗口级横幅和 **Cancel** 按钮；提供商写入不可取消。Windows NSIS、macOS `.app` 和 Linux AppImage 可以自动更新；便携 ZIP、deb 和 rpm 仅手动更新。更新器只停止它启动的 sidecar，如果无法停止会以 `UPDATE_ENGINE_BUSY` 阻止安装。
 
 ## 状态与限制
 
-引擎为 `0.14.1`；桌面端为 `0.9.4`。1.0 之前的已知缺口：
+引擎为 `0.15.1`；桌面端为 `0.9.5`。1.0 之前的已知缺口：
 
 - GSC、Yandex Webmaster 和 Metrika 可以使用 OAuth 连接器；GSC 保留服务账号后备，Google Testing 应用的 refresh token 在 7 天后过期。静态令牌仍被接受，但不会刷新。
 - GSC sitemap 提交和 Bing 站点地图删除返回 `WRITE_DISABLED`；Bing 站点地图提交、Bing URL 提交、IndexNow 和 Yandex 重新抓取会真正写入，并需要各自的提供商密钥或配额。
@@ -83,7 +83,7 @@ CLI 信封为 `{ok, data, meta, warnings}`。当输入缺失、被截断或采�
 - Bing 统计和关联返回 `no_rows_for_window`，而不是零展示；URL Inspection 每次调用一个 URL，且不是实时测试。
 - 桌面端会打开官方 Bing Site Scan 页面，但不启动、监控或导入扫描。
 - `storage.raw_retention_days` 已保留；目前不会写入原始归档。
-- 桌面端 `0.9.4` 有抓取、日志、任务、备份、恢复、计划任务安装、组合、Bing 索引和只读 Diagnostics 屏幕。长时间引擎调用在后台运行，带窗口级横幅和 **Cancel** 按钮，但取消不是回滚，也没有任务队列；提供商写入不可取消。
+- 桌面端 `0.9.5` 有抓取、日志、任务、备份、恢复、计划任务安装、组合、Bing 索引和只读 Diagnostics 屏幕。长时间引擎调用在后台运行，带窗口级横幅和 **Cancel** 按钮，但取消不是回滚，也没有任务队列；提供商写入不可取消。
 - `cwv collect`、`backup restore --to` 和 `schedule status`/`uninstall` 仅限 CLI；桌面端渲染已存储的 CWV 行、规划就地恢复并在确认后安装调度器任务。
 - `report indexing`、`report opportunities` 和 `report history` 已计划，尚未发布。
 - 日志是可选项：设置 `LV24_SEO_LOG_LEVEL` 才会在 CLI 和 `mcp serve` 中安装脱敏处理器。稳定的诊断接口仍是 `--json` 信封。
@@ -100,4 +100,4 @@ CLI 信封为 `{ok, data, meta, warnings}`。当输入缺失、被截断或采�
 - [报告与差异](/zh/reports/) — 周报、投递和快照差异。
 - [安全与隐私](/zh/security/) — token 处理、写操作门控和桌面信任边界。
 
-Source: `_source/engine-README.md`, `_source/engine-cli.md`, `_source/engine-auth.md`, `_source/engine-releases-0.14.1.md`, `_source/engine-releases-0.14.0.md`, `_source/engine-releases-0.13.1.md`, `_source/engine-releases-0.13.0.md`, `_source/engine-releases-0.12.2.md`, `_source/engine-releases-0.12.0.md`, `_source/engine-releases-0.11.0.md`, `_source/desktop-README.md`, `_source/desktop-releases-0.9.4.md`, `_source/desktop-releases-0.9.3.md`, `_source/desktop-releases-0.9.1.md`.
+Source: `_source/engine-README.md`, `_source/engine-cli.md`, `_source/engine-auth.md`, `_source/engine-releases-0.15.1.md`, `_source/engine-releases-0.15.0.md`, `_source/engine-releases-0.14.1.md`, `_source/engine-releases-0.14.0.md`, `_source/engine-releases-0.13.1.md`, `_source/engine-releases-0.13.0.md`, `_source/engine-releases-0.12.2.md`, `_source/engine-releases-0.12.0.md`, `_source/engine-releases-0.11.0.md`, `_source/desktop-README.md`, `_source/desktop-releases-0.9.5.md`, `_source/desktop-releases-0.9.4.md`, `_source/desktop-releases-0.9.3.md`, `_source/desktop-releases-0.9.1.md`.

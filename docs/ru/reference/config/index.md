@@ -74,7 +74,8 @@ JSON-строка на запись, когда stderr не терминал (pi
 ### `[auth.gsc]`
 
 Публичная конфигурация клиента для OAuth-коннектора Google Search Console. Client secret здесь
-никогда не хранится.
+никогда не хранится. Пример client id из документации отклоняется как placeholder; зарегистрируйте
+реальное Desktop-приложение.
 
 | Ключ | Тип | Умолчание | Примечания |
 |---|---|---|---|
@@ -385,4 +386,4 @@ Telegram-бота держите в хранилище секретов, а не
 - [Автоматизация и доставка](/ru/automation/)
 - [Устранение неполадок](/ru/troubleshooting/)
 
-Source: `_source/engine-config.md`, `_source/engine-data-sources.md`, `_source/engine-auth.md`, `_source/engine-auth-google.md`, `_source/engine-auth-yandex.md`, `_source/engine-releases-0.14.0.md`, `_source/engine-releases-0.13.0.md`, `_source/engine-releases-0.12.0.md`, `_source/engine-releases-0.5.2.md`; модель конфигурации 0.14.0 в репозитории движка.
+Source: `_source/engine-config.md`, `_source/engine-data-sources.md`, `_source/engine-auth.md`, `_source/engine-auth-google.md`, `_source/engine-auth-yandex.md`, `_source/engine-releases-0.15.1.md`, `_source/engine-releases-0.15.0.md`, `_source/engine-releases-0.14.0.md`, `_source/engine-releases-0.13.0.md`, `_source/engine-releases-0.12.0.md`, `_source/engine-releases-0.5.2.md`; модель конфигурации 0.14.0 в репозитории движка.

@@ -88,8 +88,8 @@ lv24-seo crawl --start https://example.com/ --max-urls 500 --json
 | Серьёзность | Id правил |
 |---|---|
 | `critical` | `noindex-on-200`, `robots-blocked`, `server-error`, `sitemap-url-noindex` |
-| `high` | `broken-internal-link`, `canonical-mismatch`, `client-error`, `hreflang-not-reciprocal`, `hreflang-target-not-ok`, `jsonld-event-required`, `jsonld-required`, `mixed-content`, `redirect-chain`, `sitemap-url-not-ok`, `soft-404`, `title-duplicate`, `title-missing` |
-| `medium` | `canonical-missing`, `h1-missing`, `hreflang-missing-x-default`, `html-lang-missing`, `html-lang-mismatch`, `image-alt-missing`, `meta-description-duplicate`, `meta-description-missing`, `thin-content` |
+| `high` | `broken-internal-link`, `canonical-mismatch`, `client-error`, `hreflang-not-reciprocal`, `hreflang-target-not-ok`, `jsonld-event-required`, `jsonld-required`, `mixed-content`, `redirect-chain`, `sitemap-url-not-ok`, `soft-404`, `title-duplicate`, `title-missing`, `tls-certificate` |
+| `medium` | `a11y-basics`, `canonical-missing`, `h1-missing`, `hreflang-missing-x-default`, `html-lang-missing`, `html-lang-mismatch`, `image-alt-missing`, `meta-description-duplicate`, `meta-description-missing`, `schema-required`, `security-headers`, `thin-content` |
 | `low` | `jsonld-organization-duplicate`, `h1-multiple`, `jsonld-organization`, `title-length` |
 
 Две эвристики стоит знать:
@@ -99,10 +99,21 @@ lv24-seo crawl --start https://example.com/ --max-urls 500 --json
 
 Правила сообщают то, что наблюдал обход. Они не объявляют необойдённый URL битым и не заменяют ручную проверку бизнес-смысла.
 
+### Безопасность, TLS, Schema.org и доступность (0.15.0)
+
+Набор правил теперь **34** (было 30), обнаружение автоматическое. Четыре новых набора:
+
+- **`security-headers` (medium).** Для HTML-страниц со статусом 200 проверяются HSTS (`max-age` не меньше 180 дней на HTTPS), CSP (отсутствие или `unsafe-inline`/`unsafe-eval`), X-Frame-Options (если CSP не содержит `frame-ancestors`), X-Content-Type-Options (`nosniff`), Referrer-Policy (не `unsafe-url`), Permissions-Policy и флаги cookie из каждого `Set-Cookie`: `Secure` на HTTPS, `HttpOnly`, `SameSite=None` без `Secure`. Значения cookie не попадают в находку.
+- **`tls-certificate` (high).** Использует `PageData.tls` и `PageData.fetched_at` от fetcher: нечитаемый сертификат (`unknown`), истёк/истекает через 14 или 30 дней, TLS 1.0/1.1, несовпадение имени с SAN/CN (одноуровневый wildcard) и шифры RC4/3DES/NULL/EXPORT. Срок сравнивается со временем обхода страницы, а не отчёта.
+- **`schema-required` (medium).** Обязательные свойства Product, Offer, BreadcrumbList, FAQPage (включая вложенные Question name/acceptedAnswer), Recipe, JobPosting, VideoObject, LocalBusiness, Course и SoftwareApplication. Контейнеры `@graph` и списки `@type` разворачиваются; пустые значения считаются отсутствующими; находки ограничены на страницу. Не пересекается с `jsonld-required`, `jsonld-event` и `jsonld-organization`.
+- **`a11y-basics` (medium).** Input без label, `aria-label`, `aria-labelledby` или `title`; кнопки без видимого текста или доступного имени; ссылки без текста, имени или alt изображения; отсутствие `<main>` или skip link; скачки уровня заголовков больше одного.
+
+Это эвристики, а не полный аудит безопасности или соответствия WCAG. `tls-certificate` сообщает `unknown`, если fetcher не собрал TLS-факты, а не пропускает молча; `schema-required` проверяет только перечисленные типы и не считает вложенные `Product.offers` отдельными элементами; `a11y-basics` — подмножество, а при дублирующихся href сохраняются данные первого якоря; `security-headers` проверяет наличие и несколько слабых значений, а не полное качество CSP.
+
 ## Сохранённые страницы и проблемы
 
 `lv24-seo init` создаёт `<config dir>/data` и пишет относительный `data_dir`, привязанный к конфигу. Когда каталог существует, `crawl` открывает `data/seo.sqlite3` и сохраняет страницы и проблемы под id свойства обхода. Недельный отчёт читает последние сохранённые проблемы для своего раздела; обход без хранилища всё равно возвращает полный JSON, но ничего не сохраняет.
 
 Без `--json` CLI печатает короткую человекочитаемую сводку. С `--json` конверт содержит `summary`, `issues`, `graph`, `errors`, `blocked` и `sitemap_coverage`. MCP `seo_crawl_site` фильтрует проблемы по `include_rules`, ограничивает возвращаемый список 500 и сообщает `issues_shown`, `issues_truncated` и `issues_filtered_by` в `meta`.
 
-Source: `_source/engine-data-sources.md`, `_source/engine-cli.md`, `_source/engine-releases-0.5.2.md`.
+Source: `_source/engine-data-sources.md`, `_source/engine-cli.md`, `_source/engine-releases-0.15.0.md`, `_source/engine-releases-0.5.2.md`.

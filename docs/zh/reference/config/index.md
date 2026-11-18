@@ -67,7 +67,7 @@ description: seo.toml 的位置与优先级、所有键及默认值，以及密�
 
 ### `[auth.gsc]`
 
-Google Search Console OAuth 连接器的公开客户端配置。client secret 绝不保存在这里。
+Google Search Console OAuth 连接器的公开客户端配置。client secret 绝不保存在这里。 文档中的示例 client id 会被当作占位符拒绝；请注册真实的 Desktop 应用。
 
 | 键 | 类型 | 默认值 | 说明 |
 |---|---|---|---|
@@ -367,4 +367,4 @@ indexnow_daily_limit = 1000
 - [自动化与投递](/zh/automation/)
 - [故障排查](/zh/troubleshooting/)
 
-Source: `_source/engine-config.md`, `_source/engine-data-sources.md`, `_source/engine-auth.md`, `_source/engine-auth-google.md`, `_source/engine-auth-yandex.md`, `_source/engine-releases-0.14.0.md`, `_source/engine-releases-0.13.0.md`, `_source/engine-releases-0.12.0.md`, `_source/engine-releases-0.5.2.md`; 引擎仓库中 0.14.0 的配置模型。
+Source: `_source/engine-config.md`, `_source/engine-data-sources.md`, `_source/engine-auth.md`, `_source/engine-auth-google.md`, `_source/engine-auth-yandex.md`, `_source/engine-releases-0.15.1.md`, `_source/engine-releases-0.15.0.md`, `_source/engine-releases-0.14.0.md`, `_source/engine-releases-0.13.0.md`, `_source/engine-releases-0.12.0.md`, `_source/engine-releases-0.5.2.md`; 引擎仓库中 0.14.0 的配置模型。

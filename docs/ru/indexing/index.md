@@ -7,7 +7,7 @@ description: Очередь индексации с учётом квот, ст�
 
 Автоматизация индексации ведёт локальную очередь URL из sitemap, отправляет то, что разрешено
 свежими квотами провайдеров, и записывает результат. Это функция CLI и планировщика; карточка в
-приложении `0.9.4` показывает те же данные только для чтения.
+приложении `0.9.5` показывает те же данные только для чтения.
 
 ## Что она делает
 
@@ -64,7 +64,7 @@ Bing и Яндекса сейчас; без него показывается п
 
 ## Карточка Indexing automation в приложении
 
-Приложение `0.9.2` добавило карточку только для чтения в Integrations; `0.9.4` её сохраняет. Она рендерит
+Приложение `0.9.2` добавило карточку только для чтения в Integrations; `0.9.5` её сохраняет. Она рендерит
 `indexing status`, `indexing history` и `schedule status`; в ней нет записи, подтверждения или
 `--allow-write`.
 
@@ -72,7 +72,7 @@ Bing и Яндекса сейчас; без него показывается п
 - **По провайдерам.** Строки Bing, Yandex, GSC и IndexNow с `submitted`, `indexed` (только GSC), `pending` и квотой: остаток Bing за день/месяц, остаток Яндекса, использовано/лимит GSC/IndexNow. Провайдер без состояния показывает «No data yet», а не ноль.
 - **Последний запуск и история.** Новейшая строка `indexing history` со статусом, числом отправленных/проверенных и до пяти `error_items` (URL, код, сообщение), плюс компактная таблица 7/30 дней по дням и провайдерам из `indexing history --limit 30`.
 - **Честность.** Каждый рендер содержит `data_age_days` и `limitations`; устаревший агрегат GSC помечен и отделён. Bing/Yandex/IndexNow показывают отсутствие счётчика по URL, а не выдуманное число.
-- **Совместимость.** Если движок отвечает `INVALID_COMMAND`, карточка показывает «Indexing status needs engine >= 0.13.1» и скрывает таблицы. Движок старше `0.14.1` оболочка считает несовместимым.
+- **Совместимость.** Если движок отвечает `INVALID_COMMAND`, карточка показывает «Indexing status needs engine >= 0.13.1» и скрывает таблицы. Движок старше `0.15.1` оболочка считает несовместимым.
 - **Мост.** `indexing_status` (`provider`, `limit`, `live`), `indexing_history` (`limit`) и `schedule_status` (`kind`, `target`) в белом списке; Rust проверяет каждое значение, отклоняет write-флаги и аргументы другой команды и использует таймаут 120 с. `--live` — единственный вызов провайдера; отсутствующий ключ становится ограничением, а не сбоем.
 
 ## Конфигурация
@@ -98,4 +98,4 @@ Bing и Яндекса сейчас; без него показывается п
 - [Автоматизация и доставка](/ru/automation/)
 - [Настольное приложение](/ru/desktop/)
 
-Source: `_source/engine-releases-0.12.0.md`, `_source/engine-releases-0.13.1.md`, `_source/engine-releases-0.14.1.md`, `_source/engine-releases-0.14.0.md`, `_source/desktop-releases-0.9.4.md`, `_source/desktop-releases-0.9.2.md`, `_source/desktop-releases-0.9.2-update.md`, `_source/engine-cli.md`, `_source/engine-config.md`.
+Source: `_source/engine-releases-0.12.0.md`, `_source/engine-releases-0.13.1.md`, `_source/engine-releases-0.15.1.md`, `_source/engine-releases-0.15.0.md`, `_source/engine-releases-0.14.1.md`, `_source/engine-releases-0.14.0.md`, `_source/desktop-releases-0.9.5.md`, `_source/desktop-releases-0.9.4.md`, `_source/desktop-releases-0.9.2.md`, `_source/desktop-releases-0.9.2-update.md`, `_source/engine-cli.md`, `_source/engine-config.md`.

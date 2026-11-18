@@ -523,6 +523,10 @@ of a pasted token. It needs a client id in `[auth.gsc]` or `[auth.yandex]` (or
   7 days, so a daily job stops with `invalid_grant` after a week. Publish the app, re-login weekly or
   use a service account for unattended runs.
 
+### Placeholder client ids
+
+The example ids in this guide (`0123456789abcdef0123456789abcdef`, `1234567890-abc.apps.googleusercontent.com`, `your-*-client-id`) are not registered provider apps. Engine `0.15.1` rejects them with `CONFIG_INVALID` before a consent URL is built, and `yandex_oauth.authorization_url()` enforces the same guard for every caller. Register a real Google Desktop client or Yandex OAuth app and use the id it shows; `auth status` and `doctor` report a placeholder as `oauth_client_missing`. Desktop `0.9.5` disables **Connect** while readiness is `oauth_client_missing`, `oauth_client_secret_missing` or `oauth_redirect_invalid`.
+
 ### OAuth readiness diagnostics
 
 `auth status --json` adds an `oauth` object for `gsc`, `yandex` and `metrika` with `state`, `detail`,
@@ -573,4 +577,4 @@ packaged `SKILL.md` files and their manifest. Both write local files only.
 - [MCP and agent skills](/mcp/)
 - [Troubleshooting](/troubleshooting/)
 
-Source: `_source/engine-cli.md`, `_source/engine-auth.md`, `_source/engine-auth-google.md`, `_source/engine-auth-yandex.md`, `_source/engine-releases-0.14.0.md`, `_source/engine-releases-0.13.1.md`, `_source/engine-releases-0.13.0.md`, `_source/engine-mcp.md`, `_source/engine-releases-0.12.2.md`, `_source/engine-releases-0.12.0.md`, `_source/engine-releases-0.11.0.md`, `_source/engine-releases-0.10.0.md`, `_source/engine-releases-0.9.0.md`, `_source/engine-releases-0.8.0.md`, `_source/engine-releases-0.7.0.md`, `_source/engine-releases-0.6.0.md`, `_source/engine-releases-0.5.3.md`; 0.14.0 `--help` output in the engine repository.
+Source: `_source/engine-cli.md`, `_source/engine-auth.md`, `_source/engine-auth-google.md`, `_source/engine-auth-yandex.md`, `_source/engine-releases-0.15.1.md`, `_source/engine-releases-0.15.0.md`, `_source/engine-releases-0.14.0.md`, `_source/engine-releases-0.13.1.md`, `_source/engine-releases-0.13.0.md`, `_source/engine-mcp.md`, `_source/engine-releases-0.12.2.md`, `_source/engine-releases-0.12.0.md`, `_source/engine-releases-0.11.0.md`, `_source/engine-releases-0.10.0.md`, `_source/engine-releases-0.9.0.md`, `_source/engine-releases-0.8.0.md`, `_source/engine-releases-0.7.0.md`, `_source/engine-releases-0.6.0.md`, `_source/engine-releases-0.5.3.md`; 0.14.0 `--help` output in the engine repository.

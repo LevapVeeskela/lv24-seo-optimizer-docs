@@ -82,15 +82,15 @@ GSC 也可以使用服务账号。把 `providers.gsc.service_account_file` 设�
 
 ## 桌面安装矩阵
 
-桌面端 `0.9.4` 是当前版本，内置 `lv24-seo 0.14.1`；它要求引擎 `0.14.1` 或更新，因此已安装的 `0.14.0` 引擎不兼容。从项目的 Releases 页面下载资源文件；`SHA256SUMS.txt` 覆盖所有已发布资源。
+桌面端 `0.9.5` 是当前版本，内置 `lv24-seo 0.15.1`；它要求引擎 `0.15.1` 或更新，因此已安装的 `0.15.0` 引擎不兼容。从项目的 Releases 页面下载资源文件；`SHA256SUMS.txt` 覆盖所有已发布资源。
 
 | 平台 | 文件 | 自动更新 |
 |---|---|---|
-| Windows 10/11 x64 | NSIS `LV24.SEO.Optimizer_0.9.4_x64-setup.exe`（+ `.sig`）、便携包 `LV24-SEO-Optimizer_0.9.4_x64-portable.zip`（+ `.zip.sha256`） | 仅 NSIS；便携包手动更新 |
-| Linux x64 | `LV24.SEO.Optimizer_0.9.4_amd64.AppImage`（+ `.AppImage.sig`）、`LV24.SEO.Optimizer_0.9.4_amd64.deb`、`LV24.SEO.Optimizer-0.9.4-1.x86_64.rpm` | 仅 AppImage；deb/rpm 手动更新 |
-| macOS 13+ arm64/x64 | 首次安装用 `LV24.SEO.Optimizer_0.9.4_aarch64.dmg` / `LV24.SEO.Optimizer_0.9.4_x64.dmg`，更新用 `LV24.SEO.Optimizer_0.9.4_aarch64.app.tar.gz` / `LV24.SEO.Optimizer_0.9.4_x64.app.tar.gz`（+ `.sig`） | 仅 `.app`；DMG 用于首次安装 |
+| Windows 10/11 x64 | NSIS `LV24.SEO.Optimizer_0.9.5_x64-setup.exe`（+ `.sig`）、便携包 `LV24-SEO-Optimizer_0.9.5_x64-portable.zip`（+ `.zip.sha256`） | 仅 NSIS；便携包手动更新 |
+| Linux x64 | `LV24.SEO.Optimizer_0.9.5_amd64.AppImage`（+ `.AppImage.sig`）、`LV24.SEO.Optimizer_0.9.5_amd64.deb`、`LV24.SEO.Optimizer-0.9.5-1.x86_64.rpm` | 仅 AppImage；deb/rpm 手动更新 |
+| macOS 13+ arm64/x64 | 首次安装用 `LV24.SEO.Optimizer_0.9.5_aarch64.dmg` / `LV24.SEO.Optimizer_0.9.5_x64.dmg`，更新用 `LV24.SEO.Optimizer_0.9.5_aarch64.app.tar.gz` / `LV24.SEO.Optimizer_0.9.5_x64.app.tar.gz`（+ `.sig`） | 仅 `.app`；DMG 用于首次安装 |
 
-引擎 `0.14.1` 通过生成的 `.vbs` 启动器和 `wscript.exe //B //Nologo` 隐藏 Windows 计划任务，提供三个状态产物和一次性重装。它保留 0.14.0 的 OAuth 就绪诊断、25 个 CLI 命令、12 个 MCP 工具和模式 v5。桌面 `0.9.4` 捆绑引擎 `0.14.1` 和 `MIN_ENGINE_VERSION` `0.14.1`；04:00 任务不再打开控制台窗口，卡片不变。限制见[发行说明](/zh/release/)。
+引擎 `0.15.1` 在构建同意 URL 前拒绝文档中的占位 OAuth client id，并保留 0.15.0 的四个抓取规则包（34 条规则）、0.14.1 的隐藏 Windows 启动器、25 个 CLI 命令、12 个 MCP 工具和模式 v5。桌面 `0.9.5` 捆绑引擎 `0.15.1` 和 `MIN_ENGINE_VERSION` `0.15.1`；新规则会出现在报告和 Diagnostics 中而无需 UI 改动，OAuth 客户端缺失或配置错误时 Connect 被禁用。限制见[发行说明](/zh/release/)。
 
 ### Windows
 
@@ -115,7 +115,7 @@ Apple 芯片使用 `aarch64` DMG，Intel 使用 `x64` DMG。打开 DMG，将 **L
 
 ### 从桌面 0.1.0 升级
 
-`0.1.0` 是仅限 Windows 的预览，没有更新器、端点或公钥。请手动安装一次 `0.9.4`（NSIS 安装程序或便携 ZIP）。从 `0.2.0` 起，只有 Windows NSIS、macOS `.app` 和 Linux AppImage 可以自动更新。
+`0.1.0` 是仅限 Windows 的预览，没有更新器、端点或公钥。请手动安装一次 `0.9.5`（NSIS 安装程序或便携 ZIP）。从 `0.2.0` 起，只有 Windows NSIS、macOS `.app` 和 Linux AppImage 可以自动更新。
 
 ## 未签名构建
 
@@ -146,4 +146,4 @@ pip uninstall lv24-seo
 - [配置参考](/zh/reference/config/) — 所有 `seo.toml` 键。
 - [安全与隐私](/zh/security/) — token 存储和写操作门控。
 
-Source: `_source/engine-README.md`, `_source/engine-cli.md`, `_source/engine-config.md`, `_source/engine-auth.md`, `_source/engine-releases-0.14.1.md`, `_source/engine-releases-0.14.0.md`, `_source/engine-releases-0.13.1.md`, `_source/engine-releases-0.13.0.md`, `_source/desktop-README.md`, `_source/desktop-releases-0.9.4.md`, `_source/desktop-releases-0.9.3.md`, `_source/desktop-releases-0.9.2.md`, `_source/desktop-releases-0.9.1.md`, `_source/desktop-releases-0.8.0.md`, `_source/desktop-releases-0.7.0.md`, `_source/desktop-releases-0.6.0.md`, `_source/desktop-releases-0.5.0.md`, `_source/desktop-releases-0.4.0.md`, `_source/desktop-releases-0.3.0.md`, `_source/desktop-releases-0.2.3.md`, `_source/desktop-releases-0.2.2.md`, `_source/desktop-releases-0.2.0.md`.
+Source: `_source/engine-README.md`, `_source/engine-cli.md`, `_source/engine-config.md`, `_source/engine-auth.md`, `_source/engine-releases-0.15.1.md`, `_source/engine-releases-0.15.0.md`, `_source/engine-releases-0.14.1.md`, `_source/engine-releases-0.14.0.md`, `_source/engine-releases-0.13.1.md`, `_source/engine-releases-0.13.0.md`, `_source/desktop-README.md`, `_source/desktop-releases-0.9.5.md`, `_source/desktop-releases-0.9.4.md`, `_source/desktop-releases-0.9.3.md`, `_source/desktop-releases-0.9.2.md`, `_source/desktop-releases-0.9.1.md`, `_source/desktop-releases-0.8.0.md`, `_source/desktop-releases-0.7.0.md`, `_source/desktop-releases-0.6.0.md`, `_source/desktop-releases-0.5.0.md`, `_source/desktop-releases-0.4.0.md`, `_source/desktop-releases-0.3.0.md`, `_source/desktop-releases-0.2.3.md`, `_source/desktop-releases-0.2.2.md`, `_source/desktop-releases-0.2.0.md`.

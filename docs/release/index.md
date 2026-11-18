@@ -9,10 +9,70 @@ The current releases are:
 
 | Product | Version | Released | Notes |
 |---|---|---|---|
-| Engine | `lv24-seo 0.14.1` | 2026-11-18 | Hidden Windows scheduled jobs through a generated `.vbs` launcher and `wscript.exe //B //Nologo`; keeps 25 CLI commands, 12 MCP tools and schema v5 |
-| Desktop | `0.9.4` | 2026-11-18 | Bundles engine 0.14.1 and `MIN_ENGINE_VERSION` 0.14.1; the 04:00 job no longer opens a console window |
+| Engine | `lv24-seo 0.15.1` | 2026-11-18 | Rejects documented placeholder OAuth client ids before a consent URL; keeps the four 0.15.0 rule packs, 25 CLI commands, 12 MCP tools and schema v5 |
+| Desktop | `0.9.5` | 2026-11-18 | Bundles engine 0.15.1 and `MIN_ENGINE_VERSION` 0.15.1; adds the four crawl rule packs and the placeholder client-id guard |
 
-The desktop version and the engine version are independent, but the desktop pins an exact engine and refuses one below its minimum. `0.9.4` bundles `0.14.1` and requires at least `0.14.1`, so an installed `0.14.0` engine is reported as incompatible. `0.9.3` is the previous release and added the Connect card readiness states; `0.9.4` hides Windows scheduled jobs and leaves the cards unchanged. OAuth tokens are stored by the engine in the OS keychain; the desktop never receives or renders one. The Indexing automation card is read-only: it renders `indexing status`, `indexing history` and `schedule status` and has no write, confirm or `--allow-write` control.
+The desktop version and the engine version are independent, but the desktop pins an exact engine and refuses one below its minimum. `0.9.5` bundles `0.15.1` and requires at least `0.15.1`, so an installed `0.15.0` engine is reported as incompatible. `0.9.4` is the previous release and hid Windows scheduled jobs; `0.9.5` adds the four crawl rule packs and disables Connect while the OAuth client is missing or misconfigured. OAuth tokens are stored by the engine in the OS keychain; the desktop never receives or renders one. The Indexing automation card is read-only: it renders `indexing status`, `indexing history` and `schedule status` and has no write, confirm or `--allow-write` control.
+
+## Engine 0.15.1
+
+Released on 2026-11-18. A patch release: a client id copied from the documentation is rejected before
+a consent URL is built, instead of opening a provider page that answers HTTP 400. The CLI stays at
+25 top-level commands, MCP at 12 tools and SQLite at schema v5.
+
+### Placeholder OAuth client ids
+
+What changed:
+
+- **Documented examples are rejected.** The placeholder list includes `0123456789abcdef0123456789abcdef` (Yandex), `1234567890-abc.apps.googleusercontent.com` (Google) and `your-google-client-id` / `your-yandex-client-id`. They return `CONFIG_INVALID` with the registration link and the exact config key before a consent URL is built.
+- **Guard in the connector.** `yandex_oauth.authorization_url()` checks the value itself, not only the CLI wrapper, so every caller is protected. Real client ids are unaffected.
+- **Readiness agrees.** `auth status` and `doctor` already report a placeholder as `oauth_client_missing`.
+- **Desktop guard.** Desktop `0.9.5` disables **Connect** while readiness is `oauth_client_missing`, `oauth_client_secret_missing` or `oauth_redirect_invalid`, and ignores a second **Open** click while the first is in flight, so a misconfigured setup cannot spawn repeated consent tabs.
+- **Not changed.** No new dependency, no provider call, no write-gate change. The OAuth token/refresh flows and real client ids are unchanged.
+
+Verification recorded for this release:
+
+| Check | Result |
+|---|---|
+| PyPI / npm / MCP Registry | `lv24-seo 0.15.1` published; GitHub Release is Latest |
+| Release workflow | run `44385097574` |
+| Local gate | `ruff check`, `ruff format --check`, `mypy src`, MCP registry `--check` and full offline `pytest -q` green on the release commit |
+| Tests | documented placeholders, the `authorization_url()` guard and the unchanged real client-id path; full offline suite green |
+
+Known limits in 0.15.1:
+
+- A syntactically valid but unregistered 32-hex Yandex client id cannot be detected locally; the provider still answers 400. Register the app and use the ClientID it shows.
+- `oauth_client_secret_missing` still requires `auth set --provider yandex_oauth_secret --stdin` (or the Google equivalent) before Connect can work.
+
+## Engine 0.15.0
+
+Released on 2026-11-18. The crawler gains four rule packs that close audit gaps from the
+`siteaudit-mcp` review. No new dependency, no provider call and no write-gate change.
+
+### Four crawl rule packs
+
+- **`security-headers` (medium).** Status-200 HTML pages are checked for HSTS (`max-age` at least 180 days on HTTPS), CSP (missing or `unsafe-inline`/`unsafe-eval`), X-Frame-Options (unless CSP has `frame-ancestors`), X-Content-Type-Options (`nosniff`), Referrer-Policy (not `unsafe-url`), Permissions-Policy, and cookie flags from every `Set-Cookie`: `Secure` on HTTPS, `HttpOnly`, and `SameSite=None` without `Secure`. Cookie values never appear in a finding.
+- **`tls-certificate` (high).** The fetcher records protocol, cipher, certificate expiry, issuer, subject and SAN in `PageData.tls`. The rule reports an unreadable certificate as `unknown`, expiry (expired, within 14 days, within 30 days), TLS 1.0/1.1, a SAN/CN hostname mismatch (single-label wildcard supported) and RC4/3DES/NULL/EXPORT ciphers. Expiry uses the page `fetched_at`, so results are deterministic.
+- **`schema-required` (medium).** Required properties for Product, Offer, BreadcrumbList, FAQPage (including nested Question name/acceptedAnswer), Recipe, JobPosting, VideoObject, LocalBusiness, Course and SoftwareApplication. `@graph` containers and `@type` lists are flattened; blank values count as missing; findings are capped per page. It does not overlap `jsonld-required`, `jsonld-event` or `jsonld-organization`.
+- **`a11y-basics` (medium).** Inputs without a label, `aria-label`, `aria-labelledby` or `title`; buttons without visible text or an accessible name; links with no text, accessible name or image alt; a missing `<main>` or skip link; heading-level jumps greater than one.
+
+`FetchResult`/`PageData` now carry `tls`, `set_cookie` (every value) and `fetched_at`; `PageData` also carries `link_details`, `inputs`, `buttons`, `headings`, `has_main` and `has_skip_link`. The rule set grows from 30 to **34** and discovery stays automatic.
+
+Verification recorded for this release:
+
+| Check | Result |
+|---|---|
+| PyPI / npm / MCP Registry | `lv24-seo 0.15.0` published |
+| Release workflow | run `44383306623` |
+| Local gate | `ruff check`, `ruff format --check`, `mypy src`, MCP registry `--check` and full offline `pytest -q` green on the release commit |
+| Tests | focused positive/negative/boundary, malformed input, JSON-safe details and discovery tests per rule; TLS and Set-Cookie fetcher tests |
+
+Known limits in 0.15.0:
+
+- `security-headers` checks presence and a few weak values, not full CSP policy quality.
+- `tls-certificate` needs fetcher-captured TLS facts; a page without them is `unknown`, not a silent pass.
+- `schema-required` checks the listed types only; nested `Product.offers` nodes are not separate items.
+- `a11y-basics` is a heuristic subset, not a WCAG conformance audit; duplicate hrefs keep the first anchor's accessible-name data.
 
 ## Engine 0.14.1
 
@@ -150,6 +210,35 @@ Known limits in 0.13.1:
 - `--url-only` does not verify `state` across the separate URL and code steps; the verification code is short-lived and the client secret is still required.
 - Live consent remains unverified until a real Google Cloud Desktop client and Yandex OAuth app are configured.
 - No API, CLI count, MCP, schema or config change from 0.13.0.
+
+## Desktop 0.9.5
+
+Released on 2026-11-18. It bundles `lv24-seo 0.15.1` and raises `MIN_ENGINE_VERSION` to `0.15.1`, so
+an installed `0.15.0` engine is reported as incompatible. `0.9.4` is the previous release.
+
+What changed:
+
+- **Four crawl rule packs.** The bundled engine adds `security-headers`, `tls-certificate`, `schema-required` and `a11y-basics`; the rule set grows from 30 to 34. The report and Diagnostics screens render the new issue IDs without a UI change.
+- **Placeholder client ids.** Documented examples such as `0123456789abcdef0123456789abcdef`, `1234567890-abc.apps.googleusercontent.com` and `your-*-client-id` return `CONFIG_INVALID` before a consent URL is built.
+- **Connect guard.** The Connect card disables **Connect** while readiness is `oauth_client_missing`, `oauth_client_secret_missing` or `oauth_redirect_invalid`, and ignores a second **Open** click while the first is in flight, so a misconfigured setup cannot spawn repeated consent tabs.
+- **Engine and contracts.** The sidecar is `lv24-seo 0.15.1`; contracts are regenerated from `0.15.1`. The Windows x64 reviewed pin is `cd70636a…1922` (14,607,761 bytes); Linux and macOS pins remain `null` and are covered by rebuild-aware reports.
+- **Not changed.** The read-only Indexing automation card, the Connect readiness states, the hidden Windows scheduled-job launcher, the two-phase write gates, MCP at 12 tools and SQLite schema v5.
+
+Verification recorded for this release:
+
+| Check | Result |
+|---|---|
+| GitHub Release | [`v0.9.5`](https://github.com/LevapVeeskela/lv24-seo-optimizer-desktop/releases/tag/v0.9.5); 18 assets |
+| Release workflow | run `44388939536` green |
+| Local gate | `npm run typecheck`, `npm test`, `npm run build`, `npm run contract:check`, `cargo fmt --check`, `cargo clippy --all-targets -- -D warnings` and `cargo test` green on the release commit |
+| Tests | full Vitest and Rust suites passed |
+| Contracts and pin | engine `0.15.1`; Windows x64 SHA-256 `cd70636a4f490c3ab592fb3b16ac2456d9cf9e57f08c676e05b84110ff361922`, 14,607,761 bytes |
+
+Known limits in 0.9.5:
+
+- The new rules are heuristics, not a full security or WCAG conformance audit; see the engine notes for the exact bounds.
+- Existing scheduled tasks from `0.9.3` or older still need one reinstall to pick up the hidden launcher.
+- An engine older than `0.15.1` is reported as incompatible.
 
 ## Desktop 0.9.4
 
@@ -1160,8 +1249,8 @@ The Windows NSIS path has now been verified end-to-end nine times: `0.2.0 → 0.
 and `0.7.0 → 0.8.0`. For the ninth run, an installed `0.7.0` build updated through the Rust updater,
 downloaded and verified the signed package, installed it, relaunched, and reported **Desktop 0.8.0**
 with **Engine 0.10.0** and the engine ready; the Bing URL submission, sitemap, crawl-issue and quota
-cards loaded. `0.9.3 → 0.9.4` is the next in-app update source. Any `0.2.x` install with the in-app updater can jump straight to
-`0.9.4`; `0.1.0` has no updater and needs one manual install.
+cards loaded. `0.9.4 → 0.9.5` is the next in-app update source. Any `0.2.x` install with the in-app updater can jump straight to
+`0.9.5`; `0.1.0` has no updater and needs one manual install.
 
 The `0.2.1 → 0.2.2` update runs the old `0.2.1` updater, which does not include the new tracked-PID
 cleanup. If a sidecar is active during that first update, retry after it exits or install `0.2.2`
@@ -1175,12 +1264,12 @@ approves the `desktop-release` environment; a non-owner run is skipped.
 
 | Input | Default | Meaning |
 |---|---|---|
-| `engine_version` | `0.14.1` | Exact engine bundled in the sidecar |
+| `engine_version` | `0.15.1` | Exact engine bundled in the sidecar |
 | `signed` | `false` | Request OS signing/notarization; not configured in this zero-spend repository |
 | `publish` | `false` | Create a GitHub release after every matrix build passes |
 | `tag` | Empty | `vX.Y.Z` release tag; required when `publish=true` |
 
-The default matches the `0.9.4` pin. The release gate rejects a manifest mismatch if a different version is passed.
+The default matches the `0.9.5` pin. The release gate rejects a manifest mismatch if a different version is passed.
 
 | Runner | Target | Bundles |
 |---|---|---|
@@ -1195,7 +1284,7 @@ days; the GitHub release is the durable distribution channel.
 ## Sidecar pin and checksums
 
 The release sidecar is a PyInstaller **onedir** tree, built on the matching host; PyInstaller does not cross-compile. The engine, Python, Pydantic, Typer and
-PyInstaller versions are pinned in `scripts/cli-checksums.json`. `0.9.4` bundles engine `0.14.1` (up from `0.14.0`), Python `3.12`, Pydantic `2.14.3`, Typer `0.29.0` and PyInstaller
+PyInstaller versions are pinned in `scripts/cli-checksums.json`. `0.9.5` bundles engine `0.15.1` (up from `0.14.1`), Python `3.12`, Pydantic `2.14.3`, Typer `0.29.0` and PyInstaller
 `6.22.3`.
 
 PyInstaller onedir output is not byte-reproducible. The checksum policy is therefore split:
@@ -1209,9 +1298,9 @@ PyInstaller onedir output is not byte-reproducible. The checksum policy is there
   shipped target: matching target name, `hashPolicy: "rebuild"`, `ok: true`, a 64-hex
   hash, a positive size and the exact engine version.
 
-For `0.9.4`, Windows x64 has a reviewed local pin (`2bdf0077…0503`, 14,582,464 bytes); Linux and macOS were rebuilt by the release workflow
+For `0.9.5`, Windows x64 has a reviewed local pin (`cd70636a…1922`, 14,607,761 bytes); Linux and macOS were rebuilt by the release workflow
 with passing rebuild-aware checksum reports, and their reviewed pins remain `null` until a local build is
-reviewed on those hosts. The `0.9.3` Windows pin did not carry over because the executable changes with
+reviewed on those hosts. The `0.9.4` Windows pin did not carry over because the executable changes with
 the engine.
 The checksum reports are CI evidence, not release assets. `SHA256SUMS.txt` covers the installers,
 updater packages, signatures and `latest.json`; the sidecar executable is inside those packages and
@@ -1222,7 +1311,7 @@ is not listed separately. Users who install manually verify the downloaded asset
 node scripts/verify-sidecar.mjs \
   --root src-tauri/engine \
   --target x86_64-pc-windows-msvc \
-  --engine-version 0.14.1
+  --engine-version 0.15.1
 ```
 
 ## `latest.json`, signing and publishing
@@ -1254,18 +1343,21 @@ uploaded manifest. A rerun reuses an existing draft, clears its assets and refus
 The desktop version must agree in `package.json`, `src-tauri/tauri.conf.json`, `src-tauri/Cargo.toml`, the Git tag and the release title. The engine pin lives
 in `scripts/cli-checksums.json`; the workflow passes `engine_version` explicitly and the release gate requires it to match the manifest.
 
-`MIN_ENGINE_VERSION` in `src-tauri/src/commands.rs` is `0.14.1` in the current source. The `0.9.4` bundle ships engine `0.14.1`,
+`MIN_ENGINE_VERSION` in `src-tauri/src/commands.rs` is `0.15.1` in the current source. The `0.9.5` bundle ships engine `0.15.1`,
 so the minimum matches the bundled engine and a `0.13.x` engine is reported as incompatible. The shell accepts an engine at least that new and marks an older one
 offline with a notice. A newer engine passes the gate but is not the release-tested pin. A development build may use `LV24_SEO_BIN` with another version; the UI
 labels it external and still checks the minimum. A `PATH` engine is used only when `LV24_SEO_ALLOW_PATH_ENGINE=1`.
 
 ## One-time 0.1.0 upgrade
 
-`0.1.0` has no updater, endpoint or public key. It cannot discover or install `0.9.4`. Download and install `0.9.4` manually once (NSIS installer or portable
-ZIP on Windows). After that, the `0.9.4` installation can auto-update to later releases when it uses an auto-update-capable bundle.
+`0.1.0` has no updater, endpoint or public key. It cannot discover or install `0.9.5`. Download and install `0.9.5` manually once (NSIS installer or portable
+ZIP on Windows). After that, the `0.9.5` installation can auto-update to later releases when it uses an auto-update-capable bundle.
 
 ## Earlier releases
 
+- **Engine 0.15.1** rejects documented placeholder OAuth client ids with `CONFIG_INVALID` before a consent URL; real ids and token flows are unchanged.
+- **Engine 0.15.0** added four crawl rule packs (`security-headers`, `tls-certificate`, `schema-required`, `a11y-basics`) and grew the rule set from 30 to 34.
+- **Desktop 0.9.5** bundled engine `0.15.1` and `MIN_ENGINE_VERSION` `0.15.1`, added the four rule packs and disabled Connect while the OAuth client is missing or misconfigured.
 - **Engine 0.14.1** hid Windows scheduled jobs behind a generated `.vbs` launcher and `wscript.exe //B //Nologo`, with three status artefacts and a one-time reinstall.
 - **Desktop 0.9.4** bundled engine `0.14.1` and `MIN_ENGINE_VERSION` `0.14.1`; the 04:00 job no longer opens a console window, and the cards are unchanged.
 - **Desktop 0.9.3** added OAuth readiness states to the Connect card, with a neutral unavailable fallback and no token or secret rendered; engine `0.14.0` and the sidecar pin are unchanged.
@@ -1345,4 +1437,4 @@ those protections system-wide.
 
 See [Security and privacy](/security/) for updater trust and [Architecture](/architecture/) for the sidecar layout.
 
-Source: `_source/engine-releases-0.14.1.md`, `_source/engine-releases-0.14.0.md`, `_source/engine-CHANGELOG.md`, `_source/engine-releases-0.13.1.md`, `_source/engine-releases-0.13.0.md`, `_source/engine-releases-0.12.2.md`, `_source/engine-releases-0.12.1.md`, `_source/engine-releases-0.12.0.md`, `_source/engine-releases-0.11.0.md`, `_source/engine-releases-0.10.0.md`, `_source/engine-releases-0.9.0.md`, `_source/engine-releases-0.8.0.md`, `_source/engine-releases-0.7.0.md`, `_source/engine-releases-0.6.0.md`, `_source/engine-releases-0.5.3.md`, `_source/engine-releases-0.5.2.md`, `_source/desktop-releases-0.9.4.md`, `_source/desktop-releases-0.9.4-update.md`, `_source/desktop-releases-0.9.3.md`, `_source/desktop-releases-0.9.3-update.md`, `_source/desktop-releases-0.9.2.md`, `_source/desktop-releases-0.9.1.md`, `_source/desktop-releases-0.9.0.md`, `_source/desktop-releases-0.8.0.md`, `_source/desktop-releases-0.7.0.md`, `_source/desktop-releases-0.6.0.md`, `_source/desktop-releases-0.5.0.md`, `_source/desktop-releases-0.4.0.md`, `_source/desktop-releases-0.3.0.md`, `_source/desktop-releases-0.2.3.md`, `_source/desktop-releases-0.2.2.md`, `_source/desktop-releases-0.2.1.md`, `_source/desktop-releases-0.2.0.md`, `_source/desktop-release.md`, `_source/desktop-security.md`.
+Source: `_source/engine-releases-0.15.1.md`, `_source/engine-releases-0.15.0.md`, `_source/engine-releases-0.14.1.md`, `_source/engine-releases-0.14.0.md`, `_source/engine-CHANGELOG.md`, `_source/engine-releases-0.13.1.md`, `_source/engine-releases-0.13.0.md`, `_source/engine-releases-0.12.2.md`, `_source/engine-releases-0.12.1.md`, `_source/engine-releases-0.12.0.md`, `_source/engine-releases-0.11.0.md`, `_source/engine-releases-0.10.0.md`, `_source/engine-releases-0.9.0.md`, `_source/engine-releases-0.8.0.md`, `_source/engine-releases-0.7.0.md`, `_source/engine-releases-0.6.0.md`, `_source/engine-releases-0.5.3.md`, `_source/engine-releases-0.5.2.md`, `_source/desktop-releases-0.9.5.md`, `_source/desktop-releases-0.9.5-update.md`, `_source/desktop-releases-0.9.4.md`, `_source/desktop-releases-0.9.4-update.md`, `_source/desktop-releases-0.9.3.md`, `_source/desktop-releases-0.9.3-update.md`, `_source/desktop-releases-0.9.2.md`, `_source/desktop-releases-0.9.1.md`, `_source/desktop-releases-0.9.0.md`, `_source/desktop-releases-0.8.0.md`, `_source/desktop-releases-0.7.0.md`, `_source/desktop-releases-0.6.0.md`, `_source/desktop-releases-0.5.0.md`, `_source/desktop-releases-0.4.0.md`, `_source/desktop-releases-0.3.0.md`, `_source/desktop-releases-0.2.3.md`, `_source/desktop-releases-0.2.2.md`, `_source/desktop-releases-0.2.1.md`, `_source/desktop-releases-0.2.0.md`, `_source/desktop-release.md`, `_source/desktop-security.md`.
