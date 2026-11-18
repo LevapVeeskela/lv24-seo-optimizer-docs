@@ -9,10 +9,40 @@ The current releases are:
 
 | Product | Version | Released | Notes |
 |---|---|---|---|
-| Engine | `lv24-seo 0.15.1` | 2026-11-18 | Rejects documented placeholder OAuth client ids before a consent URL; keeps the four 0.15.0 rule packs, 25 CLI commands, 12 MCP tools and schema v5 |
-| Desktop | `0.9.6` | 2026-11-18 | Shows OAuth as optional when a saved token or service account already connects the provider; engine 0.15.1 and `MIN_ENGINE_VERSION` 0.15.1 unchanged |
+| Engine | `lv24-seo 0.15.2` | 2026-11-18 | Adds `access` per provider to `auth status` (`service_account`, `token`, `oauth`, `none`), separate from the optional OAuth object; 25 CLI commands, 12 MCP tools and schema v5 |
+| Desktop | `0.9.8` | 2026-11-18 | Connected badge uses the engine data-access summary; saved tokens and the GSC service account show Connected, OAuth stays optional; engine 0.15.2 and `MIN_ENGINE_VERSION` 0.15.2 |
 
-The desktop version and the engine version are independent, but the desktop pins an exact engine and refuses one below its minimum. `0.9.6` bundles `0.15.1` and requires at least `0.15.1`, so an installed `0.15.0` engine is reported as incompatible. `0.9.5` is the previous release; `0.9.6` only changes the Connect card wording when a saved token or service account already connects the provider. OAuth tokens are stored by the engine in the OS keychain; the desktop never receives or renders one. The Indexing automation card is read-only: it renders `indexing status`, `indexing history` and `schedule status` and has no write, confirm or `--allow-write` control.
+The desktop version and the engine version are independent, but the desktop pins an exact engine and refuses one below its minimum. `0.9.8` bundles `0.15.2` and requires at least `0.15.2`, so an installed `0.15.1` engine is reported as incompatible. `0.9.7` is the previous release; `0.9.8` completes the Connected badge fix using the engine data-access summary. OAuth tokens are stored by the engine in the OS keychain; the desktop never receives or renders one. The Indexing automation card is read-only: it renders `indexing status`, `indexing history` and `schedule status` and has no write, confirm or `--allow-write` control.
+
+## Engine 0.15.2
+
+Released on 2026-11-18. A patch release: `auth status` now says how each provider is actually
+authenticated for data access, so a saved token or service account is not mistaken for "not
+connected" just because no OAuth app is configured. The CLI stays at 25 top-level commands, MCP at
+12 tools and SQLite at schema v5.
+
+### Data-access status per provider
+
+What changed:
+
+- **`access` in `auth status --json`.** Each provider (`gsc`, `yandex`, `metrika`, `bing`, `crux`, `psi`) gets an `access` object with `mode` and `ready`.
+- **Modes.** `service_account` when the GSC `service_account_file` is configured; `token` for a stored static Webmaster/Metrika/Bing/CrUX/PSI token or API key; `oauth` for a stored OAuth refresh token; `none` when no data-access credential is configured.
+- **Separate from OAuth.** `access` describes data access, while `oauth` describes whether the optional OAuth app can be used. The existing `providers`, `present`, `missing` and `oauth` fields are unchanged.
+- **Value-free.** `auth status` reports modes and presence, never a secret. No provider call is made.
+
+Verification recorded for this release:
+
+| Check | Result |
+|---|---|
+| PyPI / npm / MCP Registry | `lv24-seo 0.15.2` published; GitHub Release is Latest |
+| Release workflow | run `44403810604` |
+| Local gate | `ruff check`, `ruff format --check`, `mypy src`, MCP registry `--check` and full offline `pytest -q` green on the release commit |
+| Tests | every mode, the GSC service-account precedence, the shared Yandex refresh token for Metrika and the blank service-account path |
+
+Known limits in 0.15.2:
+
+- `access` reports configuration/presence, not a live provider call; an expired or revoked token is still discovered on the next read.
+- A syntactically valid but unregistered OAuth client id cannot be detected locally.
 
 ## Engine 0.15.1
 
@@ -210,6 +240,49 @@ Known limits in 0.13.1:
 - `--url-only` does not verify `state` across the separate URL and code steps; the verification code is short-lived and the client secret is still required.
 - Live consent remains unverified until a real Google Cloud Desktop client and Yandex OAuth app are configured.
 - No API, CLI count, MCP, schema or config change from 0.13.0.
+
+## Desktop 0.9.8
+
+Released on 2026-11-18. It completes the Connected badge fix and bundles the same `lv24-seo 0.15.2`
+build, `MIN_ENGINE_VERSION` `0.15.2` and contracts as `0.9.7`. `0.9.7` is the previous release.
+
+What changed:
+
+- **Connected uses data access.** `0.9.7` bundled engine `0.15.2` but its frontend still derived Connected/Not connected from the OAuth refresh-token entry. `0.9.8` reads the `access` summary from `auth status --json`, so saved Yandex/Metrika tokens, the GSC service account and Bing/CrUX/PSI keys show **Connected**.
+- **OAuth stays separate.** The OAuth badge says **"OAuth not configured (optional)"** when the provider already works without an OAuth app; Connect stays disabled until a real OAuth client is configured.
+- **Fallback.** An older engine without `access` keeps the previous OAuth-based fallback.
+- **No engine change.** The sidecar is the same `lv24-seo 0.15.2` build as `0.9.7`; the four crawl rule packs, Indexing automation card, hidden Windows scheduled-job launcher and two-phase write gates are unchanged.
+
+Verification recorded for this release:
+
+| Check | Result |
+|---|---|
+| GitHub Release | [`v0.9.8`](https://github.com/LevapVeeskela/lv24-seo-optimizer-desktop/releases/tag/v0.9.8); 18 assets |
+| Release workflow | run `44412281938` green |
+| Local gate | `npm run typecheck`, `npm test`, `npm run build`, `npm run contract:check`, `cargo fmt --check`, `cargo clippy --all-targets -- -D warnings` and `cargo test` green on the release commit |
+| Tests | 808 Vitest tests and the full Rust suite passed |
+| Contracts and pin | engine `0.15.2`; Windows x64 SHA-256 `e72d38efc11fb6613a0fa557ade373f6eb5b59059fe49455095924b448d47a18`, 14,608,556 bytes |
+
+Known limits in 0.9.8:
+
+- `access` reports configuration/presence, not a live provider call; an expired or revoked token is still discovered on the next read.
+- A syntactically valid but unregistered OAuth client id cannot be detected locally.
+- OAuth remains optional and still requires a real registered app for automatic token refresh.
+
+## Desktop 0.9.7
+
+Released on 2026-11-18. It bundles `lv24-seo 0.15.2` and raises `MIN_ENGINE_VERSION` to `0.15.2`.
+The engine adds the `access` data-access summary and the Connected badge is intended to use it, but
+the frontend patch was missing: saved Yandex/Metrika tokens and the GSC service account still showed
+as "Not connected". `0.9.8` completes that fix. `0.9.6` is the previous release.
+
+Verification recorded for this release: 18 assets, contracts at engine `0.15.2`, and the Windows
+sidecar verified against the pinned SHA-256. `0.9.8` is the recommended update for the badge fix.
+
+Known limits in 0.9.7:
+
+- The Connected badge still derives from OAuth only; use `0.9.8` for data-access-aware status.
+- OAuth remains optional and requires a real registered app.
 
 ## Desktop 0.9.6
 
@@ -1275,8 +1348,8 @@ The Windows NSIS path has now been verified end-to-end nine times: `0.2.0 → 0.
 and `0.7.0 → 0.8.0`. For the ninth run, an installed `0.7.0` build updated through the Rust updater,
 downloaded and verified the signed package, installed it, relaunched, and reported **Desktop 0.8.0**
 with **Engine 0.10.0** and the engine ready; the Bing URL submission, sitemap, crawl-issue and quota
-cards loaded. `0.9.5 → 0.9.6` is the next in-app update source. Any `0.2.x` install with the in-app updater can jump straight to
-`0.9.6`; `0.1.0` has no updater and needs one manual install.
+cards loaded. `0.9.7 → 0.9.8` is the next in-app update source. Any `0.2.x` install with the in-app updater can jump straight to
+`0.9.8`; `0.1.0` has no updater and needs one manual install.
 
 The `0.2.1 → 0.2.2` update runs the old `0.2.1` updater, which does not include the new tracked-PID
 cleanup. If a sidecar is active during that first update, retry after it exits or install `0.2.2`
@@ -1290,12 +1363,12 @@ approves the `desktop-release` environment; a non-owner run is skipped.
 
 | Input | Default | Meaning |
 |---|---|---|
-| `engine_version` | `0.15.1` | Exact engine bundled in the sidecar |
+| `engine_version` | `0.15.2` | Exact engine bundled in the sidecar |
 | `signed` | `false` | Request OS signing/notarization; not configured in this zero-spend repository |
 | `publish` | `false` | Create a GitHub release after every matrix build passes |
 | `tag` | Empty | `vX.Y.Z` release tag; required when `publish=true` |
 
-The default matches the `0.9.6` pin. The release gate rejects a manifest mismatch if a different version is passed.
+The default matches the `0.9.8` pin. The release gate rejects a manifest mismatch if a different version is passed.
 
 | Runner | Target | Bundles |
 |---|---|---|
@@ -1310,7 +1383,7 @@ days; the GitHub release is the durable distribution channel.
 ## Sidecar pin and checksums
 
 The release sidecar is a PyInstaller **onedir** tree, built on the matching host; PyInstaller does not cross-compile. The engine, Python, Pydantic, Typer and
-PyInstaller versions are pinned in `scripts/cli-checksums.json`. `0.9.6` keeps engine `0.15.1` (unchanged from `0.9.5`), Python `3.12`, Pydantic `2.14.3`, Typer `0.29.0` and PyInstaller
+PyInstaller versions are pinned in `scripts/cli-checksums.json`. `0.9.8` keeps engine `0.15.2` (unchanged from `0.9.7`), Python `3.12`, Pydantic `2.14.3`, Typer `0.29.0` and PyInstaller
 `6.22.3`.
 
 PyInstaller onedir output is not byte-reproducible. The checksum policy is therefore split:
@@ -1326,7 +1399,7 @@ PyInstaller onedir output is not byte-reproducible. The checksum policy is there
 
 For `0.9.5`, Windows x64 has a reviewed local pin (`cd70636a…1922`, 14,607,761 bytes); Linux and macOS were rebuilt by the release workflow
 with passing rebuild-aware checksum reports, and their reviewed pins remain `null` until a local build is
-reviewed on those hosts. The `0.9.5` Windows pin did not carry over because the executable changes with
+reviewed on those hosts. The `0.9.6` Windows pin did not carry over because the executable changes with
 the engine.
 The checksum reports are CI evidence, not release assets. `SHA256SUMS.txt` covers the installers,
 updater packages, signatures and `latest.json`; the sidecar executable is inside those packages and
@@ -1376,11 +1449,13 @@ labels it external and still checks the minimum. A `PATH` engine is used only wh
 
 ## One-time 0.1.0 upgrade
 
-`0.1.0` has no updater, endpoint or public key. It cannot discover or install `0.9.6`. Download and install `0.9.6` manually once (NSIS installer or portable
-ZIP on Windows). After that, the `0.9.6` installation can auto-update to later releases when it uses an auto-update-capable bundle.
+`0.1.0` has no updater, endpoint or public key. It cannot discover or install `0.9.8`. Download and install `0.9.8` manually once (NSIS installer or portable
+ZIP on Windows). After that, the `0.9.8` installation can auto-update to later releases when it uses an auto-update-capable bundle.
 
 ## Earlier releases
 
+- **Engine 0.15.2** added `access` per provider to `auth status` (`service_account`, `token`, `oauth`, `none`), describing data access separately from the optional OAuth object.
+- **Desktop 0.9.7** bundled engine `0.15.2` but still derived Connected from OAuth; **Desktop 0.9.8** completes the badge fix using the data-access summary.
 - **Desktop 0.9.6** labels OAuth as optional when a saved token or service account already connects the provider; Connect stays disabled until a real OAuth client is configured.
 - **Engine 0.15.1** rejects documented placeholder OAuth client ids with `CONFIG_INVALID` before a consent URL; real ids and token flows are unchanged.
 - **Engine 0.15.0** added four crawl rule packs (`security-headers`, `tls-certificate`, `schema-required`, `a11y-basics`) and grew the rule set from 30 to 34.
@@ -1464,4 +1539,4 @@ those protections system-wide.
 
 See [Security and privacy](/security/) for updater trust and [Architecture](/architecture/) for the sidecar layout.
 
-Source: `_source/engine-releases-0.15.1.md`, `_source/engine-releases-0.15.0.md`, `_source/engine-releases-0.14.1.md`, `_source/engine-releases-0.14.0.md`, `_source/engine-CHANGELOG.md`, `_source/engine-releases-0.13.1.md`, `_source/engine-releases-0.13.0.md`, `_source/engine-releases-0.12.2.md`, `_source/engine-releases-0.12.1.md`, `_source/engine-releases-0.12.0.md`, `_source/engine-releases-0.11.0.md`, `_source/engine-releases-0.10.0.md`, `_source/engine-releases-0.9.0.md`, `_source/engine-releases-0.8.0.md`, `_source/engine-releases-0.7.0.md`, `_source/engine-releases-0.6.0.md`, `_source/engine-releases-0.5.3.md`, `_source/engine-releases-0.5.2.md`, `_source/desktop-releases-0.9.6.md`, `_source/desktop-releases-0.9.6-update.md`, `_source/desktop-releases-0.9.5.md`, `_source/desktop-releases-0.9.5-update.md`, `_source/desktop-releases-0.9.4.md`, `_source/desktop-releases-0.9.4-update.md`, `_source/desktop-releases-0.9.3.md`, `_source/desktop-releases-0.9.3-update.md`, `_source/desktop-releases-0.9.2.md`, `_source/desktop-releases-0.9.1.md`, `_source/desktop-releases-0.9.0.md`, `_source/desktop-releases-0.8.0.md`, `_source/desktop-releases-0.7.0.md`, `_source/desktop-releases-0.6.0.md`, `_source/desktop-releases-0.5.0.md`, `_source/desktop-releases-0.4.0.md`, `_source/desktop-releases-0.3.0.md`, `_source/desktop-releases-0.2.3.md`, `_source/desktop-releases-0.2.2.md`, `_source/desktop-releases-0.2.1.md`, `_source/desktop-releases-0.2.0.md`, `_source/desktop-release.md`, `_source/desktop-security.md`.
+Source: `_source/engine-releases-0.15.2.md`, `_source/engine-releases-0.15.1.md`, `_source/engine-releases-0.15.0.md`, `_source/engine-releases-0.14.1.md`, `_source/engine-releases-0.14.0.md`, `_source/engine-CHANGELOG.md`, `_source/engine-releases-0.13.1.md`, `_source/engine-releases-0.13.0.md`, `_source/engine-releases-0.12.2.md`, `_source/engine-releases-0.12.1.md`, `_source/engine-releases-0.12.0.md`, `_source/engine-releases-0.11.0.md`, `_source/engine-releases-0.10.0.md`, `_source/engine-releases-0.9.0.md`, `_source/engine-releases-0.8.0.md`, `_source/engine-releases-0.7.0.md`, `_source/engine-releases-0.6.0.md`, `_source/engine-releases-0.5.3.md`, `_source/engine-releases-0.5.2.md`, `_source/desktop-releases-0.9.8.md`, `_source/desktop-releases-0.9.8-update.md`, `_source/desktop-releases-0.9.7.md`, `_source/desktop-releases-0.9.7-update.md`, `_source/desktop-releases-0.9.6.md`, `_source/desktop-releases-0.9.6-update.md`, `_source/desktop-releases-0.9.5.md`, `_source/desktop-releases-0.9.5-update.md`, `_source/desktop-releases-0.9.4.md`, `_source/desktop-releases-0.9.4-update.md`, `_source/desktop-releases-0.9.3.md`, `_source/desktop-releases-0.9.3-update.md`, `_source/desktop-releases-0.9.2.md`, `_source/desktop-releases-0.9.1.md`, `_source/desktop-releases-0.9.0.md`, `_source/desktop-releases-0.8.0.md`, `_source/desktop-releases-0.7.0.md`, `_source/desktop-releases-0.6.0.md`, `_source/desktop-releases-0.5.0.md`, `_source/desktop-releases-0.4.0.md`, `_source/desktop-releases-0.3.0.md`, `_source/desktop-releases-0.2.3.md`, `_source/desktop-releases-0.2.2.md`, `_source/desktop-releases-0.2.1.md`, `_source/desktop-releases-0.2.0.md`, `_source/desktop-release.md`, `_source/desktop-security.md`.

@@ -82,15 +82,15 @@ GSC также принимает сервисный аккаунт. Задай�
 
 ## Матрица установки приложения
 
-Настольное приложение `0.9.6` — текущий релиз с движком `lv24-seo 0.15.1`; оно требует движок `0.15.1` или новее, поэтому установленный движок `0.15.0` несовместим. Скачивайте файлы со страницы релизов проекта; `SHA256SUMS.txt` покрывает все опубликованные файлы.
+Настольное приложение `0.9.8` — текущий релиз с движком `lv24-seo 0.15.2`; оно требует движок `0.15.2` или новее, поэтому установленный движок `0.15.0` несовместим. Скачивайте файлы со страницы релизов проекта; `SHA256SUMS.txt` покрывает все опубликованные файлы.
 
 | Платформа | Файлы | Автообновление |
 |---|---|---|
-| Windows 10/11 x64 | NSIS `LV24.SEO.Optimizer_0.9.6_x64-setup.exe` (+ `.sig`), portable `LV24-SEO-Optimizer_0.9.6_x64-portable.zip` (+ `.zip.sha256`) | Только NSIS; portable вручную |
-| Linux x64 | `LV24.SEO.Optimizer_0.9.6_amd64.AppImage` (+ `.AppImage.sig`), `LV24.SEO.Optimizer_0.9.6_amd64.deb`, `LV24.SEO.Optimizer-0.9.6-1.x86_64.rpm` | Только AppImage; deb/rpm вручную |
-| macOS 13+ arm64/x64 | `LV24.SEO.Optimizer_0.9.6_aarch64.dmg` / `LV24.SEO.Optimizer_0.9.6_x64.dmg` для первой установки, `LV24.SEO.Optimizer_0.9.6_aarch64.app.tar.gz` / `LV24.SEO.Optimizer_0.9.6_x64.app.tar.gz` (+ `.sig`) для обновлений | Только `.app`; DMG — первая установка |
+| Windows 10/11 x64 | NSIS `LV24.SEO.Optimizer_0.9.8_x64-setup.exe` (+ `.sig`), portable `LV24-SEO-Optimizer_0.9.8_x64-portable.zip` (+ `.zip.sha256`) | Только NSIS; portable вручную |
+| Linux x64 | `LV24.SEO.Optimizer_0.9.8_amd64.AppImage` (+ `.AppImage.sig`), `LV24.SEO.Optimizer_0.9.8_amd64.deb`, `LV24.SEO.Optimizer-0.9.8-1.x86_64.rpm` | Только AppImage; deb/rpm вручную |
+| macOS 13+ arm64/x64 | `LV24.SEO.Optimizer_0.9.8_aarch64.dmg` / `LV24.SEO.Optimizer_0.9.8_x64.dmg` для первой установки, `LV24.SEO.Optimizer_0.9.8_aarch64.app.tar.gz` / `LV24.SEO.Optimizer_0.9.8_x64.app.tar.gz` (+ `.sig`) для обновлений | Только `.app`; DMG — первая установка |
 
-Движок `0.15.1` отклоняет документированные placeholder client id OAuth до URL согласия и сохраняет четыре набора правил обхода 0.15.0 (34 правила), скрытый лаунчер Windows 0.14.1, 25 команд CLI, 12 инструментов MCP и схему v5. Приложение `0.9.6` включает движок `0.15.1` и `MIN_ENGINE_VERSION` `0.15.1`; новые правила появляются в отчётах и Diagnostics без изменения UI, OAuth помечается как необязательный, если сохранённый токен или сервисный аккаунт уже подключает провайдера, а Connect остаётся отключённым до настройки реального клиента. Ограничения перечислены в [заметках к релизу](/ru/release/).
+Движок `0.15.2` добавляет сводку `access` по провайдеру в `auth status` (`service_account`, `token`, `oauth`, `none`) отдельно от необязательного OAuth. Он сохраняет защиту от placeholder client id 0.15.1, четыре набора правил 0.15.0 (34 правила), 25 команд CLI, 12 инструментов MCP и схему v5. Приложение `0.9.8` включает движок `0.15.2` и `MIN_ENGINE_VERSION` `0.15.2`; бейдж Connected использует доступ к данным, OAuth остаётся необязательным, а Connect отключён до настройки реального клиента. Ограничения перечислены в [заметках к релизу](/ru/release/).
 
 ### Windows
 
@@ -115,7 +115,7 @@ sudo dnf install ./*_amd64.rpm
 
 ### Обновление с версии 0.1.0
 
-`0.1.0` была превью только для Windows без обновлятора, endpoint и публичного ключа. Установите `0.9.6` вручную один раз (установщик NSIS или portable ZIP). Автообновление работает с `0.2.0` и далее только для Windows NSIS, macOS `.app` и Linux AppImage.
+`0.1.0` была превью только для Windows без обновлятора, endpoint и публичного ключа. Установите `0.9.8` вручную один раз (установщик NSIS или portable ZIP). Автообновление работает с `0.2.0` и далее только для Windows NSIS, macOS `.app` и Linux AppImage.
 
 ## Неподписанные сборки
 
@@ -146,4 +146,4 @@ pip uninstall lv24-seo
 - [Справочник конфигурации](/ru/reference/config/) — все ключи `seo.toml`.
 - [Безопасность и приватность](/ru/security/) — хранение токенов и защита записи.
 
-Source: `_source/engine-README.md`, `_source/engine-cli.md`, `_source/engine-config.md`, `_source/engine-auth.md`, `_source/engine-releases-0.15.1.md`, `_source/engine-releases-0.15.0.md`, `_source/engine-releases-0.14.1.md`, `_source/engine-releases-0.14.0.md`, `_source/engine-releases-0.13.1.md`, `_source/engine-releases-0.13.0.md`, `_source/desktop-README.md`, `_source/desktop-releases-0.9.6.md`, `_source/desktop-releases-0.9.5.md`, `_source/desktop-releases-0.9.4.md`, `_source/desktop-releases-0.9.3.md`, `_source/desktop-releases-0.9.2.md`, `_source/desktop-releases-0.9.1.md`, `_source/desktop-releases-0.8.0.md`, `_source/desktop-releases-0.7.0.md`, `_source/desktop-releases-0.6.0.md`, `_source/desktop-releases-0.5.0.md`, `_source/desktop-releases-0.4.0.md`, `_source/desktop-releases-0.3.0.md`, `_source/desktop-releases-0.2.3.md`, `_source/desktop-releases-0.2.2.md`, `_source/desktop-releases-0.2.0.md`.
+Source: `_source/engine-README.md`, `_source/engine-cli.md`, `_source/engine-config.md`, `_source/engine-auth.md`, `_source/engine-releases-0.15.2.md`, `_source/engine-releases-0.15.1.md`, `_source/engine-releases-0.15.0.md`, `_source/engine-releases-0.14.1.md`, `_source/engine-releases-0.14.0.md`, `_source/engine-releases-0.13.1.md`, `_source/engine-releases-0.13.0.md`, `_source/desktop-README.md`, `_source/desktop-releases-0.9.8.md`, `_source/desktop-releases-0.9.7.md`, `_source/desktop-releases-0.9.6.md`, `_source/desktop-releases-0.9.5.md`, `_source/desktop-releases-0.9.4.md`, `_source/desktop-releases-0.9.3.md`, `_source/desktop-releases-0.9.2.md`, `_source/desktop-releases-0.9.1.md`, `_source/desktop-releases-0.8.0.md`, `_source/desktop-releases-0.7.0.md`, `_source/desktop-releases-0.6.0.md`, `_source/desktop-releases-0.5.0.md`, `_source/desktop-releases-0.4.0.md`, `_source/desktop-releases-0.3.0.md`, `_source/desktop-releases-0.2.3.md`, `_source/desktop-releases-0.2.2.md`, `_source/desktop-releases-0.2.0.md`.

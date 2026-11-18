@@ -7,9 +7,9 @@ description: Engine package layout, provider envelopes, storage, report snapshot
 
 The product has one engine of record and one shell:
 
-- `lv24-seo 0.15.1` owns provider clients, crawl, analysis, reports, storage, MCP tools,
+- `lv24-seo 0.15.2` owns provider clients, crawl, analysis, reports, storage, MCP tools,
   CLI commands, OAuth connectors, indexing automation and automation.
-- The desktop app `0.9.6` is a React webview plus a Rust process shell. It renders
+- The desktop app `0.9.8` is a React webview plus a Rust process shell. It renders
   screens, edits configuration and launches the bundled engine; it does not reimplement
   engine behaviour.
 
@@ -199,7 +199,7 @@ The tree is mapped into Tauri resources as `engine/lv24-seo/`; the shell resolve
 6. `PATH`, only when `LV24_SEO_ALLOW_PATH_ENGINE=1`.
 
 Nothing is downloaded automatically. The shell runs `lv24-seo version --json`, records the path, source and version, and compares it with `MIN_ENGINE_VERSION`
-(`0.15.1` in the current source). An older engine is marked `compatible: false`; the UI treats it as offline and shows a notice. A newer engine passes the gate
+(`0.15.2` in the current source). An older engine is marked `compatible: false`; the UI treats it as offline and shows a notice. A newer engine passes the gate
 but is not the release-tested pin. Desktop `0.9.0` added 18 read-only diagnostics command ids to the same allow-list; `0.9.1` added the `auth_login` and `open_oauth_url` bridge commands; `0.9.2` adds `indexing_status`, `indexing_history` and `schedule_status`. All are argument-validated, config-required and non-cancellable.
 
 ## Data flow
@@ -234,4 +234,4 @@ Windows, macOS and Linux are supported targets:
 
 See [Security and privacy](/security/) for the controls and [Releases and updates](/release/) for packaging.
 
-Source: `_source/engine-architecture.md`, `_source/desktop-architecture.md`, `_source/engine-auth.md`, `_source/engine-releases-0.15.1.md`, `_source/engine-releases-0.15.0.md`, `_source/engine-releases-0.14.1.md`, `_source/engine-releases-0.14.0.md`, `_source/engine-releases-0.13.1.md`, `_source/engine-releases-0.13.0.md`, `_source/engine-releases-0.12.2.md`, `_source/engine-releases-0.12.0.md`, `_source/engine-releases-0.11.0.md`, `_source/engine-releases-0.5.3.md`, `_source/desktop-releases-0.9.6.md`, `_source/desktop-releases-0.9.5.md`, `_source/desktop-releases-0.9.4.md`, `_source/desktop-releases-0.9.3.md`, `_source/desktop-releases-0.9.2.md`, `_source/desktop-releases-0.9.1.md`, `_source/desktop-releases-0.2.2.md`, `_source/desktop-release.md`.
+Source: `_source/engine-architecture.md`, `_source/desktop-architecture.md`, `_source/engine-auth.md`, `_source/engine-releases-0.15.2.md`, `_source/engine-releases-0.15.1.md`, `_source/engine-releases-0.15.0.md`, `_source/engine-releases-0.14.1.md`, `_source/engine-releases-0.14.0.md`, `_source/engine-releases-0.13.1.md`, `_source/engine-releases-0.13.0.md`, `_source/engine-releases-0.12.2.md`, `_source/engine-releases-0.12.0.md`, `_source/engine-releases-0.11.0.md`, `_source/engine-releases-0.5.3.md`, `_source/desktop-releases-0.9.8.md`, `_source/desktop-releases-0.9.7.md`, `_source/desktop-releases-0.9.6.md`, `_source/desktop-releases-0.9.5.md`, `_source/desktop-releases-0.9.4.md`, `_source/desktop-releases-0.9.3.md`, `_source/desktop-releases-0.9.2.md`, `_source/desktop-releases-0.9.1.md`, `_source/desktop-releases-0.2.2.md`, `_source/desktop-release.md`.

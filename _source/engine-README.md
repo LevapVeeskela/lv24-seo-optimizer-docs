@@ -70,12 +70,14 @@ Console and Yandex Webmaster/Metrika, the 25-command CLI,
 the MCP server
 (12 tools, 3 resources, 3 prompts) and a plan-by-default scheduler lifecycle. Canonical source ids,
 GSC-only headline deltas, partial provider isolation and window/daily storage separation are
-enforced with regression tests. `0.15.1` is the current release: documented placeholder OAuth
-client ids are rejected before a consent URL is built; four new crawl rule packs (security headers,
-TLS certificate, Schema.org required fields, accessibility basics), hidden Windows scheduled jobs,
-OAuth readiness diagnostics, OAuth connectors for Google and Yandex, quota-aware indexing automation
-and full-platform read depth (PyPI, npm and the MCP Registry, 2026-11-18); desktop `0.9.5` bundles
-engine `0.15.1`. See
+enforced with regression tests. `0.15.2` is the current release: `auth status` reports per-provider
+data access (token/service account/OAuth) so saved credentials are not mistaken for "not
+connected"; documented placeholder OAuth client ids are rejected before a consent URL is built;
+four new crawl rule packs (security headers, TLS certificate, Schema.org required fields,
+accessibility basics), hidden Windows scheduled jobs, OAuth readiness diagnostics, OAuth connectors
+for Google and Yandex, quota-aware indexing automation and full-platform read depth (PyPI, npm and
+the MCP Registry, 2026-11-18); desktop `0.9.6` bundles engine `0.15.1`. See
+[`docs/releases/0.15.2.md`](docs/releases/0.15.2.md),
 [`docs/releases/0.15.1.md`](docs/releases/0.15.1.md),
 [`docs/releases/0.15.0.md`](docs/releases/0.15.0.md),
 [`docs/releases/0.14.0.md`](docs/releases/0.14.0.md),
@@ -153,17 +155,17 @@ lv24-seo install --client claude|opencode|vscode|cursor
 
 ## Desktop app
 
-The same engine ships as **LV24 SEO Optimizer Desktop 0.9.4** — a Tauri v2 shell with a dashboard,
+The same engine ships as **LV24 SEO Optimizer Desktop 0.9.6** — a Tauri v2 shell with a dashboard,
 weekly report view, configuration editor/diff/validation, a recommendations-to-agent workflow, a
 read-only Diagnostics screen, OAuth Connect buttons with readiness states, and a read-only Indexing
-automation card. It bundles a pinned `lv24-seo` sidecar (`0.14.1` in the current desktop build),
-requires engine `>= 0.14.1`, and adds no provider logic of its own.
+automation card. It bundles a pinned `lv24-seo` sidecar (`0.15.1` in the current desktop build),
+requires engine `>= 0.15.1`, and adds no provider logic of its own.
 
 | Platform | Assets | Auto-update |
 |---|---|---|
-| Windows 10/11 x64 | NSIS `LV24.SEO.Optimizer_0.9.4_x64-setup.exe` (+ `.exe.sig`), `LV24-SEO-Optimizer_0.9.4_x64-portable.zip` | NSIS only |
-| Linux x64 | `LV24.SEO.Optimizer_0.9.4_amd64.AppImage` (+ `.AppImage.sig`), `LV24.SEO.Optimizer_0.9.4_amd64.deb`, `LV24.SEO.Optimizer-0.9.4-1.x86_64.rpm` | AppImage only |
-| macOS 13+ arm64/x64 | `LV24.SEO.Optimizer_0.9.4_aarch64.dmg`, `LV24.SEO.Optimizer_0.9.4_x64.dmg`, `.app.tar.gz` (+ `.sig`) | `.app` only |
+| Windows 10/11 x64 | NSIS `LV24.SEO.Optimizer_0.9.6_x64-setup.exe` (+ `.exe.sig`), `LV24-SEO-Optimizer_0.9.6_x64-portable.zip` | NSIS only |
+| Linux x64 | `LV24.SEO.Optimizer_0.9.6_amd64.AppImage` (+ `.AppImage.sig`), `LV24.SEO.Optimizer_0.9.6_amd64.deb`, `LV24.SEO.Optimizer-0.9.6-1.x86_64.rpm` | AppImage only |
+| macOS 13+ arm64/x64 | `LV24.SEO.Optimizer_0.9.6_aarch64.dmg`, `LV24.SEO.Optimizer_0.9.6_x64.dmg`, `.app.tar.gz` (+ `.sig`) | `.app` only |
 
 deb, rpm and the portable ZIP are manual-only (MSI is not produced); `0.1.0` has no updater. Releases
 publish `latest.json` and `SHA256SUMS.txt`.
@@ -283,6 +285,7 @@ Resources: `seo://config`, `seo://report/latest`, `seo://docs/tools`. Prompts: `
 * [Configuration](docs/config.md) — `seo.toml`, env vars, secret storage
 * [Scheduling & delivery](docs/scheduling.md) — cron/systemd/Task Scheduler, SMTP, Telegram
 * [Agent skills](docs/skills.md) — skill format and mirrors
+* [Release notes 0.15.2](docs/releases/0.15.2.md) — data-access status per provider
 * [Release notes 0.15.1](docs/releases/0.15.1.md) — reject placeholder OAuth client IDs
 * [Release notes 0.15.0](docs/releases/0.15.0.md) — security, TLS, Schema.org and accessibility rules
 * [Release notes 0.14.1](docs/releases/0.14.1.md) — hidden Windows scheduled jobs

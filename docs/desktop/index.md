@@ -1,13 +1,13 @@
 ---
 title: Desktop app
-description: What the LV24 SEO Optimizer desktop shell adds, how signed updates work, and the 0.9.6 optional OAuth wording, the 0.9.5 crawl rule packs, the 0.9.4 hidden scheduled jobs and older history.
+description: What the LV24 SEO Optimizer desktop shell adds, how signed updates work, and the 0.9.8 data-access Connected badge, the 0.9.7 engine 0.15.2 release, the 0.9.6 optional OAuth wording and older history.
 ---
 
 # Desktop app
 
 LV24 SEO Optimizer Desktop is a local, offline-first Tauri v2 shell around the `lv24-seo` engine. The Python CLI remains the engine of record: it owns provider clients, crawl rules, analysis, report builders and delivery. The desktop adds a React UI and a Rust process bridge, not a second SEO implementation.
 
-The `0.9.6` release bundles `lv24-seo 0.15.1` as a PyInstaller onedir sidecar and labels OAuth as optional when a saved token or service account already connects the provider. It keeps the OAuth Connect card for Google Search Console, Yandex Webmaster and Yandex Metrika, the read-only Diagnostics screen, the Bing indexing cards, the sitemap, IndexNow and Site Scan actions and the per-session write secret. It requires engine `0.15.1` or newer (`MIN_ENGINE_VERSION`), so an installed `0.15.0` engine is reported as incompatible. OAuth tokens are stored by the engine in the OS keychain; the desktop never receives, renders or logs one. The Indexing automation card renders `indexing status`, `indexing history` and `schedule status`; it has no write, confirm or `--allow-write` control. The Connect card renders the engine's OAuth readiness states; only `oauth_ready` is shown as success, and a missing or unknown report is shown as unavailable, never Ready. There is no cloud account, no telemetry, no local HTTP API and no SERP scraping. The desktop talks to the engine through a fixed, allow-listed child-process bridge.
+The `0.9.8` release bundles `lv24-seo 0.15.2` as a PyInstaller onedir sidecar and uses the engine data-access summary for the Connected badge, so saved tokens and the GSC service account show Connected while OAuth stays optional. It keeps the OAuth Connect card for Google Search Console, Yandex Webmaster and Yandex Metrika, the read-only Diagnostics screen, the Bing indexing cards, the sitemap, IndexNow and Site Scan actions and the per-session write secret. It requires engine `0.15.2` or newer (`MIN_ENGINE_VERSION`), so an installed `0.15.1` engine is reported as incompatible. OAuth tokens are stored by the engine in the OS keychain; the desktop never receives, renders or logs one. The Indexing automation card renders `indexing status`, `indexing history` and `schedule status`; it has no write, confirm or `--allow-write` control. The Connect card renders the engine's OAuth readiness states; only `oauth_ready` is shown as success, and a missing or unknown report is shown as unavailable, never Ready. There is no cloud account, no telemetry, no local HTTP API and no SERP scraping. The desktop talks to the engine through a fixed, allow-listed child-process bridge.
 
 ## What it adds
 
@@ -45,12 +45,12 @@ Download desktop assets from the project's Releases page. The desktop is separat
 
 | Bundle | How it is installed | In-app update |
 |---|---|---|
-| Windows NSIS | `LV24.SEO.Optimizer_0.9.6_x64-setup.exe` | Yes |
-| Windows portable ZIP | `LV24-SEO-Optimizer_0.9.6_x64-portable.zip`; extract the whole folder and run `lv24-seo-desktop.exe` | No |
-| Linux AppImage | `LV24.SEO.Optimizer_0.9.6_amd64.AppImage`; `chmod +x` and run | Yes |
-| Linux deb | `LV24.SEO.Optimizer_0.9.6_amd64.deb`; `sudo apt install ./*_amd64.deb` | No |
-| Linux rpm | `LV24.SEO.Optimizer-0.9.6-1.x86_64.rpm`; `sudo dnf install ./*_amd64.rpm` | No |
-| macOS `.app` from DMG | `LV24.SEO.Optimizer_0.9.6_aarch64.dmg` or `LV24.SEO.Optimizer_0.9.6_x64.dmg`; drag to Applications | Yes |
+| Windows NSIS | `LV24.SEO.Optimizer_0.9.8_x64-setup.exe` | Yes |
+| Windows portable ZIP | `LV24-SEO-Optimizer_0.9.8_x64-portable.zip`; extract the whole folder and run `lv24-seo-desktop.exe` | No |
+| Linux AppImage | `LV24.SEO.Optimizer_0.9.8_amd64.AppImage`; `chmod +x` and run | Yes |
+| Linux deb | `LV24.SEO.Optimizer_0.9.8_amd64.deb`; `sudo apt install ./*_amd64.deb` | No |
+| Linux rpm | `LV24.SEO.Optimizer-0.9.8-1.x86_64.rpm`; `sudo dnf install ./*_amd64.rpm` | No |
+| macOS `.app` from DMG | `LV24.SEO.Optimizer_0.9.8_aarch64.dmg` or `LV24.SEO.Optimizer_0.9.8_x64.dmg`; drag to Applications | Yes |
 | MSI | Not produced by this project | No |
 
 Windows requires Windows 10/11 x64 and WebView2. Linux is x64 only and built on Ubuntu 22.04 with a glibc 2.35 baseline. macOS requires 13 or newer; use the arm64 DMG on Apple silicon and the x64 DMG on Intel. The OS packages are unsigned or ad-hoc signed, so SmartScreen and Gatekeeper warnings are expected. Verify `SHA256SUMS.txt` before running an installer.
@@ -97,7 +97,7 @@ same updater: an installed `0.6.0` build reported **Desktop 0.7.0** with **Engin
 engine ready, and the Integrations screen shows the Bing indexing panel. The `0.7.0 → 0.8.0` update was
 verified through the same updater: an installed `0.7.0` build reported **Desktop 0.8.0** with
 **Engine 0.10.0** and the engine ready, and the new Bing URL submission, sitemap, crawl-issue and quota
-cards loaded. `0.9.5 → 0.9.6` is the next in-app update source. Any `0.2.x` install can jump straight to `0.9.6`.
+cards loaded. `0.9.7 → 0.9.8` is the next in-app update source. Any `0.2.x` install can jump straight to `0.9.8`.
 
 For `0.2.2`, installs were also checked on macOS and Linux: the arm64 DMG on macOS 27.2 passed
 `codesign --verify --deep --strict`, launched with engine `0.5.2` ready and fetched the `0.2.2`
@@ -109,6 +109,30 @@ The `0.2.1 → 0.2.2` update runs the old `0.2.1` updater, which does not includ
 cleanup. If a sidecar is active during that first update, retry after it exits or install `0.2.2`
 manually. `0.2.2 → 0.2.3` uses the tracked-PID cleanup and blocks with `UPDATE_ENGINE_BUSY` if a
 tracked sidecar cannot be stopped.
+
+## 0.9.8 Connected uses data access
+
+Released on 2026-11-18. It completes the Connected badge fix and bundles the same `lv24-seo 0.15.2`
+build, `MIN_ENGINE_VERSION` `0.15.2` and contracts as `0.9.7`. `0.9.7` is the previous release.
+
+- **Connected badge.** The card reads the `access` summary from `auth status --json`, so saved Yandex/Metrika tokens, the GSC service account and Bing/CrUX/PSI keys show **Connected**. The OAuth badge stays separate and says **"OAuth not configured (optional)"** when the provider already works without it.
+- **Why 0.9.7 was not enough.** `0.9.7` bundled engine `0.15.2` but its frontend still derived Connected from the OAuth refresh-token entry; `0.9.8` includes the missing frontend patch.
+- **Fallback and no engine change.** An older engine without `access` keeps the previous OAuth-based fallback. The sidecar is the same `lv24-seo 0.15.2` build as `0.9.7`; the crawl rules, Indexing automation card, hidden Windows scheduled-job launcher and two-phase write gates are unchanged.
+
+Verification recorded for this release: 808 Vitest tests and the full Rust suite passed, contracts are at engine `0.15.2`, and the release workflow run `44412281938` published 18 assets on `v0.9.8`.
+
+Known limits in 0.9.8:
+
+- `access` reports configuration/presence, not a live provider call; an expired or revoked token is still discovered on the next read.
+- A syntactically valid but unregistered OAuth client id cannot be detected locally.
+- OAuth remains optional and still requires a real registered app for automatic token refresh.
+
+## 0.9.7 engine 0.15.2, badge incomplete
+
+Released on 2026-11-18. It bundles `lv24-seo 0.15.2` and raises `MIN_ENGINE_VERSION` to `0.15.2`.
+The engine adds the `access` data-access summary, but this release's frontend still derived Connected
+from the OAuth refresh-token entry, so saved Yandex/Metrika tokens and the GSC service account still
+showed as "Not connected". `0.9.8` completes the fix. `0.9.6` is the previous release.
 
 ## 0.9.6 optional OAuth wording
 
@@ -593,7 +617,7 @@ The desktop has a dedicated Crawl screen: start URL and URL budget, summary coun
 - The updater needs access to the GitHub Releases endpoint. A blocked or offline endpoint leaves the app on its current version.
 - The updater can stop only sidecars it started itself. An engine launched from a terminal or another app copy is not killed; if it holds the installed sidecar open, the install is blocked with `UPDATE_ENGINE_BUSY`.
 - The `0.2.1 → 0.2.2` update runs the old `0.2.1` updater, which does not include the tracked-PID cleanup. If a sidecar is active during that first update, retry after it exits or install `0.2.2` manually. `0.2.2 → 0.2.3` and later updates use the cleanup.
-- Cancel is not rollback and there is no job queue in `0.9.6`: a cancelled crawl, report, log analysis, backup or schedule install may leave a partial artefact, and a cancelled in-place restore keeps the `.pre-restore-<utc>` copy but may have replaced one file, so build a fresh plan before retrying. Closing the window does not move a run into a queue.
+- Cancel is not rollback and there is no job queue in `0.9.8`: a cancelled crawl, report, log analysis, backup or schedule install may leave a partial artefact, and a cancelled in-place restore keeps the `.pre-restore-<utc>` copy but may have replaced one file, so build a fresh plan before retrying. Closing the window does not move a run into a queue.
 - Restore replaces the database and config and never merges; the `.pre-restore-<utc>` copies are the only rollback, and a database held open by another process cannot be replaced on Windows. Tokens are excluded, so re-authenticate afterwards. `backup restore --to` is a CLI-only extraction.
 - Schedule install mutates the host: it writes a cron entry, systemd user timer or Windows task only after confirmation, and only on this computer. The desktop does not manage, repair or uninstall the job; use `schedule status`/`schedule uninstall` in the CLI.
 - GSC service accounts are configured outside the form: set `providers.gsc.service_account_file` in `seo.toml` or `LV24_SEO_GSC_SERVICE_ACCOUNT_FILE` in the environment. The desktop has no field for it.
@@ -601,7 +625,7 @@ The desktop has a dedicated Crawl screen: start URL and URL budget, summary coun
 - Portfolio reports local history only, inspects at most 50 sites per scan and never calls a provider.
 - Bot triage is User-Agent only: a spoofed UA is not detected and non-search crawlers are reported as `other`.
 - One log file at a time, at most 100 MiB; there is no rotation, glob, remote fetch or persisted log history.
-- `MIN_ENGINE_VERSION` is `0.15.1`, so a `0.15.0` engine is rejected; the desktop does not silently downgrade commands to an older engine.
+- `MIN_ENGINE_VERSION` is `0.15.2`, so a `0.15.1` engine is rejected; the desktop does not silently downgrade commands to an older engine.
 - The Diagnostics screen is read-only and covers 18 allow-listed commands; it has no recrawl, sitemap or URL submission action, and the panels do not poll or auto-retry.
 - The Indexing automation card is read-only: `indexing status|run|history` still run through the CLI and scheduler, and the card cannot install, edit or run the job.
 - OAuth consent is not live-verified; a Google Testing app expires refresh tokens after 7 days, and the Yandex URL-only and code steps cannot verify `state` across separate calls. Bing, IndexNow, CrUX and PSI stay key-based.
@@ -624,4 +648,4 @@ The desktop has a dedicated Crawl screen: start URL and URL budget, summary coun
 - Recommendation copy is localised in en/ru/zh; tasks queued before `0.2.3` keep the stored English text.
 - This is a `0.x` preview: configuration output, updater behavior and UI details may change before 1.0.
 
-Source: `_source/desktop-README.md`, `_source/desktop-releases-0.9.6.md, _source/desktop-releases-0.9.6-update.md, _source/desktop-releases-0.9.5.md`, `_source/desktop-releases-0.9.4.md`, `_source/desktop-releases-0.9.4-update.md`, `_source/desktop-releases-0.9.3.md`, `_source/desktop-releases-0.9.3-update.md`, `_source/desktop-releases-0.9.2.md`, `_source/desktop-releases-0.9.1.md`, `_source/desktop-releases-0.9.0.md`, `_source/engine-releases-0.15.1.md`, `_source/engine-releases-0.15.0.md`, `_source/engine-releases-0.14.1.md`, `_source/engine-releases-0.14.0.md`, `_source/engine-releases-0.13.1.md`, `_source/engine-releases-0.13.0.md`, `_source/desktop-releases-0.8.0.md`, `_source/desktop-releases-0.7.0.md`, `_source/desktop-releases-0.6.0.md`, `_source/desktop-releases-0.5.0.md`, `_source/desktop-releases-0.4.0.md`, `_source/desktop-releases-0.3.0.md`, `_source/desktop-releases-0.2.3.md`, `_source/desktop-releases-0.2.2.md`, `_source/desktop-releases-0.2.1.md`, `_source/desktop-releases-0.2.0.md`, `_source/desktop-security.md`, `_source/desktop-architecture.md`, `_source/engine-releases-0.12.2.md`, `_source/engine-releases-0.11.0.md`.
+Source: `_source/desktop-README.md`, `_source/desktop-releases-0.9.8.md, _source/desktop-releases-0.9.8-update.md, _source/desktop-releases-0.9.7.md, _source/desktop-releases-0.9.7-update.md, _source/desktop-releases-0.9.6.md, _source/desktop-releases-0.9.6-update.md, _source/desktop-releases-0.9.5.md`, `_source/desktop-releases-0.9.4.md`, `_source/desktop-releases-0.9.4-update.md`, `_source/desktop-releases-0.9.3.md`, `_source/desktop-releases-0.9.3-update.md`, `_source/desktop-releases-0.9.2.md`, `_source/desktop-releases-0.9.1.md`, `_source/desktop-releases-0.9.0.md`, `_source/engine-releases-0.15.2.md, _source/engine-releases-0.15.1.md`, `_source/engine-releases-0.15.0.md`, `_source/engine-releases-0.14.1.md`, `_source/engine-releases-0.14.0.md`, `_source/engine-releases-0.13.1.md`, `_source/engine-releases-0.13.0.md`, `_source/desktop-releases-0.8.0.md`, `_source/desktop-releases-0.7.0.md`, `_source/desktop-releases-0.6.0.md`, `_source/desktop-releases-0.5.0.md`, `_source/desktop-releases-0.4.0.md`, `_source/desktop-releases-0.3.0.md`, `_source/desktop-releases-0.2.3.md`, `_source/desktop-releases-0.2.2.md`, `_source/desktop-releases-0.2.1.md`, `_source/desktop-releases-0.2.0.md`, `_source/desktop-security.md`, `_source/desktop-architecture.md`, `_source/engine-releases-0.12.2.md`, `_source/engine-releases-0.11.0.md`.

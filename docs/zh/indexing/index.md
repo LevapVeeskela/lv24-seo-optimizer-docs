@@ -6,7 +6,7 @@ description: 配额感知的索引队列、状态、运行和历史，CLI 与只
 # 索引自动化
 
 索引自动化维护站点地图 URL 的本地队列，在最新数据源配额内提交允许的内容，并记录结果。它是
-CLI 和调度器功能；桌面 `0.9.6` 卡片以只读方式展示相同数据。
+CLI 和调度器功能；桌面 `0.9.8` 卡片以只读方式展示相同数据。
 
 ## 功能
 
@@ -60,14 +60,14 @@ Yandex 和 IndexNow 没有逐 URL 状态；其 `indexed_total` 为 `null` 并带
 
 ## 桌面 Indexing automation 卡片
 
-桌面 `0.9.2` 在 Integrations 新增只读卡片；`0.9.6` 保留它。它渲染 `indexing status`、`indexing history` 和
+桌面 `0.9.2` 在 Integrations 新增只读卡片；`0.9.8` 保留它。它渲染 `indexing status`、`indexing history` 和
 `schedule status`；没有写入、确认或 `--allow-write` 控件。
 
 - **计划。** `Scheduled`/主机状态和文档化的 **Daily 04:00** 节奏（`lv24-seo-indexing`）。
 - **按数据源。** Bing、Yandex、GSC 和 IndexNow 行，包含 `submitted`、`indexed`（仅 GSC）、`pending` 和配额：Bing 每日/每月剩余、Yandex 剩余、GSC/IndexNow 已用/上限。没有状态的数据源显示“No data yet”，绝不是零。
 - **最近运行与历史。** 最新 `indexing history` 行，含状态、提交/检查数和最多五个 `error_items`（URL、代码、消息），以及来自 `indexing history --limit 30` 的紧凑 7/30 天按日/数据源表格。
 - **诚实性。** 每次渲染都包含 `data_age_days` 和 `limitations`；已弃用的 GSC 聚合会标注并分开。Bing/Yandex/IndexNow 显示没有逐 URL 计数，而不是编造数字。
-- **兼容性。** 如果引擎返回 `INVALID_COMMAND`，卡片显示“Indexing status needs engine >= 0.13.1”并隐藏表格。低于 `0.15.1` 的引擎会被外壳报告为不兼容。
+- **兼容性。** 如果引擎返回 `INVALID_COMMAND`，卡片显示“Indexing status needs engine >= 0.13.1”并隐藏表格。低于 `0.15.2` 的引擎会被外壳报告为不兼容。
 - **桥接。** `indexing_status`（`provider`、`limit`、`live`）、`indexing_history`（`limit`）和 `schedule_status`（`kind`、`target`）进入白名单；Rust 校验每个值，拒绝写入标志和跨命令参数，并使用 120 秒超时。`--live` 是唯一的数据源调用；缺少凭据会成为限制，而不是失败。
 
 ## 配置
@@ -92,4 +92,4 @@ Yandex 和 IndexNow 没有逐 URL 状态；其 `indexed_total` 为 `null` 并带
 - [自动化与投递](/zh/automation/)
 - [桌面应用](/zh/desktop/)
 
-Source: `_source/engine-releases-0.12.0.md`, `_source/engine-releases-0.13.1.md`, `_source/engine-releases-0.15.1.md`, `_source/engine-releases-0.15.0.md`, `_source/engine-releases-0.14.1.md`, `_source/engine-releases-0.14.0.md`, `_source/desktop-releases-0.9.6.md`, `_source/desktop-releases-0.9.5.md`, `_source/desktop-releases-0.9.4.md`, `_source/desktop-releases-0.9.2.md`, `_source/desktop-releases-0.9.2-update.md`, `_source/engine-cli.md`, `_source/engine-config.md`.
+Source: `_source/engine-releases-0.12.0.md`, `_source/engine-releases-0.13.1.md`, `_source/engine-releases-0.15.2.md`, `_source/engine-releases-0.15.1.md`, `_source/engine-releases-0.15.0.md`, `_source/engine-releases-0.14.1.md`, `_source/engine-releases-0.14.0.md`, `_source/desktop-releases-0.9.8.md`, `_source/desktop-releases-0.9.7.md`, `_source/desktop-releases-0.9.6.md`, `_source/desktop-releases-0.9.5.md`, `_source/desktop-releases-0.9.4.md`, `_source/desktop-releases-0.9.2.md`, `_source/desktop-releases-0.9.2-update.md`, `_source/engine-cli.md`, `_source/engine-config.md`.

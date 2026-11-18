@@ -36,7 +36,8 @@ to site routes.
 | `engine-releases-0.14.0.md` | `/release/`, `/reference/cli/`, `/reference/config/`, `/providers/`, `/troubleshooting/` | Engine 0.14.0 notes: `auth status` OAuth object, `doctor` readiness checks, the eight stable codes, precedence and recorded scopes; 25 CLI commands, 12 tools and schema v5 unchanged. Previous engine line. |
 | `engine-releases-0.14.1.md` | `/release/`, `/automation/`, `/reference/cli/` | Engine 0.14.1 notes: hidden Windows scheduled jobs via a generated UTF-16 `.vbs` launcher and `wscript.exe //B //Nologo`, three status artefacts and a one-time reinstall; no MCP, schema or CLI count change. Previous engine line. |
 | `engine-releases-0.15.0.md` | `/release/`, `/crawl/` | Engine 0.15.0 notes: four crawl rule packs (`security-headers`, `tls-certificate`, `schema-required`, `a11y-basics`), 30 to 34 rules, TLS/Set-Cookie/fetched-at capture and the new parser fields. |
-| `engine-releases-0.15.1.md` | `/release/`, `/reference/cli/`, `/reference/config/`, `/troubleshooting/` | Engine 0.15.1 notes: documented placeholder OAuth client ids rejected with `CONFIG_INVALID` before a consent URL; real ids and token flows unchanged. |
+| `engine-releases-0.15.1.md` | `/release/`, `/reference/cli/`, `/reference/config/`, `/troubleshooting/` | Engine 0.15.1 notes: documented placeholder OAuth client ids rejected with `CONFIG_INVALID` before a consent URL; real ids and token flows unchanged. Previous engine line. |
+| `engine-releases-0.15.2.md` | `/release/`, `/reference/cli/`, `/desktop/` | Engine 0.15.2 notes: `access` per provider in `auth status --json` with `mode` (`service_account`, `token`, `oauth`, `none`) and `ready`, separate from the optional `oauth` object. |
 | `engine-CHANGELOG.md` | `/release/` | Changelog index for the 0.14.0 release line and earlier entries. |
 | `desktop-README.md` | `/desktop/`, `/install/` | Desktop install matrix, update, troubleshooting. |
 | `desktop-release.md` | `/release/` | Release pipeline, signing, assets, rollback. |
@@ -59,8 +60,12 @@ to site routes.
 | `desktop-releases-0.9.4-update.md` | `/release/`, `/desktop/`, `/automation/` | Desktop 0.9.4 short update note: the 04:00 job no longer flashes a terminal, one-time reinstall for older tasks, cards unchanged. |
 | `desktop-releases-0.9.5.md` | `/release/`, `/desktop/`, `/crawl/`, `/reference/cli/` | Desktop 0.9.5 notes: bundled engine 0.15.1 and `MIN_ENGINE_VERSION` 0.15.1, four crawl rule packs, placeholder client-id guard, Connect disabled while readiness is missing/misconfigured. Previous desktop line. |
 | `desktop-releases-0.9.5-update.md` | `/release/`, `/desktop/`, `/crawl/` | Desktop 0.9.5 short update note: 34 rules, placeholder client ids rejected, Connect disabled until configured, cards unchanged. |
-| `desktop-releases-0.9.6.md` | `/release/`, `/desktop/` | Desktop 0.9.6 notes: OAuth shown as optional when a saved token or service account already connects the provider; Connect stays disabled; engine 0.15.1 unchanged. |
+| `desktop-releases-0.9.6.md` | `/release/`, `/desktop/` | Desktop 0.9.6 notes: OAuth shown as optional when a saved token or service account already connects the provider; Connect stays disabled; engine 0.15.1 unchanged. Previous desktop line. |
 | `desktop-releases-0.9.6-update.md` | `/release/`, `/desktop/` | Desktop 0.9.6 short update note: "OAuth not configured (optional)" wording, automatic refresh is the only OAuth benefit. |
+| `desktop-releases-0.9.7.md` | `/release/`, `/desktop/` | Desktop 0.9.7 notes: engine 0.15.2 with the data-access summary; Connected badge intended to use it, but the frontend patch was missing. |
+| `desktop-releases-0.9.7-update.md` | `/release/`, `/desktop/` | Desktop 0.9.7 short update note: Connected badge reflects data access, not OAuth only. |
+| `desktop-releases-0.9.8.md` | `/release/`, `/desktop/` | Desktop 0.9.8 notes: completes the Connected badge fix using `access`; saved Yandex/Metrika tokens and the GSC service account show Connected; OAuth stays a separate optional badge. |
+| `desktop-releases-0.9.8-update.md` | `/release/`, `/desktop/` | Desktop 0.9.8 short update note: 0.9.7 lacked the frontend patch, 0.9.8 completes it; engine 0.15.2 unchanged. |
 | `desktop-releases-0.2.3.md` | `/release/` | Desktop 0.2.3 notes: Rust updater and cancel, dialog-approved config path, path rejection, redaction, UI state, release CI. |
 | `desktop-releases-0.2.1.md` | `/release/` | Desktop 0.2.1 patch notes: Metrika token and shared CLI keychain. |
 | `desktop-releases-0.2.0.md` | `/release/` | Desktop 0.2.0 release notes, kept for the first multi-platform release. |

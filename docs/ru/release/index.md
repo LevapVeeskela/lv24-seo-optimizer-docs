@@ -9,10 +9,40 @@ description: Релизы движка 0.14.0 и приложения 0.9.2, д�
 
 | Продукт | Версия | Дата | Примечания |
 |---|---|---|---|
-| Движок | `lv24-seo 0.15.1` | 2026-11-18 | Отклоняет документированные placeholder client id OAuth до построения URL согласия; сохранены четыре набора правил 0.15.0, 25 команд CLI, 12 инструментов MCP и схема v5 |
-| Приложение | `0.9.6` | 2026-11-18 | Показывает OAuth как необязательный, если сохранённый токен или сервисный аккаунт уже подключает провайдера; движок 0.15.1 и `MIN_ENGINE_VERSION` 0.15.1 без изменений |
+| Движок | `lv24-seo 0.15.2` | 2026-11-18 | Добавляет `access` по провайдеру в `auth status` (`service_account`, `token`, `oauth`, `none`) отдельно от необязательного OAuth; 25 команд CLI, 12 инструментов MCP и схема v5 |
+| Приложение | `0.9.8` | 2026-11-18 | Бейдж Connected использует сводку доступа к данным; сохранённые токены и сервисный аккаунт GSC показываются Connected, OAuth остаётся необязательным; движок 0.15.2 и `MIN_ENGINE_VERSION` 0.15.2 |
 
-Версия приложения и версия движка независимы, но приложение закрепляет точный движок и отказывается работать с версией ниже минимальной. `0.9.6` включает `0.15.1` и требует минимум `0.15.1`, поэтому установленный движок `0.15.0` считается несовместимым. `0.9.5` — предыдущий релиз; `0.9.6` меняет только текст карточки Connect, когда сохранённый токен или сервисный аккаунт уже подключает провайдера. OAuth-токены хранит движок в связке ключей ОС; приложение никогда не получает и не отображает их. Карточка Indexing automation только для чтения: она рендерит `indexing status`, `indexing history` и `schedule status` и не имеет записи, подтверждения или `--allow-write`.
+Версия приложения и версия движка независимы, но приложение закрепляет точный движок и отказывается работать с версией ниже минимальной. `0.9.8` включает `0.15.2` и требует минимум `0.15.2`, поэтому установленный движок `0.15.1` считается несовместимым. `0.9.7` — предыдущий релиз; `0.9.8` завершает исправление бейджа Connected через сводку доступа к данным. OAuth-токены хранит движок в связке ключей ОС; приложение никогда не получает и не отображает их. Карточка Indexing automation только для чтения: она рендерит `indexing status`, `indexing history` и `schedule status` и не имеет записи, подтверждения или `--allow-write`.
+
+## Движок 0.15.2
+
+Выпущен 2026-11-18. Патч: `auth status` теперь показывает, как каждый провайдер фактически
+аутентифицируется для доступа к данным, поэтому сохранённый токен или сервисный аккаунт не
+считается «не подключённым» только из-за отсутствия OAuth-приложения. CLI остаётся 25 команд,
+MCP — 12 инструментов, схема SQLite — v5.
+
+### Статус доступа к данным по провайдерам
+
+Что изменилось:
+
+- **`access` в `auth status --json`.** Каждый провайдер (`gsc`, `yandex`, `metrika`, `bing`, `crux`, `psi`) получает объект `access` с `mode` и `ready`.
+- **Режимы.** `service_account` — настроен GSC `service_account_file`; `token` — сохранён статический токен/API-ключ Webmaster/Metrika/Bing/CrUX/PSI; `oauth` — сохранён refresh token OAuth; `none` — нет учётных данных для доступа к данным.
+- **Отдельно от OAuth.** `access` описывает доступ к данным, а `oauth` — доступность необязательного OAuth-приложения. Существующие поля `providers`, `present`, `missing` и `oauth` не меняются.
+- **Без значений.** `auth status` сообщает режимы и наличие, но не секрет. Вызов провайдера не выполняется.
+
+Проверки, записанные для этого релиза:
+
+| Проверка | Результат |
+|---|---|
+| PyPI / npm / MCP Registry | `lv24-seo 0.15.2` опубликован; GitHub Release — Latest |
+| Релизный workflow | запуск `44403810604` |
+| Локальный гейт | `ruff check`, `ruff format --check`, `mypy src`, registry `--check` и полный офлайн `pytest -q` зелёные |
+| Тесты | каждый режим, приоритет сервисного аккаунта GSC, общий refresh token Яндекса для Metrika и пустой путь сервисного аккаунта |
+
+Известные ограничения 0.15.2:
+
+- `access` сообщает конфигурацию/наличие, а не живой вызов провайдера; истёкший или отозванный токен обнаружится при следующем чтении.
+- Синтаксически корректный, но незарегистрированный OAuth client id нельзя определить локально.
 
 ## Движок 0.15.1
 
@@ -209,6 +239,44 @@ Yandex Webmaster и Yandex Metrika, а затем режим URL-only для Я�
 - `--url-only` не проверяет `state` между отдельными шагами URL и кода; код недолговечен, и client secret всё равно нужен.
 - Живое согласие не проверено, пока не настроены реальный Google Cloud Desktop client и приложение Яндекс OAuth.
 - По сравнению с 0.13.0 нет изменений API, числа команд CLI, MCP, схемы или конфигурации.
+
+## Приложение 0.9.8
+
+Выпущено 2026-11-18. Завершает исправление бейджа Connected и включает ту же сборку `lv24-seo 0.15.2`,
+`MIN_ENGINE_VERSION` `0.15.2` и контракты, что и `0.9.7`. `0.9.7` — предыдущий релиз.
+
+Что изменилось:
+
+- **Connected использует доступ к данным.** `0.9.7` включал движок `0.15.2`, но фронтенд по-прежнему выводил Connected/Not connected из записи OAuth refresh token. `0.9.8` читает сводку `access` из `auth status --json`, поэтому сохранённые токены Yandex/Metrika, сервисный аккаунт GSC и ключи Bing/CrUX/PSI показываются как **Connected**.
+- **OAuth отдельно.** Бейдж OAuth говорит **«OAuth not configured (optional)»**, когда провайдер уже работает без OAuth-приложения; Connect остаётся отключённым до настройки реального OAuth-клиента.
+- **Резерв.** Старый движок без `access` сохраняет прежний резерв на основе OAuth.
+- **Движок не менялся.** Sidecar — та же сборка `lv24-seo 0.15.2`, что и в `0.9.7`; четыре набора правил, карточка Indexing automation, скрытый лаунчер заданий Windows и двухфазные ворота записи не изменились.
+
+Проверки, записанные для этого релиза:
+
+| Проверка | Результат |
+|---|---|
+| GitHub Release | [`v0.9.8`](https://github.com/LevapVeeskela/lv24-seo-optimizer-desktop/releases/tag/v0.9.8); 18 ассетов |
+| Релизный workflow | запуск `44412281938` зелёный |
+| Локальный гейт | `npm run typecheck`, `npm test`, `npm run build`, `npm run contract:check`, `cargo fmt --check`, `cargo clippy --all-targets -- -D warnings` и `cargo test` зелёные |
+| Тесты | 808 тестов Vitest и полный набор Rust |
+| Контракты и пин | движок `0.15.2`; Windows x64 SHA-256 `e72d38efc11fb6613a0fa557ade373f6eb5b59059fe49455095924b448d47a18`, 14 608 556 байт |
+
+Известные ограничения 0.9.8:
+
+- `access` сообщает конфигурацию/наличие, а не живой вызов провайдера; истёкший или отозванный токен обнаружится при следующем чтении.
+- Синтаксически корректный, но незарегистрированный OAuth client id нельзя определить локально.
+- OAuth остаётся необязательным и требует реального зарегистрированного приложения для автоматического обновления.
+
+## Приложение 0.9.7
+
+Выпущено 2026-11-18. Включает `lv24-seo 0.15.2` и поднимает `MIN_ENGINE_VERSION` до `0.15.2`.
+Движок добавляет сводку `access`, и бейдж Connected должен был её использовать, но патч фронтенда
+отсутствовал: сохранённые токены Yandex/Metrika и сервисный аккаунт GSC всё ещё показывались как
+«Not connected». `0.9.8` завершает исправление. `0.9.6` — предыдущий релиз.
+
+Проверка: 18 ассетов, контракты на `0.15.2`, пин Windows sidecar проверен. Для исправления бейджа
+рекомендуется `0.9.8`.
 
 ## Приложение 0.9.6
 
@@ -1155,7 +1223,7 @@ Manual-only — намеренно. Пакет deb или rpm принадлеж
 и `0.7.0 → 0.8.0`. В девятом запуске установленная сборка `0.7.0` обновилась через Rust-обновлятор,
 скачала и проверила подписанный пакет, установила его, перезапустилась и сообщила **Desktop 0.8.0**
 с **Engine 0.10.0** и готовым движком; загрузились карточки отправки URL, sitemap, проблем обхода и
-квоты Bing. `0.9.5 → 0.9.6` — следующий источник обновления. Любая установка `0.2.x` с обновлятором может сразу перейти на `0.9.6`; у `0.1.0` нет обновлятора, нужна одна ручная установка.
+квоты Bing. `0.9.7 → 0.9.8` — следующий источник обновления. Любая установка `0.2.x` с обновлятором может сразу перейти на `0.9.8`; у `0.1.0` нет обновлятора, нужна одна ручная установка.
 
 Обновление `0.2.1 → 0.2.2` выполняет старый обновлятор `0.2.1`, в котором нет новой очистки
 отслеживаемых PID. Если во время первого обновления активен sidecar, повторите после его выхода
@@ -1170,12 +1238,12 @@ Workflow приложения ручной и owner-gated. У него нет т
 
 | Вход | Значение по умолчанию | Смысл |
 |---|---|---|
-| `engine_version` | `0.15.1` | Точная версия движка в sidecar |
+| `engine_version` | `0.15.2` | Точная версия движка в sidecar |
 | `signed` | `false` | Запросить подпись/нотаризацию ОС; в этом zero-spend репозитории не настроено |
 | `publish` | `false` | Создать GitHub release после прохождения всей матрицы |
 | `tag` | Пусто | Тег релиза `vX.Y.Z`; обязателен при `publish=true` |
 
-Значение по умолчанию соответствует пину `0.9.6`. Релизный гейт отклоняет несоответствие
+Значение по умолчанию соответствует пину `0.9.8`. Релизный гейт отклоняет несоответствие
 манифеста, если передана другая версия.
 
 | Runner | Target | Пакеты |
@@ -1193,7 +1261,7 @@ Workflow приложения ручной и owner-gated. У него нет т
 
 Релизный sidecar — дерево PyInstaller **onedir**, собранное на соответствующем хосте; PyInstaller не
 кросс-компилирует. Версии движка, Python, Pydantic, Typer и PyInstaller закреплены в
-`scripts/cli-checksums.json`. `0.9.6` сохраняет движок `0.15.1` (без изменений с `0.9.5`), Python `3.12`, Pydantic `2.14.3`,
+`scripts/cli-checksums.json`. `0.9.8` сохраняет движок `0.15.2` (без изменений с `0.9.7`), Python `3.12`, Pydantic `2.14.3`,
 Typer `0.29.0` и PyInstaller `6.22.3`.
 
 Вывод PyInstaller onedir не байт-воспроизводим. Поэтому политика контрольных сумм разделена:
@@ -1209,7 +1277,7 @@ Typer `0.29.0` и PyInstaller `6.22.3`.
 
 Для `0.9.5` Windows x64 имеет проверенный локальный пин (`cd70636a…1922`, 14 607 761 байт); sidecar для Linux и macOS пересобраны релизным
 workflow с пройденными rebuild-aware отчётами, а их проверенные пины остаются `null`, пока локальная сборка
-не будет проверена на этих хостах. Windows-пин `0.9.5`
+не будет проверена на этих хостах. Windows-пин `0.9.6`
 не переносился, потому что исполняемый файл меняется вместе с движком. Отчёты контрольных сумм — доказательства CI, а не релизные артефакты.
 `SHA256SUMS.txt` покрывает установщики, пакеты обновления, подписи и `latest.json`; исполняемый
 файл sidecar находится внутри этих пакетов и отдельно не указан. При ручной установке сверяйте
@@ -1266,13 +1334,15 @@ node scripts/verify-sidecar.mjs \
 
 ## Однократное обновление с 0.1.0
 
-У `0.1.0` нет updater, endpoint и публичного ключа. Он не может найти или установить `0.9.6`.
-Скачайте и установите `0.9.6` вручную один раз (NSIS-установщик или portable ZIP в Windows).
-После этого установка `0.9.6` может автоматически обновляться до следующих релизов, если
+У `0.1.0` нет updater, endpoint и публичного ключа. Он не может найти или установить `0.9.8`.
+Скачайте и установите `0.9.8` вручную один раз (NSIS-установщик или portable ZIP в Windows).
+После этого установка `0.9.8` может автоматически обновляться до следующих релизов, если
 использует пакет с поддержкой автообновления.
 
 ## Предыдущие релизы
 
+- **Движок 0.15.2** добавил `access` по провайдеру в `auth status` (`service_account`, `token`, `oauth`, `none`), описывая доступ к данным отдельно от необязательного OAuth.
+- **Приложение 0.9.7** включало движок `0.15.2`, но всё ещё выводило Connected из OAuth; **0.9.8** завершает исправление через сводку доступа к данным.
 - **Приложение 0.9.6** помечает OAuth как необязательный, если сохранённый токен или сервисный аккаунт уже подключает провайдера; Connect остаётся отключённым до настройки реального OAuth-клиента.
 - **Движок 0.15.1** отклоняет документированные placeholder client id OAuth с `CONFIG_INVALID` до URL согласия; реальные id и потоки токенов не изменились.
 - **Движок 0.15.0** добавил четыре набора правил обхода (`security-headers`, `tls-certificate`, `schema-required`, `a11y-basics`) и увеличил набор с 30 до 34.
@@ -1358,4 +1428,4 @@ Gatekeeper ожидаемы; сверьте контрольную сумму и
 
 См. [Безопасность и приватность](/ru/security/) для доверия к обновлениям и [Архитектуру](/ru/architecture/) для раскладки sidecar.
 
-Source: `_source/engine-releases-0.15.1.md`, `_source/engine-releases-0.15.0.md`, `_source/engine-releases-0.14.1.md`, `_source/engine-releases-0.14.0.md`, `_source/engine-CHANGELOG.md`, `_source/engine-releases-0.13.1.md`, `_source/engine-releases-0.13.0.md`, `_source/engine-releases-0.12.2.md`, `_source/engine-releases-0.12.1.md`, `_source/engine-releases-0.12.0.md`, `_source/engine-releases-0.11.0.md`, `_source/engine-releases-0.10.0.md`, `_source/engine-releases-0.9.0.md`, `_source/engine-releases-0.8.0.md`, `_source/engine-releases-0.7.0.md`, `_source/engine-releases-0.6.0.md`, `_source/engine-releases-0.5.3.md`, `_source/engine-releases-0.5.2.md`, `_source/desktop-releases-0.9.6.md`, `_source/desktop-releases-0.9.6-update.md`, `_source/desktop-releases-0.9.5.md`, `_source/desktop-releases-0.9.5-update.md`, `_source/desktop-releases-0.9.4.md`, `_source/desktop-releases-0.9.4-update.md`, `_source/desktop-releases-0.9.3.md`, `_source/desktop-releases-0.9.3-update.md`, `_source/desktop-releases-0.9.2.md`, `_source/desktop-releases-0.9.1.md`, `_source/desktop-releases-0.9.0.md`, `_source/desktop-releases-0.8.0.md`, `_source/desktop-releases-0.7.0.md`, `_source/desktop-releases-0.6.0.md`, `_source/desktop-releases-0.5.0.md`, `_source/desktop-releases-0.4.0.md`, `_source/desktop-releases-0.3.0.md`, `_source/desktop-releases-0.2.3.md`, `_source/desktop-releases-0.2.2.md`, `_source/desktop-releases-0.2.1.md`, `_source/desktop-releases-0.2.0.md`, `_source/desktop-release.md`, `_source/desktop-security.md`.
+Source: `_source/engine-releases-0.15.2.md`, `_source/engine-releases-0.15.1.md`, `_source/engine-releases-0.15.0.md`, `_source/engine-releases-0.14.1.md`, `_source/engine-releases-0.14.0.md`, `_source/engine-CHANGELOG.md`, `_source/engine-releases-0.13.1.md`, `_source/engine-releases-0.13.0.md`, `_source/engine-releases-0.12.2.md`, `_source/engine-releases-0.12.1.md`, `_source/engine-releases-0.12.0.md`, `_source/engine-releases-0.11.0.md`, `_source/engine-releases-0.10.0.md`, `_source/engine-releases-0.9.0.md`, `_source/engine-releases-0.8.0.md`, `_source/engine-releases-0.7.0.md`, `_source/engine-releases-0.6.0.md`, `_source/engine-releases-0.5.3.md`, `_source/engine-releases-0.5.2.md`, `_source/desktop-releases-0.9.8.md`, `_source/desktop-releases-0.9.8-update.md`, `_source/desktop-releases-0.9.7.md`, `_source/desktop-releases-0.9.7-update.md`, `_source/desktop-releases-0.9.6.md`, `_source/desktop-releases-0.9.6-update.md`, `_source/desktop-releases-0.9.5.md`, `_source/desktop-releases-0.9.5-update.md`, `_source/desktop-releases-0.9.4.md`, `_source/desktop-releases-0.9.4-update.md`, `_source/desktop-releases-0.9.3.md`, `_source/desktop-releases-0.9.3-update.md`, `_source/desktop-releases-0.9.2.md`, `_source/desktop-releases-0.9.1.md`, `_source/desktop-releases-0.9.0.md`, `_source/desktop-releases-0.8.0.md`, `_source/desktop-releases-0.7.0.md`, `_source/desktop-releases-0.6.0.md`, `_source/desktop-releases-0.5.0.md`, `_source/desktop-releases-0.4.0.md`, `_source/desktop-releases-0.3.0.md`, `_source/desktop-releases-0.2.3.md`, `_source/desktop-releases-0.2.2.md`, `_source/desktop-releases-0.2.1.md`, `_source/desktop-releases-0.2.0.md`, `_source/desktop-release.md`, `_source/desktop-security.md`.

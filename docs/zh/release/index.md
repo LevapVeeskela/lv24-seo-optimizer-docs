@@ -9,10 +9,39 @@ description: 引擎 0.14.0 与桌面 0.9.2 发行说明、OAuth 就绪诊断和�
 
 | 产品 | 版本 | 发布日期 | 说明 |
 |---|---|---|---|
-| 引擎 | `lv24-seo 0.15.1` | 2026-11-18 | 在构建同意 URL 前拒绝文档中的占位 OAuth client id；保留 0.15.0 的四个规则包、25 个 CLI 命令、12 个 MCP 工具和模式 v5 |
-| 桌面 | `0.9.6` | 2026-11-18 | 当保存的令牌或服务账号已连接数据源时，把 OAuth 标为可选；引擎 0.15.1 和 `MIN_ENGINE_VERSION` 0.15.1 不变 |
+| 引擎 | `lv24-seo 0.15.2` | 2026-11-18 | `auth status` 为每个数据源增加 `access`（`service_account`、`token`、`oauth`、`none`），与可选 OAuth 分开；25 个 CLI 命令、12 个 MCP 工具和模式 v5 |
+| 桌面 | `0.9.8` | 2026-11-18 | Connected 徽章使用引擎数据访问摘要；保存的令牌和 GSC 服务账号显示 Connected，OAuth 仍为可选；引擎 0.15.2 和 `MIN_ENGINE_VERSION` 0.15.2 |
 
-桌面版本与引擎版本相互独立，但桌面固定精确引擎，并拒绝低于最低版本的引擎。`0.9.6` 捆绑 `0.15.1` 并要求至少 `0.15.1`，因此已安装的 `0.15.0` 引擎会被报告为不兼容。`0.9.5` 是上一个版本；`0.9.6` 只在保存的令牌或服务账号已连接数据源时更改 Connect 卡片文案。OAuth 令牌由引擎存入系统钥匙串；桌面从不接收或渲染。Indexing automation 卡片为只读：渲染 `indexing status`、`indexing history` 和 `schedule status`，没有写入、确认或 `--allow-write` 控件。
+桌面版本与引擎版本相互独立，但桌面固定精确引擎，并拒绝低于最低版本的引擎。`0.9.8` 捆绑 `0.15.2` 并要求至少 `0.15.2`，因此已安装的 `0.15.1` 引擎会被报告为不兼容。`0.9.7` 是上一个版本；`0.9.8` 使用数据访问摘要完成 Connected 徽章修复。OAuth 令牌由引擎存入系统钥匙串；桌面从不接收或渲染。Indexing automation 卡片为只读：渲染 `indexing status`、`indexing history` 和 `schedule status`，没有写入、确认或 `--allow-write` 控件。
+
+## 引擎 0.15.2
+
+2026-11-18 发布。补丁版本：`auth status` 现在说明每个数据源实际如何认证数据访问，因此保存的
+令牌或服务账号不会仅因未配置 OAuth 应用而被误判为“未连接”。CLI 仍为 25 个顶层命令，MCP 仍为
+12 个工具，SQLite 模式仍为 v5。
+
+### 按数据源的数据访问状态
+
+变更：
+
+- **`auth status --json` 中的 `access`。** 每个数据源（`gsc`、`yandex`、`metrika`、`bing`、`crux`、`psi`）获得带 `mode` 和 `ready` 的 `access` 对象。
+- **模式。** `service_account` 表示配置了 GSC `service_account_file`；`token` 表示保存了 Webmaster/Metrika/Bing/CrUX/PSI 静态令牌或 API 密钥；`oauth` 表示保存了 OAuth refresh token；`none` 表示没有数据访问凭据。
+- **与 OAuth 分开。** `access` 描述数据访问，`oauth` 描述可选 OAuth 应用是否可用。现有 `providers`、`present`、`missing` 和 `oauth` 字段不变。
+- **无值。** `auth status` 只报告模式和存在性，从不报告密钥；不调用数据源。
+
+本版本记录的验证：
+
+| 检查 | 结果 |
+|---|---|
+| PyPI / npm / MCP Registry | `lv24-seo 0.15.2` 已发布；GitHub Release 为 Latest |
+| 发布工作流 | 运行 `44403810604` |
+| 本地门禁 | `ruff check`、`ruff format --check`、`mypy src`、registry `--check` 和完整离线 `pytest -q` 通过 |
+| 测试 | 每种模式、GSC 服务账号优先级、Metrika 共享 Yandex refresh token，以及空服务账号路径 |
+
+0.15.2 的已知限制：
+
+- `access` 报告配置/存在性，而不是实时数据源调用；过期或撤销的令牌仍会在下次读取时发现。
+- 语法有效但未注册的 OAuth client id 无法在本地检测。
 
 ## 引擎 0.15.1
 
@@ -207,6 +236,43 @@ OAuth 连接器，随后加入桌面 Connect 卡片所需的 Yandex URL-only 模
 - `--url-only` 不会在分开的 URL 和代码步骤之间验证 `state`；验证代码很短命，且仍需要 client secret。
 - 在配置真实的 Google Cloud Desktop client 和 Yandex OAuth 应用之前，实时同意仍未验证。
 - 相对 0.13.0 没有 API、CLI 数量、MCP、模式或配置变更。
+
+## 桌面 0.9.8
+
+2026-11-18 发布。完成 Connected 徽章修复，并与 `0.9.7` 捆绑相同的 `lv24-seo 0.15.2`、
+`MIN_ENGINE_VERSION` `0.15.2` 和契约。`0.9.7` 是上一个版本。
+
+变更：
+
+- **Connected 使用数据访问状态。** `0.9.7` 捆绑了引擎 `0.15.2`，但前端仍从 OAuth refresh token 推导 Connected/Not connected。`0.9.8` 读取 `auth status --json` 的 `access` 摘要，因此保存的 Yandex/Metrika 令牌、GSC 服务账号以及 Bing/CrUX/PSI 密钥都显示为 **Connected**。
+- **OAuth 分开。** 当数据源无需 OAuth 应用即可工作时，OAuth 徽章显示 **“OAuth not configured (optional)”**；在配置真实 OAuth 客户端前 Connect 保持禁用。
+- **后备。** 没有 `access` 的旧引擎保留之前的 OAuth 后备逻辑。
+- **引擎未变。** Sidecar 与 `0.9.7` 是同一个 `lv24-seo 0.15.2` 构建；四个抓取规则包、Indexing automation 卡片、隐藏的 Windows 计划任务启动器和两阶段写入门控不变。
+
+本版本记录的验证：
+
+| 检查 | 结果 |
+|---|---|
+| GitHub Release | [`v0.9.8`](https://github.com/LevapVeeskela/lv24-seo-optimizer-desktop/releases/tag/v0.9.8)；18 个资产 |
+| 发布工作流 | 运行 `44412281938` 通过 |
+| 本地门禁 | 发布提交上 `npm run typecheck`、`npm test`、`npm run build`、`npm run contract:check`、`cargo fmt --check`、`cargo clippy --all-targets -- -D warnings` 和 `cargo test` 通过 |
+| 测试 | 808 个 Vitest 测试和完整 Rust 测试集 |
+| 契约与固定 | 引擎 `0.15.2`；Windows x64 SHA-256 `e72d38efc11fb6613a0fa557ade373f6eb5b59059fe49455095924b448d47a18`，14,608,556 字节 |
+
+0.9.8 的已知限制：
+
+- `access` 报告配置/存在性，而不是实时数据源调用；过期或撤销的令牌仍会在下次读取时发现。
+- 语法有效但未注册的 OAuth client id 无法在本地检测。
+- OAuth 仍为可选，自动刷新仍需要真实注册的应用。
+
+## 桌面 0.9.7
+
+2026-11-18 发布。捆绑 `lv24-seo 0.15.2` 并把 `MIN_ENGINE_VERSION` 提升到 `0.15.2`。引擎新增
+`access` 摘要，Connected 徽章本应使用它，但前端补丁缺失：保存的 Yandex/Metrika 令牌和 GSC
+服务账号仍显示为“Not connected”。`0.9.8` 完成该修复。`0.9.6` 是上一个版本。
+
+验证：18 个资产，契约与 `0.15.2` 一致，Windows sidecar 固定已校验。要获得徽章修复，建议使用
+`0.9.8`。
 
 ## 桌面 0.9.6
 
@@ -1105,7 +1171,7 @@ Windows NSIS 路径现已完成九次端到端验证：`0.2.0 → 0.2.1`、`0.2.
 `0.2.2 → 0.2.3`、`0.2.3 → 0.3.0`、`0.3.0 → 0.4.0`、`0.4.0 → 0.5.0`、`0.5.0 → 0.6.0`、`0.6.0 → 0.7.0`
 和 `0.7.0 → 0.8.0`。第九次运行中，已安装的 `0.7.0` 通过 Rust 更新器升级，下载并验证已签名包，安装并重启后
 报告 **Desktop 0.8.0**、**Engine 0.10.0** 且引擎就绪；Bing URL 提交、站点地图、抓取问题和配额卡片已加载。
-`0.9.5 → 0.9.6` 是下一个应用内更新来源。任何带应用内更新器的 `0.2.x` 安装都可直接升级到 `0.9.6`；
+`0.9.7 → 0.9.8` 是下一个应用内更新来源。任何带应用内更新器的 `0.2.x` 安装都可直接升级到 `0.9.8`；
 `0.1.0` 没有更新器，需要一次手动安装。
 
 `0.2.1 → 0.2.2` 更新由旧的 `0.2.1` 更新器执行，其中没有新的受跟踪 PID 清理。如果首次更新期间
@@ -1119,12 +1185,12 @@ Windows NSIS 路径现已完成九次端到端验证：`0.2.0 → 0.2.1`、`0.2.
 
 | 输入 | 默认值 | 含义 |
 |---|---|---|
-| `engine_version` | `0.15.1` | sidecar 中捆绑的精确引擎版本 |
+| `engine_version` | `0.15.2` | sidecar 中捆绑的精确引擎版本 |
 | `signed` | `false` | 请求操作系统签名/公证；此零支出仓库未配置 |
 | `publish` | `false` | 所有矩阵构建通过后创建 GitHub release |
 | `tag` | 空 | `vX.Y.Z` 发布标签；`publish=true` 时必填 |
 
-默认值与 `0.9.6` 固定版本一致。如果传入不同版本，发布门控会拒绝清单不匹配。
+默认值与 `0.9.8` 固定版本一致。如果传入不同版本，发布门控会拒绝清单不匹配。
 
 | Runner | Target | 包 |
 |---|---|---|
@@ -1139,8 +1205,8 @@ Windows NSIS 路径现已完成九次端到端验证：`0.2.0 → 0.2.1`、`0.2.
 ## Sidecar 固定与校验和
 
 发布 sidecar 是 PyInstaller **onedir** 树，在匹配的主机上构建；PyInstaller 不交叉编译。引擎、
-Python、Pydantic、Typer 和 PyInstaller 版本固定在 `scripts/cli-checksums.json`。`0.9.6` 保持
-引擎 `0.15.1`（与 `0.9.5` 相同）、Python `3.12`、Pydantic `2.14.3`、Typer `0.29.0` 和 PyInstaller `6.22.3`。
+Python、Pydantic、Typer 和 PyInstaller 版本固定在 `scripts/cli-checksums.json`。`0.9.8` 保持
+引擎 `0.15.2`（与 `0.9.7` 相同）、Python `3.12`、Pydantic `2.14.3`、Typer `0.29.0` 和 PyInstaller `6.22.3`。
 
 PyInstaller onedir 输出不是字节可复现的。因此校验和政策分为三部分：
 
@@ -1152,7 +1218,7 @@ PyInstaller onedir 输出不是字节可复现的。因此校验和政策分为�
   `hashPolicy: "rebuild"`、`ok: true`、64 位十六进制哈希、正大小和精确引擎版本。
 
 对于 `0.9.5`，Windows x64 有已审查的本地固定值（`cd70636a…1922`，14,607,761 字节）；Linux 和 macOS sidecar 由发布 workflow 重新构建并通过
-rebuild-aware 报告，其已审查固定值仍为 `null`，直到在这些主机上审查本地构建。`0.9.5` 的 Windows 固定值没有沿用，因为可执行文件随引擎变化。校验和报告是 CI 证据，不是发布产物。
+rebuild-aware 报告，其已审查固定值仍为 `null`，直到在这些主机上审查本地构建。`0.9.6` 的 Windows 固定值没有沿用，因为可执行文件随引擎变化。校验和报告是 CI 证据，不是发布产物。
 `SHA256SUMS.txt` 覆盖安装器、更新包、签名和 `latest.json`；sidecar 可执行文件位于这些包内，
 不单独列出。手动安装的用户应使用 `SHA256SUMS.txt` 校验下载的产物。
 
@@ -1200,12 +1266,14 @@ node scripts/verify-sidecar.mjs \
 
 ## 从 0.1.0 一次性升级
 
-`0.1.0` 没有更新器、端点和公钥。它无法发现或安装 `0.9.6`。请手动下载并安装一次 `0.9.6`
-（Windows 上的 NSIS 安装器或便携 ZIP）。之后，`0.9.6` 安装在使用支持自动更新的包类型时，
+`0.1.0` 没有更新器、端点和公钥。它无法发现或安装 `0.9.8`。请手动下载并安装一次 `0.9.8`
+（Windows 上的 NSIS 安装器或便携 ZIP）。之后，`0.9.8` 安装在使用支持自动更新的包类型时，
 可以自动更新到后续版本。
 
 ## 更早的版本
 
+- **引擎 0.15.2** 在 `auth status` 中为每个数据源增加 `access`（`service_account`、`token`、`oauth`、`none`），把数据访问与可选 OAuth 分开。
+- **桌面 0.9.7** 捆绑引擎 `0.15.2`，但仍从 OAuth 推导 Connected；**桌面 0.9.8** 使用数据访问摘要完成徽章修复。
 - **桌面 0.9.6** 在保存的令牌或服务账号已连接数据源时把 OAuth 标为可选；在配置真实 OAuth 客户端前 Connect 保持禁用。
 - **引擎 0.15.1** 在构建同意 URL 前以 `CONFIG_INVALID` 拒绝文档中的占位 OAuth client id；真实 id 和令牌流程不变。
 - **引擎 0.15.0** 新增四个抓取规则包（`security-headers`、`tls-certificate`、`schema-required`、`a11y-basics`），规则集从 30 增至 34。
@@ -1275,4 +1343,4 @@ sha256sum -c SHA256SUMS.txt --ignore-missing
 
 更新信任见[安全与隐私](/zh/security/)，sidecar 布局见[架构](/zh/architecture/)。
 
-Source: `_source/engine-releases-0.15.1.md`, `_source/engine-releases-0.15.0.md`, `_source/engine-releases-0.14.1.md`, `_source/engine-releases-0.14.0.md`, `_source/engine-CHANGELOG.md`, `_source/engine-releases-0.13.1.md`, `_source/engine-releases-0.13.0.md`, `_source/engine-releases-0.12.2.md`, `_source/engine-releases-0.12.1.md`, `_source/engine-releases-0.12.0.md`, `_source/engine-releases-0.11.0.md`, `_source/engine-releases-0.10.0.md`, `_source/engine-releases-0.9.0.md`, `_source/engine-releases-0.8.0.md`, `_source/engine-releases-0.7.0.md`, `_source/engine-releases-0.6.0.md`, `_source/engine-releases-0.5.3.md`, `_source/engine-releases-0.5.2.md`, `_source/desktop-releases-0.9.6.md`, `_source/desktop-releases-0.9.6-update.md`, `_source/desktop-releases-0.9.5.md`, `_source/desktop-releases-0.9.5-update.md`, `_source/desktop-releases-0.9.4.md`, `_source/desktop-releases-0.9.4-update.md`, `_source/desktop-releases-0.9.3.md`, `_source/desktop-releases-0.9.3-update.md`, `_source/desktop-releases-0.9.2.md`, `_source/desktop-releases-0.9.1.md`, `_source/desktop-releases-0.9.0.md`, `_source/desktop-releases-0.8.0.md`, `_source/desktop-releases-0.7.0.md`, `_source/desktop-releases-0.6.0.md`, `_source/desktop-releases-0.5.0.md`, `_source/desktop-releases-0.4.0.md`, `_source/desktop-releases-0.3.0.md`, `_source/desktop-releases-0.2.3.md`, `_source/desktop-releases-0.2.2.md`, `_source/desktop-releases-0.2.1.md`, `_source/desktop-releases-0.2.0.md`, `_source/desktop-release.md`, `_source/desktop-security.md`.
+Source: `_source/engine-releases-0.15.2.md`, `_source/engine-releases-0.15.1.md`, `_source/engine-releases-0.15.0.md`, `_source/engine-releases-0.14.1.md`, `_source/engine-releases-0.14.0.md`, `_source/engine-CHANGELOG.md`, `_source/engine-releases-0.13.1.md`, `_source/engine-releases-0.13.0.md`, `_source/engine-releases-0.12.2.md`, `_source/engine-releases-0.12.1.md`, `_source/engine-releases-0.12.0.md`, `_source/engine-releases-0.11.0.md`, `_source/engine-releases-0.10.0.md`, `_source/engine-releases-0.9.0.md`, `_source/engine-releases-0.8.0.md`, `_source/engine-releases-0.7.0.md`, `_source/engine-releases-0.6.0.md`, `_source/engine-releases-0.5.3.md`, `_source/engine-releases-0.5.2.md`, `_source/desktop-releases-0.9.8.md`, `_source/desktop-releases-0.9.8-update.md`, `_source/desktop-releases-0.9.7.md`, `_source/desktop-releases-0.9.7-update.md`, `_source/desktop-releases-0.9.6.md`, `_source/desktop-releases-0.9.6-update.md`, `_source/desktop-releases-0.9.5.md`, `_source/desktop-releases-0.9.5-update.md`, `_source/desktop-releases-0.9.4.md`, `_source/desktop-releases-0.9.4-update.md`, `_source/desktop-releases-0.9.3.md`, `_source/desktop-releases-0.9.3-update.md`, `_source/desktop-releases-0.9.2.md`, `_source/desktop-releases-0.9.1.md`, `_source/desktop-releases-0.9.0.md`, `_source/desktop-releases-0.8.0.md`, `_source/desktop-releases-0.7.0.md`, `_source/desktop-releases-0.6.0.md`, `_source/desktop-releases-0.5.0.md`, `_source/desktop-releases-0.4.0.md`, `_source/desktop-releases-0.3.0.md`, `_source/desktop-releases-0.2.3.md`, `_source/desktop-releases-0.2.2.md`, `_source/desktop-releases-0.2.1.md`, `_source/desktop-releases-0.2.0.md`, `_source/desktop-release.md`, `_source/desktop-security.md`.

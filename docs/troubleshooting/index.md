@@ -9,7 +9,7 @@ Start with `error.code`, not the exit code: several failures share an exit statu
 `--json`:
 
 ```json
-{"ok": false, "error": {"code": "AUTH_REQUIRED", "message": "Google Search Console token is missing", "retryable": false, "next_action": "lv24-seo auth login --provider gsc"}, "meta": {"version": "0.15.1"}, "warnings": ["gsc: token missing"]}
+{"ok": false, "error": {"code": "AUTH_REQUIRED", "message": "Google Search Console token is missing", "retryable": false, "next_action": "lv24-seo auth login --provider gsc"}, "meta": {"version": "0.15.2"}, "warnings": ["gsc: token missing"]}
 ```
 
 MCP tools return the same envelope as `structuredContent` and set `isError: true` on failure. The desktop maps `ok=false` to a typed UI error.
@@ -141,7 +141,7 @@ with robots `Crawl-delay` pacing; `concurrency` is reserved and has no effect.
 
 Memory is bounded: page bodies are capped at 5 MB, retained page text at 20,000 characters, and the request budget is `1 + max_urls * (max_redirects + 1)`.
 `word_count` still uses the full visible text. If a crawl is too large or slow, lower `--max-urls` and crawl a section at a time. There is no resume or job
-queue in `0.9.6`; the desktop has a 600-second crawl timeout and a **Cancel** button in the window banner.
+queue in `0.9.8`; the desktop has a 600-second crawl timeout and a **Cancel** button in the window banner.
 
 ## `--days` limits
 
@@ -184,7 +184,7 @@ The command merges the host configuration and prints what it changed.
 | Symptom | Fix |
 |---|---|
 | “not valid JSON” but the file looks valid | UTF-8 BOM, often from PowerShell 5.1; rewrite without BOM or delete and rerun |
-| `No such command 'mcp'` | Old build without `mcp serve`; upgrade to 0.15.1 |
+| `No such command 'mcp'` | Old build without `mcp serve`; upgrade to 0.15.2 |
 | GUI client cannot start the server | Put the absolute `uvx` path in `command`; the app does not inherit the shell `PATH` |
 | VS Code lists nothing | `install` writes `mcpServers`; VS Code uses `servers`; rename the key |
 
@@ -229,7 +229,7 @@ The shell reports its own codes; it never reuses an engine code.
 ## Desktop engine is offline or version-gated
 
 The shell resolves the engine in this order: `LV24_SEO_BIN` (absolute only), bundled `engine/lv24-seo/`, flat `lv24-seo/`, sibling `lv24-seo/`, then `PATH` only
-when `LV24_SEO_ALLOW_PATH_ENGINE=1`. It runs `lv24-seo version --json` and compares the result with `MIN_ENGINE_VERSION`, which is `0.15.1` in the current
+when `LV24_SEO_ALLOW_PATH_ENGINE=1`. It runs `lv24-seo version --json` and compares the result with `MIN_ENGINE_VERSION`, which is `0.15.2` in the current
 source.
 
 An older engine is marked `compatible: false`; the UI treats it as offline and does not run the command. Nothing is downloaded automatically.
@@ -237,7 +237,7 @@ An older engine is marked `compatible: false`; the UI treats it as offline and d
 | Symptom | Fix |
 |---|---|
 | Engine not found | Reinstall, or set `LV24_SEO_BIN` to an absolute executable |
-| Engine too old | Install engine 0.15.1 or newer |
+| Engine too old | Install engine 0.15.2 or newer |
 | External engine label | Expected when `LV24_SEO_BIN` is set |
 
 A stray `lv24-seo` on `PATH` is ignored unless `LV24_SEO_ALLOW_PATH_ENGINE=1`.
@@ -325,5 +325,5 @@ Report security problems through the private advisory described in `SECURITY.md`
 
 See [Security and privacy](/security/) for the write gates and [Releases and updates](/release/) for updater behaviour.
 
-Source: `_source/engine-troubleshooting.md`, `_source/engine-auth.md`, `_source/engine-auth-google.md`, `_source/engine-auth-yandex.md`, `_source/engine-releases-0.15.1.md`, `_source/engine-releases-0.15.0.md`, `_source/engine-releases-0.14.1.md`, `_source/engine-releases-0.14.0.md`, `_source/engine-releases-0.13.1.md`, `_source/engine-releases-0.13.0.md`, `_source/engine-releases-0.12.2.md`, `_source/engine-releases-0.12.0.md`, `_source/engine-releases-0.11.0.md`, `_source/engine-releases-0.5.3.md`, `_source/desktop-releases-0.9.6.md`, `_source/desktop-releases-0.9.5.md`, `_source/desktop-releases-0.9.4.md`, `_source/desktop-releases-0.9.3.md`, `_source/desktop-releases-0.9.2.md`, `_source/desktop-releases-0.9.1.md`, `_source/desktop-releases-0.9.0.md`, `_source/desktop-releases-0.2.2.md`, `_source/desktop-releases-0.2.3.md`, `_source/desktop-releases-0.2.1.md`, `_source/desktop-releases-0.2.0.md`, `_source/desktop-security.md`,
+Source: `_source/engine-troubleshooting.md`, `_source/engine-auth.md`, `_source/engine-auth-google.md`, `_source/engine-auth-yandex.md`, `_source/engine-releases-0.15.2.md`, `_source/engine-releases-0.15.1.md`, `_source/engine-releases-0.15.0.md`, `_source/engine-releases-0.14.1.md`, `_source/engine-releases-0.14.0.md`, `_source/engine-releases-0.13.1.md`, `_source/engine-releases-0.13.0.md`, `_source/engine-releases-0.12.2.md`, `_source/engine-releases-0.12.0.md`, `_source/engine-releases-0.11.0.md`, `_source/engine-releases-0.5.3.md`, `_source/desktop-releases-0.9.8.md`, `_source/desktop-releases-0.9.7.md`, `_source/desktop-releases-0.9.6.md`, `_source/desktop-releases-0.9.5.md`, `_source/desktop-releases-0.9.4.md`, `_source/desktop-releases-0.9.3.md`, `_source/desktop-releases-0.9.2.md`, `_source/desktop-releases-0.9.1.md`, `_source/desktop-releases-0.9.0.md`, `_source/desktop-releases-0.2.2.md`, `_source/desktop-releases-0.2.3.md`, `_source/desktop-releases-0.2.1.md`, `_source/desktop-releases-0.2.0.md`, `_source/desktop-security.md`,
 `_source/desktop-architecture.md`.

@@ -519,7 +519,7 @@ lv24-seo auth login --provider yandex --url-only --json
 
 ### Placeholder client id
 
-Примеры из этого руководства (`0123456789abcdef0123456789abcdef`, `1234567890-abc.apps.googleusercontent.com`, `your-*-client-id`) не являются зарегистрированными приложениями. Движок `0.15.1` отклоняет их с `CONFIG_INVALID` до построения URL согласия, и `yandex_oauth.authorization_url()` применяет ту же проверку для всех вызывающих. Зарегистрируйте реальный Google Desktop client или приложение Яндекс OAuth и используйте его id; `auth status` и `doctor` сообщают placeholder как `oauth_client_missing`. Desktop `0.9.6` отключает **Connect**, пока готовность — `oauth_client_missing`, `oauth_client_secret_missing` или `oauth_redirect_invalid`.
+Примеры из этого руководства (`0123456789abcdef0123456789abcdef`, `1234567890-abc.apps.googleusercontent.com`, `your-*-client-id`) не являются зарегистрированными приложениями. Движок `0.15.1` отклоняет их с `CONFIG_INVALID` до построения URL согласия, и `yandex_oauth.authorization_url()` применяет ту же проверку для всех вызывающих. Зарегистрируйте реальный Google Desktop client или приложение Яндекс OAuth и используйте его id; `auth status` и `doctor` сообщают placeholder как `oauth_client_missing`. Desktop `0.9.8` отключает **Connect**, пока готовность — `oauth_client_missing`, `oauth_client_secret_missing` или `oauth_redirect_invalid`.
 
 ### Диагностика готовности OAuth
 

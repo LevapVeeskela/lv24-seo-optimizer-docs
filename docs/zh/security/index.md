@@ -5,8 +5,8 @@ description: LV24 SEO Optimizer 的威胁模型、密钥处理、写入门禁、
 
 # 安全与隐私
 
-LV24 SEO Optimizer 以本地为先。引擎（`lv24-seo 0.15.1`）负责数据源、抓取、存储和报告；
-桌面应用（`0.9.6`）只是引擎之上的界面和进程外壳，不重新实现数据源客户端，也不代理
+LV24 SEO Optimizer 以本地为先。引擎（`lv24-seo 0.15.2`）负责数据源、抓取、存储和报告；
+桌面应用（`0.9.8`）只是引擎之上的界面和进程外壳，不重新实现数据源客户端，也不代理
 数据源流量。
 
 本页区分两个产品和两种签名：
@@ -256,4 +256,4 @@ cookie、`Authorization` 头、`LV24_SEO_WRITE_SECRET`、`.env` 内容、`data/s
 
 信任边界见[架构](/zh/architecture/)，已签名更新的矩阵见[发布与更新](/zh/release/)。
 
-Source: `_source/engine-security.md`, `_source/desktop-security.md`, `_source/engine-architecture.md`, `_source/desktop-architecture.md`, `_source/engine-auth.md`, `_source/engine-releases-0.15.1.md`, `_source/engine-releases-0.15.0.md`, `_source/engine-releases-0.14.1.md`, `_source/engine-releases-0.14.0.md`, `_source/engine-releases-0.13.1.md`, `_source/engine-releases-0.13.0.md`, `_source/engine-releases-0.12.2.md`, `_source/engine-releases-0.12.0.md`, `_source/engine-releases-0.11.0.md`, `_source/engine-releases-0.5.3.md`, `_source/desktop-releases-0.9.6.md`, `_source/desktop-releases-0.9.5.md`, `_source/desktop-releases-0.9.4.md`, `_source/desktop-releases-0.9.3.md`, `_source/desktop-releases-0.9.2.md`, `_source/desktop-releases-0.9.1.md`, `_source/desktop-releases-0.9.0.md`, `_source/desktop-releases-0.2.2.md`, `_source/desktop-releases-0.2.3.md`.
+Source: `_source/engine-security.md`, `_source/desktop-security.md`, `_source/engine-architecture.md`, `_source/desktop-architecture.md`, `_source/engine-auth.md`, `_source/engine-releases-0.15.2.md`, `_source/engine-releases-0.15.1.md`, `_source/engine-releases-0.15.0.md`, `_source/engine-releases-0.14.1.md`, `_source/engine-releases-0.14.0.md`, `_source/engine-releases-0.13.1.md`, `_source/engine-releases-0.13.0.md`, `_source/engine-releases-0.12.2.md`, `_source/engine-releases-0.12.0.md`, `_source/engine-releases-0.11.0.md`, `_source/engine-releases-0.5.3.md`, `_source/desktop-releases-0.9.8.md`, `_source/desktop-releases-0.9.7.md`, `_source/desktop-releases-0.9.6.md`, `_source/desktop-releases-0.9.5.md`, `_source/desktop-releases-0.9.4.md`, `_source/desktop-releases-0.9.3.md`, `_source/desktop-releases-0.9.2.md`, `_source/desktop-releases-0.9.1.md`, `_source/desktop-releases-0.9.0.md`, `_source/desktop-releases-0.2.2.md`, `_source/desktop-releases-0.2.3.md`.
