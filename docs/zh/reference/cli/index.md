@@ -461,7 +461,7 @@ lv24-seo auth login --provider yandex --url-only --json
 
 ### 占位 client id
 
-本指南中的示例（`0123456789abcdef0123456789abcdef`、`1234567890-abc.apps.googleusercontent.com`、`your-*-client-id`）不是已注册的数据源应用。引擎 `0.15.1` 在构建同意 URL 前以 `CONFIG_INVALID` 拒绝它们，`yandex_oauth.authorization_url()` 对每个调用方执行同样的检查。请注册真实的 Google Desktop client 或 Yandex OAuth 应用并使用其 id；`auth status` 和 `doctor` 会把占位符报告为 `oauth_client_missing`。桌面 `0.9.5` 在就绪状态为 `oauth_client_missing`、`oauth_client_secret_missing` 或 `oauth_redirect_invalid` 时禁用 **Connect**。
+本指南中的示例（`0123456789abcdef0123456789abcdef`、`1234567890-abc.apps.googleusercontent.com`、`your-*-client-id`）不是已注册的数据源应用。引擎 `0.15.1` 在构建同意 URL 前以 `CONFIG_INVALID` 拒绝它们，`yandex_oauth.authorization_url()` 对每个调用方执行同样的检查。请注册真实的 Google Desktop client 或 Yandex OAuth 应用并使用其 id；`auth status` 和 `doctor` 会把占位符报告为 `oauth_client_missing`。桌面 `0.9.6` 在就绪状态为 `oauth_client_missing`、`oauth_client_secret_missing` 或 `oauth_redirect_invalid` 时禁用 **Connect**。
 
 ### OAuth 就绪诊断
 

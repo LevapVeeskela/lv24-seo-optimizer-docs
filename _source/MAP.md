@@ -57,8 +57,10 @@ to site routes.
 | `desktop-releases-0.9.3-update.md` | `/release/`, `/desktop/` | Desktop 0.9.3 short update note: readiness states, Ready only for `oauth_ready`, unavailable never shown as success. |
 | `desktop-releases-0.9.4.md` | `/release/`, `/desktop/`, `/automation/`, `/indexing/` | Desktop 0.9.4 notes: bundled engine 0.14.1 and `MIN_ENGINE_VERSION` 0.14.1, hidden Windows scheduled jobs, contracts and sidecar pin updated; cards unchanged. Previous desktop line. |
 | `desktop-releases-0.9.4-update.md` | `/release/`, `/desktop/`, `/automation/` | Desktop 0.9.4 short update note: the 04:00 job no longer flashes a terminal, one-time reinstall for older tasks, cards unchanged. |
-| `desktop-releases-0.9.5.md` | `/release/`, `/desktop/`, `/crawl/`, `/reference/cli/` | Desktop 0.9.5 notes: bundled engine 0.15.1 and `MIN_ENGINE_VERSION` 0.15.1, four crawl rule packs, placeholder client-id guard, Connect disabled while readiness is missing/misconfigured. |
+| `desktop-releases-0.9.5.md` | `/release/`, `/desktop/`, `/crawl/`, `/reference/cli/` | Desktop 0.9.5 notes: bundled engine 0.15.1 and `MIN_ENGINE_VERSION` 0.15.1, four crawl rule packs, placeholder client-id guard, Connect disabled while readiness is missing/misconfigured. Previous desktop line. |
 | `desktop-releases-0.9.5-update.md` | `/release/`, `/desktop/`, `/crawl/` | Desktop 0.9.5 short update note: 34 rules, placeholder client ids rejected, Connect disabled until configured, cards unchanged. |
+| `desktop-releases-0.9.6.md` | `/release/`, `/desktop/` | Desktop 0.9.6 notes: OAuth shown as optional when a saved token or service account already connects the provider; Connect stays disabled; engine 0.15.1 unchanged. |
+| `desktop-releases-0.9.6-update.md` | `/release/`, `/desktop/` | Desktop 0.9.6 short update note: "OAuth not configured (optional)" wording, automatic refresh is the only OAuth benefit. |
 | `desktop-releases-0.2.3.md` | `/release/` | Desktop 0.2.3 notes: Rust updater and cancel, dialog-approved config path, path rejection, redaction, UI state, release CI. |
 | `desktop-releases-0.2.1.md` | `/release/` | Desktop 0.2.1 patch notes: Metrika token and shared CLI keychain. |
 | `desktop-releases-0.2.0.md` | `/release/` | Desktop 0.2.0 release notes, kept for the first multi-platform release. |

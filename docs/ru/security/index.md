@@ -6,7 +6,7 @@ description: Модель угроз, хранение секретов, write-�
 # Безопасность и приватность
 
 LV24 SEO Optimizer работает локально. Движок (`lv24-seo 0.15.1`) выполняет работу с
-провайдерами, обход, хранение и отчёты. Приложение (`0.9.5`) — это UI и оболочка
+провайдерами, обход, хранение и отчёты. Приложение (`0.9.6`) — это UI и оболочка
 процессов вокруг движка; оно не переписывает провайдерские клиенты и не проксирует
 трафик.
 
@@ -312,4 +312,4 @@ Sidecar — это дерево PyInstaller **onedir**, а не onefile. `script
 
 См. [Архитектура](/ru/architecture/) для границ доверия и [Релизы и обновление](/ru/release/) для матрицы подписанных обновлений.
 
-Source: `_source/engine-security.md`, `_source/desktop-security.md`, `_source/engine-architecture.md`, `_source/desktop-architecture.md`, `_source/engine-auth.md`, `_source/engine-releases-0.15.1.md`, `_source/engine-releases-0.15.0.md`, `_source/engine-releases-0.14.1.md`, `_source/engine-releases-0.14.0.md`, `_source/engine-releases-0.13.1.md`, `_source/engine-releases-0.13.0.md`, `_source/engine-releases-0.12.2.md`, `_source/engine-releases-0.12.0.md`, `_source/engine-releases-0.11.0.md`, `_source/engine-releases-0.5.3.md`, `_source/desktop-releases-0.9.5.md`, `_source/desktop-releases-0.9.4.md`, `_source/desktop-releases-0.9.3.md`, `_source/desktop-releases-0.9.2.md`, `_source/desktop-releases-0.9.1.md`, `_source/desktop-releases-0.9.0.md`, `_source/desktop-releases-0.2.2.md`, `_source/desktop-releases-0.2.3.md`.
+Source: `_source/engine-security.md`, `_source/desktop-security.md`, `_source/engine-architecture.md`, `_source/desktop-architecture.md`, `_source/engine-auth.md`, `_source/engine-releases-0.15.1.md`, `_source/engine-releases-0.15.0.md`, `_source/engine-releases-0.14.1.md`, `_source/engine-releases-0.14.0.md`, `_source/engine-releases-0.13.1.md`, `_source/engine-releases-0.13.0.md`, `_source/engine-releases-0.12.2.md`, `_source/engine-releases-0.12.0.md`, `_source/engine-releases-0.11.0.md`, `_source/engine-releases-0.5.3.md`, `_source/desktop-releases-0.9.6.md`, `_source/desktop-releases-0.9.5.md`, `_source/desktop-releases-0.9.4.md`, `_source/desktop-releases-0.9.3.md`, `_source/desktop-releases-0.9.2.md`, `_source/desktop-releases-0.9.1.md`, `_source/desktop-releases-0.9.0.md`, `_source/desktop-releases-0.2.2.md`, `_source/desktop-releases-0.2.3.md`.

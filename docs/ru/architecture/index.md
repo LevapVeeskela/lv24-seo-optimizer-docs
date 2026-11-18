@@ -9,7 +9,7 @@ description: Структура пакетов движка, конверты п
 
 - `lv24-seo 0.15.1` владеет провайдерскими клиентами, обходом, анализом, отчётами,
   хранилищем, MCP-инструментами, CLI-командами, автоматизацией индексации и автоматизацией.
-- Приложение `0.9.5` — это React-webview плюс Rust-оболочка процессов. Оно рисует
+- Приложение `0.9.6` — это React-webview плюс Rust-оболочка процессов. Оно рисует
   экраны, редактирует конфигурацию и запускает встроенный движок; поведение движка оно
   не переписывает.
 
@@ -266,4 +266,4 @@ offline и показывает уведомление. Новее гейта п
 
 См. [Безопасность и приватность](/ru/security/) для контроля и [Релизы и обновление](/ru/release/) для упаковки.
 
-Source: `_source/engine-architecture.md`, `_source/desktop-architecture.md`, `_source/engine-auth.md`, `_source/engine-releases-0.15.1.md`, `_source/engine-releases-0.15.0.md`, `_source/engine-releases-0.14.1.md`, `_source/engine-releases-0.14.0.md`, `_source/engine-releases-0.13.1.md`, `_source/engine-releases-0.13.0.md`, `_source/engine-releases-0.12.2.md`, `_source/engine-releases-0.12.0.md`, `_source/engine-releases-0.11.0.md`, `_source/engine-releases-0.5.3.md`, `_source/desktop-releases-0.9.5.md`, `_source/desktop-releases-0.9.4.md`, `_source/desktop-releases-0.9.3.md`, `_source/desktop-releases-0.9.2.md`, `_source/desktop-releases-0.9.1.md`, `_source/desktop-releases-0.9.0.md`, `_source/desktop-releases-0.2.2.md`, `_source/desktop-release.md`.
+Source: `_source/engine-architecture.md`, `_source/desktop-architecture.md`, `_source/engine-auth.md`, `_source/engine-releases-0.15.1.md`, `_source/engine-releases-0.15.0.md`, `_source/engine-releases-0.14.1.md`, `_source/engine-releases-0.14.0.md`, `_source/engine-releases-0.13.1.md`, `_source/engine-releases-0.13.0.md`, `_source/engine-releases-0.12.2.md`, `_source/engine-releases-0.12.0.md`, `_source/engine-releases-0.11.0.md`, `_source/engine-releases-0.5.3.md`, `_source/desktop-releases-0.9.6.md`, `_source/desktop-releases-0.9.5.md`, `_source/desktop-releases-0.9.4.md`, `_source/desktop-releases-0.9.3.md`, `_source/desktop-releases-0.9.2.md`, `_source/desktop-releases-0.9.1.md`, `_source/desktop-releases-0.9.0.md`, `_source/desktop-releases-0.2.2.md`, `_source/desktop-release.md`.

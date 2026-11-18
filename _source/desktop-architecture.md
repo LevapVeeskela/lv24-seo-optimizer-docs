@@ -1,9 +1,9 @@
 # Architecture
 
-Status: **implementation contract for `0.9.5` (current release, 2026-11-18; `0.9.4` is the previous
+Status: **implementation contract for `0.9.6` (current release, 2026-11-18; `0.9.4` is the previous
 published line).** The Rust command bridge and product screens are implemented in this repository.
 Where this document describes a control, it is the requirement that implementation must satisfy. The
-pinned engine is `lv24-seo 0.15.1`. `0.9.5` bundles the engine that adds the security-headers,
+pinned engine is `lv24-seo 0.15.1`. `0.9.6` bundles the engine that adds the security-headers,
 tls-certificate, schema-required and a11y-basics crawl rules and keeps the `0.9.4` hidden WScript
 launcher for Windows scheduled jobs, the `0.9.3` Connect-card OAuth readiness (eight engine states,
 next action, expiry, recorded scopes), the `0.9.2` read-only Indexing automation card, the `0.9.1`

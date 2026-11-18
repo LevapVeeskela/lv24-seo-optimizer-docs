@@ -7,7 +7,7 @@ description: Очередь индексации с учётом квот, ст�
 
 Автоматизация индексации ведёт локальную очередь URL из sitemap, отправляет то, что разрешено
 свежими квотами провайдеров, и записывает результат. Это функция CLI и планировщика; карточка в
-приложении `0.9.5` показывает те же данные только для чтения.
+приложении `0.9.6` показывает те же данные только для чтения.
 
 ## Что она делает
 
@@ -64,7 +64,7 @@ Bing и Яндекса сейчас; без него показывается п
 
 ## Карточка Indexing automation в приложении
 
-Приложение `0.9.2` добавило карточку только для чтения в Integrations; `0.9.5` её сохраняет. Она рендерит
+Приложение `0.9.2` добавило карточку только для чтения в Integrations; `0.9.6` её сохраняет. Она рендерит
 `indexing status`, `indexing history` и `schedule status`; в ней нет записи, подтверждения или
 `--allow-write`.
 
@@ -98,4 +98,4 @@ Bing и Яндекса сейчас; без него показывается п
 - [Автоматизация и доставка](/ru/automation/)
 - [Настольное приложение](/ru/desktop/)
 
-Source: `_source/engine-releases-0.12.0.md`, `_source/engine-releases-0.13.1.md`, `_source/engine-releases-0.15.1.md`, `_source/engine-releases-0.15.0.md`, `_source/engine-releases-0.14.1.md`, `_source/engine-releases-0.14.0.md`, `_source/desktop-releases-0.9.5.md`, `_source/desktop-releases-0.9.4.md`, `_source/desktop-releases-0.9.2.md`, `_source/desktop-releases-0.9.2-update.md`, `_source/engine-cli.md`, `_source/engine-config.md`.
+Source: `_source/engine-releases-0.12.0.md`, `_source/engine-releases-0.13.1.md`, `_source/engine-releases-0.15.1.md`, `_source/engine-releases-0.15.0.md`, `_source/engine-releases-0.14.1.md`, `_source/engine-releases-0.14.0.md`, `_source/desktop-releases-0.9.6.md`, `_source/desktop-releases-0.9.5.md`, `_source/desktop-releases-0.9.4.md`, `_source/desktop-releases-0.9.2.md`, `_source/desktop-releases-0.9.2-update.md`, `_source/engine-cli.md`, `_source/engine-config.md`.

@@ -6,7 +6,7 @@ description: 配额感知的索引队列、状态、运行和历史，CLI 与只
 # 索引自动化
 
 索引自动化维护站点地图 URL 的本地队列，在最新数据源配额内提交允许的内容，并记录结果。它是
-CLI 和调度器功能；桌面 `0.9.5` 卡片以只读方式展示相同数据。
+CLI 和调度器功能；桌面 `0.9.6` 卡片以只读方式展示相同数据。
 
 ## 功能
 
@@ -60,7 +60,7 @@ Yandex 和 IndexNow 没有逐 URL 状态；其 `indexed_total` 为 `null` 并带
 
 ## 桌面 Indexing automation 卡片
 
-桌面 `0.9.2` 在 Integrations 新增只读卡片；`0.9.5` 保留它。它渲染 `indexing status`、`indexing history` 和
+桌面 `0.9.2` 在 Integrations 新增只读卡片；`0.9.6` 保留它。它渲染 `indexing status`、`indexing history` 和
 `schedule status`；没有写入、确认或 `--allow-write` 控件。
 
 - **计划。** `Scheduled`/主机状态和文档化的 **Daily 04:00** 节奏（`lv24-seo-indexing`）。
@@ -92,4 +92,4 @@ Yandex 和 IndexNow 没有逐 URL 状态；其 `indexed_total` 为 `null` 并带
 - [自动化与投递](/zh/automation/)
 - [桌面应用](/zh/desktop/)
 
-Source: `_source/engine-releases-0.12.0.md`, `_source/engine-releases-0.13.1.md`, `_source/engine-releases-0.15.1.md`, `_source/engine-releases-0.15.0.md`, `_source/engine-releases-0.14.1.md`, `_source/engine-releases-0.14.0.md`, `_source/desktop-releases-0.9.5.md`, `_source/desktop-releases-0.9.4.md`, `_source/desktop-releases-0.9.2.md`, `_source/desktop-releases-0.9.2-update.md`, `_source/engine-cli.md`, `_source/engine-config.md`.
+Source: `_source/engine-releases-0.12.0.md`, `_source/engine-releases-0.13.1.md`, `_source/engine-releases-0.15.1.md`, `_source/engine-releases-0.15.0.md`, `_source/engine-releases-0.14.1.md`, `_source/engine-releases-0.14.0.md`, `_source/desktop-releases-0.9.6.md`, `_source/desktop-releases-0.9.5.md`, `_source/desktop-releases-0.9.4.md`, `_source/desktop-releases-0.9.2.md`, `_source/desktop-releases-0.9.2-update.md`, `_source/engine-cli.md`, `_source/engine-config.md`.

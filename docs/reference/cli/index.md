@@ -525,7 +525,7 @@ of a pasted token. It needs a client id in `[auth.gsc]` or `[auth.yandex]` (or
 
 ### Placeholder client ids
 
-The example ids in this guide (`0123456789abcdef0123456789abcdef`, `1234567890-abc.apps.googleusercontent.com`, `your-*-client-id`) are not registered provider apps. Engine `0.15.1` rejects them with `CONFIG_INVALID` before a consent URL is built, and `yandex_oauth.authorization_url()` enforces the same guard for every caller. Register a real Google Desktop client or Yandex OAuth app and use the id it shows; `auth status` and `doctor` report a placeholder as `oauth_client_missing`. Desktop `0.9.5` disables **Connect** while readiness is `oauth_client_missing`, `oauth_client_secret_missing` or `oauth_redirect_invalid`.
+The example ids in this guide (`0123456789abcdef0123456789abcdef`, `1234567890-abc.apps.googleusercontent.com`, `your-*-client-id`) are not registered provider apps. Engine `0.15.1` rejects them with `CONFIG_INVALID` before a consent URL is built, and `yandex_oauth.authorization_url()` enforces the same guard for every caller. Register a real Google Desktop client or Yandex OAuth app and use the id it shows; `auth status` and `doctor` report a placeholder as `oauth_client_missing`. Desktop `0.9.6` disables **Connect** while readiness is `oauth_client_missing`, `oauth_client_secret_missing` or `oauth_redirect_invalid`.
 
 ### OAuth readiness diagnostics
 

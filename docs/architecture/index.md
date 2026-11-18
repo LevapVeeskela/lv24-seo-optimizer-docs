@@ -9,7 +9,7 @@ The product has one engine of record and one shell:
 
 - `lv24-seo 0.15.1` owns provider clients, crawl, analysis, reports, storage, MCP tools,
   CLI commands, OAuth connectors, indexing automation and automation.
-- The desktop app `0.9.5` is a React webview plus a Rust process shell. It renders
+- The desktop app `0.9.6` is a React webview plus a Rust process shell. It renders
   screens, edits configuration and launches the bundled engine; it does not reimplement
   engine behaviour.
 
@@ -234,4 +234,4 @@ Windows, macOS and Linux are supported targets:
 
 See [Security and privacy](/security/) for the controls and [Releases and updates](/release/) for packaging.
 
-Source: `_source/engine-architecture.md`, `_source/desktop-architecture.md`, `_source/engine-auth.md`, `_source/engine-releases-0.15.1.md`, `_source/engine-releases-0.15.0.md`, `_source/engine-releases-0.14.1.md`, `_source/engine-releases-0.14.0.md`, `_source/engine-releases-0.13.1.md`, `_source/engine-releases-0.13.0.md`, `_source/engine-releases-0.12.2.md`, `_source/engine-releases-0.12.0.md`, `_source/engine-releases-0.11.0.md`, `_source/engine-releases-0.5.3.md`, `_source/desktop-releases-0.9.5.md`, `_source/desktop-releases-0.9.4.md`, `_source/desktop-releases-0.9.3.md`, `_source/desktop-releases-0.9.2.md`, `_source/desktop-releases-0.9.1.md`, `_source/desktop-releases-0.2.2.md`, `_source/desktop-release.md`.
+Source: `_source/engine-architecture.md`, `_source/desktop-architecture.md`, `_source/engine-auth.md`, `_source/engine-releases-0.15.1.md`, `_source/engine-releases-0.15.0.md`, `_source/engine-releases-0.14.1.md`, `_source/engine-releases-0.14.0.md`, `_source/engine-releases-0.13.1.md`, `_source/engine-releases-0.13.0.md`, `_source/engine-releases-0.12.2.md`, `_source/engine-releases-0.12.0.md`, `_source/engine-releases-0.11.0.md`, `_source/engine-releases-0.5.3.md`, `_source/desktop-releases-0.9.6.md`, `_source/desktop-releases-0.9.5.md`, `_source/desktop-releases-0.9.4.md`, `_source/desktop-releases-0.9.3.md`, `_source/desktop-releases-0.9.2.md`, `_source/desktop-releases-0.9.1.md`, `_source/desktop-releases-0.2.2.md`, `_source/desktop-release.md`.
