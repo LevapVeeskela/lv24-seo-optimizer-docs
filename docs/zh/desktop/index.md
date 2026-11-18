@@ -1,25 +1,25 @@
 ---
 title: 桌面应用
-description: LV24 SEO Optimizer 桌面外壳增加了什么、签名更新如何工作，以及 0.9.2 的 Indexing automation 卡片、0.9.1 的 OAuth Connect 卡片、0.9.0 的 Diagnostics 屏幕和更早历史。
+description: LV24 SEO Optimizer 桌面外壳增加了什么、签名更新如何工作，以及 0.9.3 的 OAuth 就绪状态、0.9.2 的 Indexing automation 卡片、0.9.1 的 OAuth Connect 卡片、0.9.0 的 Diagnostics 屏幕和更早历史。
 ---
 
 # 桌面应用
 
 LV24 SEO Optimizer Desktop 是围绕 `lv24-seo` 引擎的本地、离线优先 Tauri v2 外壳。Python CLI 仍是核心引擎：它负责提供商客户端、抓取规则、分析、报告构建和投递。桌面端增加的是 React 界面和 Rust 进程桥，而不是第二套 SEO 实现。
 
-`0.9.2` 以内置 PyInstaller onedir 边车的形式捆绑 `lv24-seo 0.14.0`，并增加只读 Indexing automation 卡片。它保留 OAuth Connect 卡片、只读 Diagnostics 屏幕、Bing 索引卡片、站点地图、IndexNow 和 Site Scan 操作以及每会话写入密钥。它要求引擎 `0.14.0` 或更新（`MIN_ENGINE_VERSION`），因此已安装的 `0.13.x` 引擎会被报告为不兼容。OAuth 令牌由引擎存入系统钥匙串；桌面从不接收、渲染或记录。Indexing automation 卡片渲染 `indexing status`、`indexing history` 和 `schedule status`，没有写入、确认或 `--allow-write` 控件。
+`0.9.3` 以内置 PyInstaller onedir 边车的形式捆绑 `lv24-seo 0.14.0`，并在 Connect 卡片中增加 OAuth 就绪状态。它保留只读 Indexing automation 卡片。它保留 OAuth Connect 卡片、只读 Diagnostics 屏幕、Bing 索引卡片、站点地图、IndexNow 和 Site Scan 操作以及每会话写入密钥。它要求引擎 `0.14.0` 或更新（`MIN_ENGINE_VERSION`），因此已安装的 `0.13.x` 引擎会被报告为不兼容。OAuth 令牌由引擎存入系统钥匙串；桌面从不接收、渲染或记录。Indexing automation 卡片渲染 `indexing status`、`indexing history` 和 `schedule status`，没有写入、确认或 `--allow-write` 控件。
 
 ## 增加了什么
 
 - **工作区选择器。** 在 Settings 中通过原生文件对话框选择引擎应使用的 `seo.toml`。选中的配置路径就是工作区身份。配置被移动或删除时会显示为缺失，可重新选择，而不是阻塞启动。
 - **统计仪表板。** 渲染有边界的 `stats` 信封：每个已配置提供商一张卡片，包含当前值、上一窗口比较、覆盖率、数据年龄、截断和限制。CTR 变化以百分点显示。不补零，也不做跨引擎合计；未知保持未知。
-- **设置表单和配置输出。** Settings 屏幕是可编辑表单。Configuration 屏幕只读，包含 Overview、Effective、Source TOML、Diff、Validation、Doctor 和 Environment 标签页。Source TOML 已脱敏且只读；没有原始 TOML 编辑器。保存使用字段级补丁，保留注释和键顺序，用引擎校验，创建带时间戳的备份（保留最近五个）并原子替换文件。在 `0.9.2` 中，临时文件和备份在 POSIX 上权限为 `0600`，在 Windows 上带仅所有者 DACL，两者都会 fsync，重命名后还会 fsync 父目录。读取上限为 8 MiB；设置按字段加载；Windows 保留设备名和结尾点/空格在每个路径组件中都会被拒绝。GSC 服务账号在表单外配置：设置 `providers.gsc.service_account_file` 或 `LV24_SEO_GSC_SERVICE_ACCOUNT_FILE`，Configuration 屏幕会显示生效的脱敏配置。
+- **设置表单和配置输出。** Settings 屏幕是可编辑表单。Configuration 屏幕只读，包含 Overview、Effective、Source TOML、Diff、Validation、Doctor 和 Environment 标签页。Source TOML 已脱敏且只读；没有原始 TOML 编辑器。保存使用字段级补丁，保留注释和键顺序，用引擎校验，创建带时间戳的备份（保留最近五个）并原子替换文件。在 `0.9.3` 中，临时文件和备份在 POSIX 上权限为 `0600`，在 Windows 上带仅所有者 DACL，两者都会 fsync，重命名后还会 fsync 父目录。读取上限为 8 MiB；设置按字段加载；Windows 保留设备名和结尾点/空格在每个路径组件中都会被拒绝。GSC 服务账号在表单外配置：设置 `providers.gsc.service_account_file` 或 `LV24_SEO_GSC_SERVICE_ACCOUNT_FILE`，Configuration 屏幕会显示生效的脱敏配置。
 - **报告。** 在本地运行周报，将 `report.json` 和 `report.html` 写入应用数据目录，并在默认浏览器中打开 HTML。报告 HTML 从不嵌入应用 webview。它比较两个最新存储的快照，导出 JSON（`lv24-seo.report/v1`）或 CSV，渲染引擎的归因变更摘要（包含原因、置信度、证据行和下一步操作），并按 URL 模板和设备显示 Core Web Vitals 卡片。
 - **建议与智能体队列。** 将报告和统计发现转换为有边界的 Markdown 提示词。你可以复制提示词、导出为 `.md`，或将其保存在带状态的本地智能体队列中。队列存储在 webview 的本地存储中；不会自动提交任何内容。
 - **通过 stdin 传递密钥。** token 输入是密码字段，只通过 IPC 发送一次。Rust 层将其传给 `lv24-seo auth set --provider <p> --stdin`，清零缓冲区，并且从不把值写入日志、MobX 存储、localStorage、剪贴板或诊断包。保存后，界面只显示是否存在及来源。OAuth client secret 在终端通过 `auth set --provider gsc_oauth_secret|yandex_oauth_secret --stdin` 设置一次；Connect 卡片没有密钥输入框。
 - **Indexing automation 卡片。** Integrations 渲染 `indexing status`、`indexing history` 和 `schedule status`：每日 04:00 的 `lv24-seo-indexing` 任务、Bing/Yandex/GSC/IndexNow 的 submitted/indexed/pending 计数和配额、最近一次运行及最多五个错误、7/30 天历史。没有状态的数据源显示“No data yet”，绝不是零；始终显示 `data_age_days` 和 `limitations`，已弃用的 GSC `indexed_total` 单独标注。卡片只读。
-- **OAuth Connect 卡片。** Integrations 新增 **Connectors** 卡片，覆盖 GSC、Yandex Webmaster 和 Metrika。**Connect** 运行引擎的 `auth login`；GSC 使用系统浏览器和 `127.0.0.1` 回环回调及 S256 PKCE，Yandex 使用 `--url-only`，显示授权 URL，然后接收验证码并调用 `auth login --code`。卡片读取 `auth status`（`gsc_oauth`、`yandex_oauth`、`metrika_oauth`），显示 `Connected`、`Not connected` 或 `Not checked`；没有写入控件，也从不渲染令牌。
-- **Yandex Metrika 令牌。** `0.9.2` 在 TypeScript 和 Rust 允许列表、Settings 徽章、密钥对话框和 en/ru/zh 标签中保留独立的 `metrika` 提供商（`yandex_metrika_token`）。Metrika 计数器绝不借用 Webmaster 令牌。引擎 `0.11.0` 增加只读 `metrika` 命令组，并让所有 Metrika 读取仅限自然搜索，因此 Diagnostics 标签页显示自然搜索页面、目标和维度及抽样字段。
+- **OAuth Connect 卡片。** Integrations 新增 **Connectors** 卡片，覆盖 GSC、Yandex Webmaster 和 Metrika。**Connect** 运行引擎的 `auth login`；GSC 使用系统浏览器和 `127.0.0.1` 回环回调及 S256 PKCE，Yandex 使用 `--url-only`，显示授权 URL，然后接收验证码并调用 `auth login --code`。卡片读取 `auth status`（`gsc_oauth`、`yandex_oauth`、`metrika_oauth`），显示 `Connected`、`Not connected` 或 `Not checked`；没有写入控件，也从不渲染令牌。在引擎 `0.14.0` 上，它显示 OAuth 就绪状态、引擎 `detail` 和 `next_action`、本地化有效期、记录的作用域和限制；只有 `oauth_ready` 显示为成功，缺失或未知报告显示为中性的“Readiness unavailable”，绝不显示为 Ready。
+- **Yandex Metrika 令牌。** `0.9.3` 在 TypeScript 和 Rust 允许列表、Settings 徽章、密钥对话框和 en/ru/zh 标签中保留独立的 `metrika` 提供商（`yandex_metrika_token`）。Metrika 计数器绝不借用 Webmaster 令牌。引擎 `0.11.0` 增加只读 `metrika` 命令组，并让所有 Metrika 读取仅限自然搜索，因此 Diagnostics 标签页显示自然搜索页面、目标和维度及抽样字段。
 - **与 CLI 共享密钥存储。** 桌面应用在同一操作系统用户下运行同一引擎，因此在终端通过 `lv24-seo auth set` 保存的 token 在桌面应用中可见，反之亦然。系统钥匙串条目使用服务名 `lv24-seo` 和相同的密钥名。`LV24_SEO_*` 环境变量会被继承，但在 UI 中显示为只读：桌面端无法删除环境变量，因此会明确说明，而不是提供一个无效的删除按钮。只有两个界面使用同一 workspace/data 目录时，才共享显式启用的 `<data-dir>/secrets.json` 回退文件。
 - **Logs 页面。** 原生 `pick_log_file` 选择一个 nginx JSON 访问日志（不超过 100 MiB）；其他路径会以 `PATH_NOT_APPROVED` 拒绝。页面显示机器人过滤、解析摘要、带按机器人拆分的抓取浪费、机器人汇总表和 JSON/CSV 导出。机器人仅按 User-Agent，结果标记为分诊。
 - **Tasks 页面。** 最新优先的发现，包含属性、类型、状态、规则、URL、时间和存储的证据；支持过滤和最多 500 行的限制。状态变化遵循允许的转换，添加表单幂等，证据上限 16 KiB。
@@ -44,12 +44,12 @@ lv24-seo report weekly --days 7 --lag-days 2 --json
 
 | 包类型 | 安装方式 | 应用内更新 |
 |---|---|---|
-| Windows NSIS | `LV24.SEO.Optimizer_0.9.2_x64-setup.exe` | 是 |
-| Windows 便携 ZIP | `LV24-SEO-Optimizer_0.9.2_x64-portable.zip`；解压整个文件夹并运行 `lv24-seo-desktop.exe` | 否 |
-| Linux AppImage | `LV24.SEO.Optimizer_0.9.2_amd64.AppImage`；`chmod +x` 并运行 | 是 |
-| Linux deb | `LV24.SEO.Optimizer_0.9.2_amd64.deb`；`sudo apt install ./*_amd64.deb` | 否 |
-| Linux rpm | `LV24.SEO.Optimizer-0.9.2-1.x86_64.rpm`；`sudo dnf install ./*_amd64.rpm` | 否 |
-| macOS `.app`（来自 DMG） | `LV24.SEO.Optimizer_0.9.2_aarch64.dmg` 或 `LV24.SEO.Optimizer_0.9.2_x64.dmg`；拖到 Applications | 是 |
+| Windows NSIS | `LV24.SEO.Optimizer_0.9.3_x64-setup.exe` | 是 |
+| Windows 便携 ZIP | `LV24-SEO-Optimizer_0.9.3_x64-portable.zip`；解压整个文件夹并运行 `lv24-seo-desktop.exe` | 否 |
+| Linux AppImage | `LV24.SEO.Optimizer_0.9.3_amd64.AppImage`；`chmod +x` 并运行 | 是 |
+| Linux deb | `LV24.SEO.Optimizer_0.9.3_amd64.deb`；`sudo apt install ./*_amd64.deb` | 否 |
+| Linux rpm | `LV24.SEO.Optimizer-0.9.3-1.x86_64.rpm`；`sudo dnf install ./*_amd64.rpm` | 否 |
+| macOS `.app`（来自 DMG） | `LV24.SEO.Optimizer_0.9.3_aarch64.dmg` 或 `LV24.SEO.Optimizer_0.9.3_x64.dmg`；拖到 Applications | 是 |
 | MSI | 本项目不生产 | 否 |
 
 Windows 需要 Windows 10/11 x64 和 WebView2。Linux 仅提供 x64，基于 Ubuntu 22.04 构建，glibc 2.35 基线。macOS 需要 13 或更高；Apple silicon 使用 arm64 DMG，Intel 使用 x64 DMG。操作系统包未签名或仅 ad-hoc 签名，因此 SmartScreen 和 Gatekeeper 警告是预期行为。运行安装器前请校验 `SHA256SUMS.txt`。
@@ -91,7 +91,7 @@ Rust 更新器验证：已安装的 `0.4.0` 报告 **Desktop 0.5.0**、**Engine 
 且引擎就绪，已配置工作区加载。`0.6.0 → 0.7.0` 更新通过同一更新器验证：已安装的 `0.6.0` 报告
 **Desktop 0.7.0**、**Engine 0.9.0** 且引擎就绪，Integrations 屏幕显示 Bing 索引面板。`0.7.0 → 0.8.0` 更新
 通过同一更新器验证：已安装的 `0.7.0` 报告 **Desktop 0.8.0**、**Engine 0.10.0** 且引擎就绪，新的 Bing URL
-提交、站点地图、抓取问题和配额卡片已加载。`0.9.1 → 0.9.2` 是下一个应用内更新来源；`0.9.2` 没有记录应用内更新运行。任何 `0.2.x` 安装都可直接升级到 `0.9.2`。
+提交、站点地图、抓取问题和配额卡片已加载。`0.9.2 → 0.9.3` 是下一个应用内更新来源；`0.9.3` 没有记录应用内更新运行。任何 `0.2.x` 安装都可直接升级到 `0.9.3`。
 
 `0.2.2` 的安装也已在 macOS 和 Linux 上验证：macOS 27.2 上的 arm64 DMG 通过
 `codesign --verify --deep --strict`，启动后引擎 `0.5.2` 就绪并获取了 `0.2.2` 清单；
@@ -101,6 +101,25 @@ Ubuntu 24.04 上的 deb、AppImage extract-and-run fallback 和 Fedora 45 上的
 `0.2.1 → 0.2.2` 更新由旧的 `0.2.1` 更新器执行，其中没有新的受跟踪 PID 清理。如果首次更新期间
 有 sidecar 正在运行，请在其退出后重试，或手动安装 `0.2.2`。`0.2.2 → 0.2.3` 使用受跟踪 PID
 清理，并在无法停止受跟踪 sidecar 时以 `UPDATE_ENGINE_BUSY` 阻止。
+
+## 0.9.3 OAuth 就绪状态
+
+2026-11-18 发布。Connect 卡片展示引擎的 OAuth 就绪报告；捆绑的 `lv24-seo 0.14.0`、
+`MIN_ENGINE_VERSION` `0.14.0`、契约和 Windows sidecar 固定不变。`0.9.2` 是上一个版本。
+
+- **就绪状态。** 对 GSC、Yandex Webmaster 和 Metrika，卡片显示状态标签、引擎 `detail`、确切的 `next_action`、本地语言的有效期、是否记录了作用域以及限制。
+- **状态色调。** 只有 `oauth_ready` 显示为成功。缺少 client id、缺少 client secret、需要登录、缺少作用域和 redirect 无效使用操作色调。令牌过期（带刷新提示）和作用域未知是警告。
+- **中性后备。** 缺少 `oauth` 对象、跳过数据源或未知状态时显示中性的“Readiness unavailable”提示，并给出引擎 `>= 0.14.0` 的提示；绝不显示为 Ready。现有连接行继续工作。
+- **无密钥。** 卡片只解析存在性布尔值和时戳；不读取、不存储、不渲染任何令牌或密钥值。
+- **引擎未变。** Sidecar 与 `0.9.2` 是同一个 `lv24-seo 0.14.0` 构建；契约和 Windows x64 固定（`33d2611c…02d0`，14,580,661 字节）不变。
+
+验证：804 个 Vitest 测试和 169 个 Rust 测试，契约与 `0.14.0` 一致，发布工作流 `44209259452` 在 `v0.9.3` 上发布 18 个资产，`latest.json` 为 `0.9.3`，`SHA256SUMS.txt` 有 17 行。
+
+0.9.3 的已知限制：
+
+- 卡片逐字显示引擎的英文 `detail`/`next_action`；只有标签、有效期和布局被本地化。
+- 就绪状态证明本地前置条件一致，不代表数据源接受了同意。实时 OAuth 同意仍需要注册的 Google Desktop client 和 Yandex OAuth 应用。
+- 低于 `0.14.0` 的引擎会被报告为不兼容。
 
 ## 0.9.2 Indexing automation
 
@@ -425,7 +444,7 @@ webview 不再拥有更新器插件的下载和安装权限；其能力列表只
 - 更新器需要访问 GitHub Releases 端点。端点被阻止或离线时，应用会停留在当前版本。
 - 更新器只能停止它自己启动的 sidecar。从终端或另一个应用副本启动的引擎不会被杀死；如果它占用已安装 sidecar，安装会被 `UPDATE_ENGINE_BUSY` 阻止。
 - `0.2.1 → 0.2.2` 更新由旧的 `0.2.1` 更新器执行，其中没有受跟踪 PID 清理。如果首次更新期间有 sidecar 正在运行，请在其退出后重试，或手动安装 `0.2.2`。`0.2.2 → 0.2.3` 及后续更新使用清理。
-- 取消不是回滚，`0.9.2` 也没有任务队列：已取消的抓取、报告、日志分析、备份或计划任务安装可能留下部分产物，已取消的就地恢复保留 `.pre-restore-<utc>` 副本，但可能已替换一个文件，因此重试前请构建新计划。关闭窗口不会把运行移入队列。
+- 取消不是回滚，`0.9.3` 也没有任务队列：已取消的抓取、报告、日志分析、备份或计划任务安装可能留下部分产物，已取消的就地恢复保留 `.pre-restore-<utc>` 副本，但可能已替换一个文件，因此重试前请构建新计划。关闭窗口不会把运行移入队列。
 - 恢复替换数据库和配置，绝不合并；`.pre-restore-<utc>` 副本是唯一回滚手段，被其他进程打开的数据库在 Windows 上无法替换。令牌被排除，因此恢复后需要重新认证。`backup restore --to` 是仅限 CLI 的解压。
 - 计划任务安装会修改主机：只有确认后才会写入 cron 条目、systemd 用户定时器或 Windows 任务，并且只在本机。桌面端不管理、修复或卸载任务；请使用 CLI 的 `schedule status`/`schedule uninstall`。
 - GSC 服务账号在表单外配置：在 `seo.toml` 中设置 `providers.gsc.service_account_file`，或在环境中设置 `LV24_SEO_GSC_SERVICE_ACCOUNT_FILE`。桌面端没有该字段。
@@ -455,4 +474,4 @@ webview 不再拥有更新器插件的下载和安装权限；其能力列表只
 - 建议文案已本地化为 en/ru/zh；在 `0.2.3` 之前排队的任务保留已存储的英文文本。
 - 这是 `0.x` 预览：配置输出、更新器行为和界面细节可能在 1.0 前变化。
 
-Source: `_source/desktop-README.md`, `_source/desktop-releases-0.9.2.md`, `_source/desktop-releases-0.9.2-update.md`, `_source/desktop-releases-0.9.1.md`, `_source/desktop-releases-0.9.0.md`, `_source/engine-releases-0.14.0.md`, `_source/engine-releases-0.13.1.md`, `_source/engine-releases-0.13.0.md`, `_source/desktop-releases-0.8.0.md`, `_source/desktop-releases-0.7.0.md`, `_source/desktop-releases-0.6.0.md`, `_source/desktop-releases-0.5.0.md`, `_source/desktop-releases-0.4.0.md`, `_source/desktop-releases-0.3.0.md`, `_source/desktop-releases-0.2.3.md`, `_source/desktop-releases-0.2.2.md`, `_source/desktop-releases-0.2.1.md`, `_source/desktop-releases-0.2.0.md`, `_source/desktop-security.md`, `_source/desktop-architecture.md`, `_source/engine-releases-0.12.2.md`, `_source/engine-releases-0.11.0.md`.
+Source: `_source/desktop-README.md`, `_source/desktop-releases-0.9.3.md`, `_source/desktop-releases-0.9.3-update.md`, `_source/desktop-releases-0.9.2.md`, `_source/desktop-releases-0.9.1.md`, `_source/desktop-releases-0.9.0.md`, `_source/engine-releases-0.14.0.md`, `_source/engine-releases-0.13.1.md`, `_source/engine-releases-0.13.0.md`, `_source/desktop-releases-0.8.0.md`, `_source/desktop-releases-0.7.0.md`, `_source/desktop-releases-0.6.0.md`, `_source/desktop-releases-0.5.0.md`, `_source/desktop-releases-0.4.0.md`, `_source/desktop-releases-0.3.0.md`, `_source/desktop-releases-0.2.3.md`, `_source/desktop-releases-0.2.2.md`, `_source/desktop-releases-0.2.1.md`, `_source/desktop-releases-0.2.0.md`, `_source/desktop-security.md`, `_source/desktop-architecture.md`, `_source/engine-releases-0.12.2.md`, `_source/engine-releases-0.11.0.md`.

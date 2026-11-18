@@ -102,7 +102,7 @@ Telegram 通过 Bot API `sendMessage` 发送相同的 78 列本地化文本。HT
 
 工作区初始化后，闸门支持 pending-to-sent 幂等声明：CLI 附加 SQLite 账本，提供商调用失败会释放声明并允许重试；已完成或仍在进行中的声明视为重复并返回 `skipped`。没有数据目录时仍会应用，但信封会警告：在令牌五分钟有效期内没有重放保护。试运行不打开账本，也不创建数据库。崩溃可能留下没有 TTL 的 pending 声明（0.5.2），在操作员释放前会被视为进行中。
 
-0.14.0 中只有 IndexNow、Bing 站点地图提交、Bing URL 提交、Yandex 重新抓取和 `indexing run --allow-write` 真正提交；GSC 站点地图提交和 Bing 站点地图删除会以 `WRITE_DISABLED` 拒绝，而不是假装成功。MCP 写入工具要求 `allow_write=true`；Bing 的 `seo_sitemap_submit` 和 `seo_recrawl_request` 已接通，而 GSC 提交和 Bing 删除返回 `WRITE_DISABLED`。索引自动化没有 MCP 工具：仅限 CLI 和调度器。桌面 `0.9.2` 卡片以只读方式展示相同的状态、历史和计划；见[索引自动化](/zh/indexing/)。
+0.14.0 中只有 IndexNow、Bing 站点地图提交、Bing URL 提交、Yandex 重新抓取和 `indexing run --allow-write` 真正提交；GSC 站点地图提交和 Bing 站点地图删除会以 `WRITE_DISABLED` 拒绝，而不是假装成功。MCP 写入工具要求 `allow_write=true`；Bing 的 `seo_sitemap_submit` 和 `seo_recrawl_request` 已接通，而 GSC 提交和 Bing 删除返回 `WRITE_DISABLED`。索引自动化没有 MCP 工具：仅限 CLI 和调度器。桌面 `0.9.3` 卡片以只读方式展示相同的状态、历史和计划；见[索引自动化](/zh/indexing/)。
 
 ## GitHub Actions
 

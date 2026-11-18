@@ -149,7 +149,7 @@ sitemap 50,000 个 URL；索引遍历限制为 20 个文档、深度 2。
 
 内存有界：页面响应体上限 5 MB，保留的页面文本上限 20,000 字符，请求预算为
 `1 + max_urls * (max_redirects + 1)`。`word_count` 仍使用完整可见文本。如果抓取太大
-或太慢，降低 `--max-urls` 并分段抓取。`0.9.2` 没有恢复或任务队列；桌面抓取超时为
+或太慢，降低 `--max-urls` 并分段抓取。`0.9.3` 没有恢复或任务队列；桌面抓取超时为
 600 秒，窗口横幅中有 **Cancel** 按钮。
 
 ## `--days` 限制
@@ -343,4 +343,4 @@ actual (redacted --json envelope):
 
 写入门禁见[安全与隐私](/zh/security/)，更新器行为见[发布与更新](/zh/release/)。
 
-Source: `_source/engine-troubleshooting.md`, `_source/engine-auth.md`, `_source/engine-auth-google.md`, `_source/engine-auth-yandex.md`, `_source/engine-releases-0.14.0.md`, `_source/engine-releases-0.13.1.md`, `_source/engine-releases-0.13.0.md`, `_source/engine-releases-0.12.2.md`, `_source/engine-releases-0.12.0.md`, `_source/engine-releases-0.11.0.md`, `_source/engine-releases-0.5.3.md`, `_source/desktop-releases-0.9.2.md`, `_source/desktop-releases-0.9.1.md`, `_source/desktop-releases-0.9.0.md`, `_source/desktop-releases-0.2.2.md`, `_source/desktop-releases-0.2.3.md`, `_source/desktop-releases-0.2.1.md`, `_source/desktop-releases-0.2.0.md`, `_source/desktop-security.md`, `_source/desktop-architecture.md`.
+Source: `_source/engine-troubleshooting.md`, `_source/engine-auth.md`, `_source/engine-auth-google.md`, `_source/engine-auth-yandex.md`, `_source/engine-releases-0.14.0.md`, `_source/engine-releases-0.13.1.md`, `_source/engine-releases-0.13.0.md`, `_source/engine-releases-0.12.2.md`, `_source/engine-releases-0.12.0.md`, `_source/engine-releases-0.11.0.md`, `_source/engine-releases-0.5.3.md`, `_source/desktop-releases-0.9.3.md`, `_source/desktop-releases-0.9.2.md`, `_source/desktop-releases-0.9.1.md`, `_source/desktop-releases-0.9.0.md`, `_source/desktop-releases-0.2.2.md`, `_source/desktop-releases-0.2.3.md`, `_source/desktop-releases-0.2.1.md`, `_source/desktop-releases-0.2.0.md`, `_source/desktop-security.md`, `_source/desktop-architecture.md`.

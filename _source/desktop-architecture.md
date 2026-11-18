@@ -1,15 +1,15 @@
 # Architecture
 
-Status: **implementation contract for `0.9.2` (current release, 2026-11-18; `0.9.1` is the previous
+Status: **implementation contract for `0.9.3` (current release, 2026-11-18; `0.9.2` is the previous
 published line).** The Rust command bridge and product screens are implemented in this repository.
 Where this document describes a control, it is the requirement that implementation must satisfy. The
-pinned engine is `lv24-seo 0.14.0`. `0.9.2` adds the read-only Indexing automation card and raises
-`MIN_ENGINE_VERSION` to `0.14.0`. It keeps the `0.9.1` OAuth Connect card (Google Search Console,
-Yandex Webmaster and Metrika), the `0.9.0` read-only diagnostics commands, the `0.8.0` gated
-`bing_submit` and read-only `bing_sitemaps`/`bing_issues`/`bing_quota`, the `0.7.0` gated
-`sitemap_submit`/`indexnow_submit` and the `open_bing_sitescan` opener, the `0.6.0` cancellable
-background runs (`run_cancel`), window-wide run banner and the schedule-install `--allow-write`
-opt-in that engine `0.8.0` requires.
+pinned engine is `lv24-seo 0.14.0`. `0.9.3` shows OAuth readiness in the Connect card (eight engine
+states, next action, expiry, recorded scopes) and keeps the `0.9.2` read-only Indexing automation
+card, the `0.9.1` OAuth Connect card (Google Search Console, Yandex Webmaster and Metrika), the
+`0.9.0` read-only diagnostics commands, the `0.8.0` gated `bing_submit` and read-only
+`bing_sitemaps`/`bing_issues`/`bing_quota`, the `0.7.0` gated `sitemap_submit`/`indexnow_submit` and
+the `open_bing_sitescan` opener, the `0.6.0` cancellable background runs (`run_cancel`), window-wide
+run banner and the schedule-install `--allow-write` opt-in that engine `0.8.0` requires.
 
 The read-only diagnostics commands listed in section 4 are implemented in `0.9.0` and require engine
 `lv24-seo 0.11.0`; the bundle requires `0.14.0` for the OAuth readiness diagnostics.
@@ -175,6 +175,15 @@ fragment, userinfo or backslash) and hands it to the Tauri opener. The Google co
 by the engine process, so it never crosses this command. The Connectors card needs `auth login` from
 engine `0.13.1` or newer; an older engine answers with a typed command/parse error, and the card
 shows that message plus the engine auth guide instead of claiming a connection.
+
+The same `auth status` answer carries OAuth readiness diagnostics (`data.oauth`, engine
+`0.14.0`). The Connectors card parses `gsc`, `yandex` and `metrika` defensively: the eight engine
+states map to a localized short label and a severity (ready / needs action / warning), while the
+engine `detail` and `next_action` are rendered verbatim and `expires_at` is localized. A missing
+`oauth` object, a skipped provider or an unknown state degrades to a neutral *readiness
+unavailable* notice, never to **Ready**. Only `state`, `detail`, `next_action`, `expires_at`,
+`scopes_recorded` and `limitations` are read; token and secret values are not part of the payload
+and are never rendered.
 
 `cli_run` accepts an optional `runId` only for the six long local jobs listed in
 `CliCommandId::cancellable` (`crawl`, `report_weekly`, `logs_analyze`, `backup_create`,

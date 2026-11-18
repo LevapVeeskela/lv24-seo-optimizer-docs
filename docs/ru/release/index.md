@@ -10,9 +10,9 @@ description: Релизы движка 0.14.0 и приложения 0.9.2, д�
 | Продукт | Версия | Дата | Примечания |
 |---|---|---|---|
 | Движок | `lv24-seo 0.14.0` | 2026-11-18 | Диагностика готовности OAuth в `auth status` и `doctor`, восемь стабильных кодов и записанные scope; сохранены коннекторы 0.13.0, 25 команд CLI, 12 инструментов MCP и схема v5 |
-| Приложение | `0.9.2` | 2026-11-18 | Карточка Indexing automation только для чтения, движок 0.14.0 и `MIN_ENGINE_VERSION` 0.14.0 |
+| Приложение | `0.9.3` | 2026-11-18 | Готовность OAuth в карточке Connect, тот же движок 0.14.0 и `MIN_ENGINE_VERSION` 0.14.0 |
 
-Версия приложения и версия движка независимы, но приложение закрепляет точный движок и отказывается работать с версией ниже минимальной. `0.9.2` включает `0.14.0` и требует минимум `0.14.0`, поэтому установленный движок `0.13.x` считается несовместимым. `0.9.1` — предыдущий релиз. OAuth-токены хранит движок в связке ключей ОС; приложение никогда не получает и не отображает их. Карточка Indexing automation только для чтения: она рендерит `indexing status`, `indexing history` и `schedule status` и не имеет записи, подтверждения или `--allow-write`.
+Версия приложения и версия движка независимы, но приложение закрепляет точный движок и отказывается работать с версией ниже минимальной. `0.9.3` включает `0.14.0` и требует минимум `0.14.0`, поэтому установленный движок `0.13.x` считается несовместимым. `0.9.2` — предыдущий релиз. Карточка Connect теперь показывает состояния готовности OAuth движка; только `oauth_ready` отображается как успех. OAuth-токены хранит движок в связке ключей ОС; приложение никогда не получает и не отображает их. Карточка Indexing automation только для чтения: она рендерит `indexing status`, `indexing history` и `schedule status` и не имеет записи, подтверждения или `--allow-write`.
 
 ## Движок 0.14.0
 
@@ -118,6 +118,36 @@ Yandex Webmaster и Yandex Metrika, а затем режим URL-only для Я�
 - `--url-only` не проверяет `state` между отдельными шагами URL и кода; код недолговечен, и client secret всё равно нужен.
 - Живое согласие не проверено, пока не настроены реальный Google Cloud Desktop client и приложение Яндекс OAuth.
 - По сравнению с 0.13.0 нет изменений API, числа команд CLI, MCP, схемы или конфигурации.
+
+## Приложение 0.9.3
+
+Выпущено 2026-11-18. Показывает отчёт движка о готовности OAuth в карточке Connect и сохраняет
+встроенный `lv24-seo 0.14.0`, `MIN_ENGINE_VERSION` `0.14.0`, контракты и пин Windows sidecar без
+изменений. `0.9.2` — предыдущий релиз.
+
+Что изменилось:
+
+- **Готовность в карточке Connect.** Для Google Search Console, Yandex Webmaster и Metrika карточка показывает чип состояния, `detail` движка, точный `next_action`, срок токена на локальном языке, признак записанных scope и ограничения.
+- **Тоны состояний.** Только `oauth_ready` показывается как успех. Отсутствующий client id, отсутствующий client secret, необходимость входа, нехватка scope и неверный redirect используют тон действия. Истёкший токен (с подсказкой о refresh) и неизвестные scope — предупреждения, а не сбои.
+- **Нейтральный резерв.** Отсутствующий объект `oauth`, пропущенный провайдер или неизвестное состояние показывают нейтральное «Readiness unavailable» с подсказкой о движке `>= 0.14.0`; это никогда не показывается как Ready. Существующие строки подключения продолжают работать.
+- **Секреты.** Карточка читает только булевы признаки наличия и метки времени; значение токена или секрета не читается, не хранится и не отображается.
+- **Движок не менялся.** Sidecar — та же сборка `lv24-seo 0.14.0`, что и в `0.9.2`; контракты и пин Windows x64 (`33d2611c…02d0`, 14 580 661 байт) не изменились.
+
+Проверки, записанные для этого релиза:
+
+| Проверка | Результат |
+|---|---|
+| GitHub Release | [`v0.9.3`](https://github.com/LevapVeeskela/lv24-seo-optimizer-desktop/releases/tag/v0.9.3); 18 ассетов, `latest.json` сообщает `0.9.3`, в `SHA256SUMS.txt` 17 строк |
+| Релизный workflow | запуск `44209259452` зелёный |
+| Локальный гейт | `npm run typecheck`, `npm test`, `npm run build`, `npm run contract:check`, `cargo fmt --check`, `cargo clippy --all-targets -- -D warnings` и `cargo test` зелёные на релизном коммите |
+| Тесты | 804 теста Vitest и 169 тестов Rust |
+| Контракты и пин | движок `0.14.0`; Windows x64 SHA-256 `33d2611c0766c2b1160c80c35cfd51b86f6fbb7e26a9bb508aec0a32053b02d0`, 14 580 661 байт |
+
+Известные ограничения 0.9.3:
+
+- Карточка показывает английский текст `detail`/`next_action` движка дословно; локализованы только метки, срок и раскладка.
+- Готовность доказывает согласованность локальных предпосылок, а не то, что провайдер принял согласие. Живое OAuth-согласие по-прежнему требует зарегистрированного Google Desktop client и приложения Яндекс OAuth.
+- Движок старше `0.14.0` считается несовместимым.
 
 ## Приложение 0.9.2
 
@@ -949,8 +979,7 @@ Manual-only — намеренно. Пакет deb или rpm принадлеж
 и `0.7.0 → 0.8.0`. В девятом запуске установленная сборка `0.7.0` обновилась через Rust-обновлятор,
 скачала и проверила подписанный пакет, установила его, перезапустилась и сообщила **Desktop 0.8.0**
 с **Engine 0.10.0** и готовым движком; загрузились карточки отправки URL, sitemap, проблем обхода и
-квоты Bing. `0.9.1 → 0.9.2` — следующий источник обновления; для `0.9.2` прогон автообновления не записан. Любая установка `0.2.x` с обновлятором
-может сразу перейти на `0.9.2`; у `0.1.0` нет обновлятора, нужна одна ручная установка.
+квоты Bing. `0.9.2 → 0.9.3` — следующий источник обновления. Любая установка `0.2.x` с обновлятором может сразу перейти на `0.9.3`; у `0.1.0` нет обновлятора, нужна одна ручная установка.
 
 Обновление `0.2.1 → 0.2.2` выполняет старый обновлятор `0.2.1`, в котором нет новой очистки
 отслеживаемых PID. Если во время первого обновления активен sidecar, повторите после его выхода
@@ -970,7 +999,7 @@ Workflow приложения ручной и owner-gated. У него нет т
 | `publish` | `false` | Создать GitHub release после прохождения всей матрицы |
 | `tag` | Пусто | Тег релиза `vX.Y.Z`; обязателен при `publish=true` |
 
-Значение по умолчанию соответствует пину `0.9.2`. Релизный гейт отклоняет несоответствие
+Значение по умолчанию соответствует пину `0.9.3`. Релизный гейт отклоняет несоответствие
 манифеста, если передана другая версия.
 
 | Runner | Target | Пакеты |
@@ -988,7 +1017,7 @@ Workflow приложения ручной и owner-gated. У него нет т
 
 Релизный sidecar — дерево PyInstaller **onedir**, собранное на соответствующем хосте; PyInstaller не
 кросс-компилирует. Версии движка, Python, Pydantic, Typer и PyInstaller закреплены в
-`scripts/cli-checksums.json`. `0.9.2` закрепляет движок `0.14.0` (выше `0.13.1`), Python `3.12`, Pydantic `2.14.3`,
+`scripts/cli-checksums.json`. `0.9.3` сохраняет движок `0.14.0` (без изменений с `0.9.2`), Python `3.12`, Pydantic `2.14.3`,
 Typer `0.29.0` и PyInstaller `6.22.3`.
 
 Вывод PyInstaller onedir не байт-воспроизводим. Поэтому политика контрольных сумм разделена:
@@ -1051,7 +1080,7 @@ node scripts/verify-sidecar.mjs \
 `scripts/cli-checksums.json`; workflow передаёт `engine_version` явно, а релизный гейт требует
 совпадения с манифестом.
 
-`MIN_ENGINE_VERSION` в `src-tauri/src/commands.rs` в текущем исходнике равен `0.14.0`. Сборка `0.9.2`
+`MIN_ENGINE_VERSION` в `src-tauri/src/commands.rs` в текущем исходнике равен `0.14.0`. Сборка `0.9.3`
 включает движок `0.14.0`, поэтому минимум совпадает с движком сборки, а движок `0.13.x` считается
 несовместимым. Оболочка
 принимает движок не старше этой версии и помечает более старый как offline с уведомлением. Более
@@ -1061,13 +1090,14 @@ node scripts/verify-sidecar.mjs \
 
 ## Однократное обновление с 0.1.0
 
-У `0.1.0` нет updater, endpoint и публичного ключа. Он не может найти или установить `0.9.2`.
-Скачайте и установите `0.9.2` вручную один раз (NSIS-установщик или portable ZIP в Windows).
-После этого установка `0.9.2` может автоматически обновляться до следующих релизов, если
+У `0.1.0` нет updater, endpoint и публичного ключа. Он не может найти или установить `0.9.3`.
+Скачайте и установите `0.9.3` вручную один раз (NSIS-установщик или portable ZIP в Windows).
+После этого установка `0.9.3` может автоматически обновляться до следующих релизов, если
 использует пакет с поддержкой автообновления.
 
 ## Предыдущие релизы
 
+- **Приложение 0.9.3** добавило состояния готовности OAuth в карточку Connect, нейтральный резерв «unavailable» и правило «ни одного токена или секрета в рендере»; движок `0.14.0` и пин sidecar не изменились.
 - **Движок 0.14.0** добавил диагностику готовности OAuth: объект `oauth` в `auth status`, проверки `doctor` и восемь стабильных кодов, с записанными scope и без вызова провайдера.
 - **Приложение 0.9.2** добавило карточку Indexing automation только для чтения, движок `0.14.0` и `MIN_ENGINE_VERSION` `0.14.0`.
 
@@ -1146,4 +1176,4 @@ Gatekeeper ожидаемы; сверьте контрольную сумму и
 
 См. [Безопасность и приватность](/ru/security/) для доверия к обновлениям и [Архитектуру](/ru/architecture/) для раскладки sidecar.
 
-Source: `_source/engine-releases-0.14.0.md`, `_source/engine-CHANGELOG.md`, `_source/engine-releases-0.13.1.md`, `_source/engine-releases-0.13.0.md`, `_source/engine-releases-0.12.2.md`, `_source/engine-releases-0.12.1.md`, `_source/engine-releases-0.12.0.md`, `_source/engine-releases-0.11.0.md`, `_source/engine-releases-0.10.0.md`, `_source/engine-releases-0.9.0.md`, `_source/engine-releases-0.8.0.md`, `_source/engine-releases-0.7.0.md`, `_source/engine-releases-0.6.0.md`, `_source/engine-releases-0.5.3.md`, `_source/engine-releases-0.5.2.md`, `_source/desktop-releases-0.9.2.md`, `_source/desktop-releases-0.9.2-update.md`, `_source/desktop-releases-0.9.1.md`, `_source/desktop-releases-0.9.0.md`, `_source/desktop-releases-0.8.0.md`, `_source/desktop-releases-0.7.0.md`, `_source/desktop-releases-0.6.0.md`, `_source/desktop-releases-0.5.0.md`, `_source/desktop-releases-0.4.0.md`, `_source/desktop-releases-0.3.0.md`, `_source/desktop-releases-0.2.3.md`, `_source/desktop-releases-0.2.2.md`, `_source/desktop-releases-0.2.1.md`, `_source/desktop-releases-0.2.0.md`, `_source/desktop-release.md`, `_source/desktop-security.md`.
+Source: `_source/engine-releases-0.14.0.md`, `_source/engine-CHANGELOG.md`, `_source/engine-releases-0.13.1.md`, `_source/engine-releases-0.13.0.md`, `_source/engine-releases-0.12.2.md`, `_source/engine-releases-0.12.1.md`, `_source/engine-releases-0.12.0.md`, `_source/engine-releases-0.11.0.md`, `_source/engine-releases-0.10.0.md`, `_source/engine-releases-0.9.0.md`, `_source/engine-releases-0.8.0.md`, `_source/engine-releases-0.7.0.md`, `_source/engine-releases-0.6.0.md`, `_source/engine-releases-0.5.3.md`, `_source/engine-releases-0.5.2.md`, `_source/desktop-releases-0.9.3.md`, `_source/desktop-releases-0.9.3-update.md`, `_source/desktop-releases-0.9.2.md`, `_source/desktop-releases-0.9.1.md`, `_source/desktop-releases-0.9.0.md`, `_source/desktop-releases-0.8.0.md`, `_source/desktop-releases-0.7.0.md`, `_source/desktop-releases-0.6.0.md`, `_source/desktop-releases-0.5.0.md`, `_source/desktop-releases-0.4.0.md`, `_source/desktop-releases-0.3.0.md`, `_source/desktop-releases-0.2.3.md`, `_source/desktop-releases-0.2.2.md`, `_source/desktop-releases-0.2.1.md`, `_source/desktop-releases-0.2.0.md`, `_source/desktop-release.md`, `_source/desktop-security.md`.

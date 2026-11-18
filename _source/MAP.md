@@ -48,8 +48,10 @@ to site routes.
 | `desktop-releases-0.8.0.md` | `/release/`, `/desktop/`, `/install/` | Desktop 0.8.0 notes: Bing URL submission, read-only sitemap, crawl-issue and quota cards, bundled engine 0.10.0 and `MIN_ENGINE_VERSION` 0.10.0. |
 | `desktop-releases-0.9.0.md` | `/release/`, `/desktop/`, `/install/` | Desktop 0.9.0 notes: read-only Diagnostics screen with five tabs and 18 allow-listed commands, bundled engine 0.11.0 and `MIN_ENGINE_VERSION` 0.11.0. |
 | `desktop-releases-0.9.1.md` | `/release/`, `/desktop/`, `/install/` | Desktop 0.9.1 notes: OAuth Connect card for GSC, Yandex Webmaster and Metrika, bundled engine 0.13.1 and `MIN_ENGINE_VERSION` 0.13.1, contracts 0.13.1, no new write surface. |
-| `desktop-releases-0.9.2.md` | `/release/`, `/desktop/`, `/install/`, `/indexing/` | Desktop 0.9.2 notes: read-only Indexing automation card, bundled engine 0.14.0 and `MIN_ENGINE_VERSION` 0.14.0, contracts 0.14.0, no write controls. |
+| `desktop-releases-0.9.2.md` | `/release/`, `/desktop/`, `/install/`, `/indexing/` | Desktop 0.9.2 notes: read-only Indexing automation card, bundled engine 0.14.0 and `MIN_ENGINE_VERSION` 0.14.0, contracts 0.14.0, no write controls. Previous desktop line. |
 | `desktop-releases-0.9.2-update.md` | `/release/`, `/desktop/` | Desktop 0.9.2 short update note: daily 04:00 job, per-provider quotas and honest counts, no write controls. |
+| `desktop-releases-0.9.3.md` | `/release/`, `/desktop/` | Desktop 0.9.3 notes: OAuth readiness in the Connect card, eight states, neutral unavailable fallback, no token or secret rendered; same engine 0.14.0 and sidecar pin. |
+| `desktop-releases-0.9.3-update.md` | `/release/`, `/desktop/` | Desktop 0.9.3 short update note: readiness states, Ready only for `oauth_ready`, unavailable never shown as success. |
 | `desktop-releases-0.2.3.md` | `/release/` | Desktop 0.2.3 notes: Rust updater and cancel, dialog-approved config path, path rejection, redaction, UI state, release CI. |
 | `desktop-releases-0.2.1.md` | `/release/` | Desktop 0.2.1 patch notes: Metrika token and shared CLI keychain. |
 | `desktop-releases-0.2.0.md` | `/release/` | Desktop 0.2.0 release notes, kept for the first multi-platform release. |

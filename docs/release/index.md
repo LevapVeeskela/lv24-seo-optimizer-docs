@@ -10,9 +10,9 @@ The current releases are:
 | Product | Version | Released | Notes |
 |---|---|---|---|
 | Engine | `lv24-seo 0.14.0` | 2026-11-18 | OAuth readiness diagnostics in `auth status` and `doctor`, eight stable codes and recorded scopes; keeps the 0.13.0 connectors, 25 CLI commands, 12 MCP tools and schema v5 |
-| Desktop | `0.9.2` | 2026-11-18 | Read-only Indexing automation card, bundled engine 0.14.0 and `MIN_ENGINE_VERSION` 0.14.0 |
+| Desktop | `0.9.3` | 2026-11-18 | OAuth readiness in the Connect card, same bundled engine 0.14.0 and `MIN_ENGINE_VERSION` 0.14.0 |
 
-The desktop version and the engine version are independent, but the desktop pins an exact engine and refuses one below its minimum. `0.9.2` bundles `0.14.0` and requires at least `0.14.0`, so an installed `0.13.x` engine is reported as incompatible. `0.9.1` is the previous release. OAuth tokens are stored by the engine in the OS keychain; the desktop never receives or renders one. The Indexing automation card is read-only: it renders `indexing status`, `indexing history` and `schedule status` and has no write, confirm or `--allow-write` control.
+The desktop version and the engine version are independent, but the desktop pins an exact engine and refuses one below its minimum. `0.9.3` bundles `0.14.0` and requires at least `0.14.0`, so an installed `0.13.x` engine is reported as incompatible. `0.9.2` is the previous release. The Connect card now renders the engine's OAuth readiness states; only `oauth_ready` is shown as success. OAuth tokens are stored by the engine in the OS keychain; the desktop never receives or renders one. The Indexing automation card is read-only: it renders `indexing status`, `indexing history` and `schedule status` and has no write, confirm or `--allow-write` control.
 
 ## Engine 0.14.0
 
@@ -118,6 +118,36 @@ Known limits in 0.13.1:
 - `--url-only` does not verify `state` across the separate URL and code steps; the verification code is short-lived and the client secret is still required.
 - Live consent remains unverified until a real Google Cloud Desktop client and Yandex OAuth app are configured.
 - No API, CLI count, MCP, schema or config change from 0.13.0.
+
+## Desktop 0.9.3
+
+Released on 2026-11-18. It shows the engine's OAuth readiness report in the Connect card and keeps
+the bundled `lv24-seo 0.14.0`, `MIN_ENGINE_VERSION` `0.14.0`, the contracts and the Windows sidecar
+pin unchanged. `0.9.2` is the previous release.
+
+What changed:
+
+- **Readiness in the Connect card.** For Google Search Console, Yandex Webmaster and Metrika the card renders a state chip, the engine `detail`, the exact `next_action`, the token expiry in the local language, whether scopes were recorded and any limitations.
+- **State tones.** `oauth_ready` is the only state rendered as success. Missing client id, missing client secret, sign-in required, missing scopes and an invalid redirect use the action tone. An expired token (with the refresh hint) and unknown scopes are warnings, not failures.
+- **Neutral fallback.** A missing `oauth` object, a skipped provider or an unknown state shows a neutral "Readiness unavailable" notice with the engine `>= 0.14.0` hint; it is never shown as Ready. The existing connection rows keep working.
+- **Secrets.** The card parses presence booleans and timestamps only; no token or secret value is read, stored or rendered.
+- **No engine change.** The sidecar is the same `lv24-seo 0.14.0` build as `0.9.2`; contracts and the Windows x64 pin (`33d2611c…02d0`, 14,580,661 bytes) are unchanged.
+
+Verification recorded for this release:
+
+| Check | Result |
+|---|---|
+| GitHub Release | [`v0.9.3`](https://github.com/LevapVeeskela/lv24-seo-optimizer-desktop/releases/tag/v0.9.3); 18 assets, `latest.json` reports `0.9.3`, `SHA256SUMS.txt` has 17 lines |
+| Release workflow | run `44209259452` green |
+| Local gate | `npm run typecheck`, `npm test`, `npm run build`, `npm run contract:check`, `cargo fmt --check`, `cargo clippy --all-targets -- -D warnings` and `cargo test` green on the release commit |
+| Tests | 804 Vitest tests and 169 Rust tests passed |
+| Contracts and pin | engine `0.14.0`; Windows x64 SHA-256 `33d2611c0766c2b1160c80c35cfd51b86f6fbb7e26a9bb508aec0a32053b02d0`, 14,580,661 bytes |
+
+Known limits in 0.9.3:
+
+- The card displays the engine's English `detail`/`next_action` text verbatim; only labels, expiry and layout are localized.
+- Readiness proves the local prerequisites are consistent, not that a provider accepted a consent screen. Live OAuth consent still requires a registered Google Desktop client and a Yandex OAuth app.
+- An engine older than `0.14.0` is reported as incompatible.
 
 ## Desktop 0.9.2
 
@@ -1068,9 +1098,8 @@ The Windows NSIS path has now been verified end-to-end nine times: `0.2.0 → 0.
 and `0.7.0 → 0.8.0`. For the ninth run, an installed `0.7.0` build updated through the Rust updater,
 downloaded and verified the signed package, installed it, relaunched, and reported **Desktop 0.8.0**
 with **Engine 0.10.0** and the engine ready; the Bing URL submission, sitemap, crawl-issue and quota
-cards loaded. `0.9.1 → 0.9.2` is the next in-app update source; no in-app update run is recorded for
-`0.9.2` in the release notes. Any `0.2.x` install with the in-app updater can jump straight to
-`0.9.2`; `0.1.0` has no updater and needs one manual install.
+cards loaded. `0.9.2 → 0.9.3` is the next in-app update source. Any `0.2.x` install with the in-app updater can jump straight to
+`0.9.3`; `0.1.0` has no updater and needs one manual install.
 
 The `0.2.1 → 0.2.2` update runs the old `0.2.1` updater, which does not include the new tracked-PID
 cleanup. If a sidecar is active during that first update, retry after it exits or install `0.2.2`
@@ -1089,7 +1118,7 @@ approves the `desktop-release` environment; a non-owner run is skipped.
 | `publish` | `false` | Create a GitHub release after every matrix build passes |
 | `tag` | Empty | `vX.Y.Z` release tag; required when `publish=true` |
 
-The default matches the `0.9.2` pin. The release gate rejects a manifest mismatch if a different version is passed.
+The default matches the `0.9.3` pin. The release gate rejects a manifest mismatch if a different version is passed.
 
 | Runner | Target | Bundles |
 |---|---|---|
@@ -1104,7 +1133,7 @@ days; the GitHub release is the durable distribution channel.
 ## Sidecar pin and checksums
 
 The release sidecar is a PyInstaller **onedir** tree, built on the matching host; PyInstaller does not cross-compile. The engine, Python, Pydantic, Typer and
-PyInstaller versions are pinned in `scripts/cli-checksums.json`. `0.9.2` pins engine `0.14.0` (up from `0.13.1`), Python `3.12`, Pydantic `2.14.3`, Typer `0.29.0` and PyInstaller
+PyInstaller versions are pinned in `scripts/cli-checksums.json`. `0.9.3` keeps engine `0.14.0` (unchanged from `0.9.2`), Python `3.12`, Pydantic `2.14.3`, Typer `0.29.0` and PyInstaller
 `6.22.3`.
 
 PyInstaller onedir output is not byte-reproducible. The checksum policy is therefore split:
@@ -1163,18 +1192,19 @@ uploaded manifest. A rerun reuses an existing draft, clears its assets and refus
 The desktop version must agree in `package.json`, `src-tauri/tauri.conf.json`, `src-tauri/Cargo.toml`, the Git tag and the release title. The engine pin lives
 in `scripts/cli-checksums.json`; the workflow passes `engine_version` explicitly and the release gate requires it to match the manifest.
 
-`MIN_ENGINE_VERSION` in `src-tauri/src/commands.rs` is `0.14.0` in the current source. The `0.9.2` bundle ships engine `0.14.0`,
+`MIN_ENGINE_VERSION` in `src-tauri/src/commands.rs` is `0.14.0` in the current source. The `0.9.3` bundle ships engine `0.14.0`,
 so the minimum matches the bundled engine and a `0.13.x` engine is reported as incompatible. The shell accepts an engine at least that new and marks an older one
 offline with a notice. A newer engine passes the gate but is not the release-tested pin. A development build may use `LV24_SEO_BIN` with another version; the UI
 labels it external and still checks the minimum. A `PATH` engine is used only when `LV24_SEO_ALLOW_PATH_ENGINE=1`.
 
 ## One-time 0.1.0 upgrade
 
-`0.1.0` has no updater, endpoint or public key. It cannot discover or install `0.9.2`. Download and install `0.9.2` manually once (NSIS installer or portable
-ZIP on Windows). After that, the `0.9.2` installation can auto-update to later releases when it uses an auto-update-capable bundle.
+`0.1.0` has no updater, endpoint or public key. It cannot discover or install `0.9.3`. Download and install `0.9.3` manually once (NSIS installer or portable
+ZIP on Windows). After that, the `0.9.3` installation can auto-update to later releases when it uses an auto-update-capable bundle.
 
 ## Earlier releases
 
+- **Desktop 0.9.3** added OAuth readiness states to the Connect card, with a neutral unavailable fallback and no token or secret rendered; engine `0.14.0` and the sidecar pin are unchanged.
 - **Engine 0.14.0** added OAuth readiness diagnostics: the `auth status` `oauth` object, `doctor` OAuth checks and eight stable codes, with recorded scopes and no provider call.
 - **Desktop 0.9.2** added the read-only Indexing automation card, bundled engine `0.14.0` and raised `MIN_ENGINE_VERSION` to `0.14.0`.
 - **Engine 0.13.0** added OAuth connectors for Google Search Console and Yandex Webmaster/Metrika,
@@ -1251,4 +1281,4 @@ those protections system-wide.
 
 See [Security and privacy](/security/) for updater trust and [Architecture](/architecture/) for the sidecar layout.
 
-Source: `_source/engine-releases-0.14.0.md`, `_source/engine-CHANGELOG.md`, `_source/engine-releases-0.13.1.md`, `_source/engine-releases-0.13.0.md`, `_source/engine-releases-0.12.2.md`, `_source/engine-releases-0.12.1.md`, `_source/engine-releases-0.12.0.md`, `_source/engine-releases-0.11.0.md`, `_source/engine-releases-0.10.0.md`, `_source/engine-releases-0.9.0.md`, `_source/engine-releases-0.8.0.md`, `_source/engine-releases-0.7.0.md`, `_source/engine-releases-0.6.0.md`, `_source/engine-releases-0.5.3.md`, `_source/engine-releases-0.5.2.md`, `_source/desktop-releases-0.9.2.md`, `_source/desktop-releases-0.9.2-update.md`, `_source/desktop-releases-0.9.1.md`, `_source/desktop-releases-0.9.0.md`, `_source/desktop-releases-0.8.0.md`, `_source/desktop-releases-0.7.0.md`, `_source/desktop-releases-0.6.0.md`, `_source/desktop-releases-0.5.0.md`, `_source/desktop-releases-0.4.0.md`, `_source/desktop-releases-0.3.0.md`, `_source/desktop-releases-0.2.3.md`, `_source/desktop-releases-0.2.2.md`, `_source/desktop-releases-0.2.1.md`, `_source/desktop-releases-0.2.0.md`, `_source/desktop-release.md`, `_source/desktop-security.md`.
+Source: `_source/engine-releases-0.14.0.md`, `_source/engine-CHANGELOG.md`, `_source/engine-releases-0.13.1.md`, `_source/engine-releases-0.13.0.md`, `_source/engine-releases-0.12.2.md`, `_source/engine-releases-0.12.1.md`, `_source/engine-releases-0.12.0.md`, `_source/engine-releases-0.11.0.md`, `_source/engine-releases-0.10.0.md`, `_source/engine-releases-0.9.0.md`, `_source/engine-releases-0.8.0.md`, `_source/engine-releases-0.7.0.md`, `_source/engine-releases-0.6.0.md`, `_source/engine-releases-0.5.3.md`, `_source/engine-releases-0.5.2.md`, `_source/desktop-releases-0.9.3.md`, `_source/desktop-releases-0.9.3-update.md`, `_source/desktop-releases-0.9.2.md`, `_source/desktop-releases-0.9.1.md`, `_source/desktop-releases-0.9.0.md`, `_source/desktop-releases-0.8.0.md`, `_source/desktop-releases-0.7.0.md`, `_source/desktop-releases-0.6.0.md`, `_source/desktop-releases-0.5.0.md`, `_source/desktop-releases-0.4.0.md`, `_source/desktop-releases-0.3.0.md`, `_source/desktop-releases-0.2.3.md`, `_source/desktop-releases-0.2.2.md`, `_source/desktop-releases-0.2.1.md`, `_source/desktop-releases-0.2.0.md`, `_source/desktop-release.md`, `_source/desktop-security.md`.

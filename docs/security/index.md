@@ -6,7 +6,7 @@ description: Threat model, secret handling, write gates, SSRF defenses, desktop 
 # Security and privacy
 
 LV24 SEO Optimizer is local-first. The engine (`lv24-seo 0.14.0`) does the provider, crawl, storage and report work. The desktop app
-(`0.9.2`) is a UI and process shell around that engine; it does not reimplement provider clients and does not proxy provider traffic.
+(`0.9.3`) is a UI and process shell around that engine; it does not reimplement provider clients and does not proxy provider traffic.
 
 This page separates the two products and the two kinds of signing:
 
@@ -252,4 +252,4 @@ sending. A secret that was exposed should be rotated, not merely deleted from th
 
 See [Architecture](/architecture/) for the trust boundaries and [Releases and updates](/release/) for the signed updater matrix.
 
-Source: `_source/engine-security.md`, `_source/desktop-security.md`, `_source/engine-architecture.md`, `_source/desktop-architecture.md`, `_source/engine-auth.md`, `_source/engine-releases-0.14.0.md`, `_source/engine-releases-0.13.1.md`, `_source/engine-releases-0.13.0.md`, `_source/engine-releases-0.12.2.md`, `_source/engine-releases-0.12.0.md`, `_source/engine-releases-0.11.0.md`, `_source/engine-releases-0.5.3.md`, `_source/desktop-releases-0.9.2.md`, `_source/desktop-releases-0.9.1.md`, `_source/desktop-releases-0.9.0.md`, `_source/desktop-releases-0.2.2.md`, `_source/desktop-releases-0.2.3.md`.
+Source: `_source/engine-security.md`, `_source/desktop-security.md`, `_source/engine-architecture.md`, `_source/desktop-architecture.md`, `_source/engine-auth.md`, `_source/engine-releases-0.14.0.md`, `_source/engine-releases-0.13.1.md`, `_source/engine-releases-0.13.0.md`, `_source/engine-releases-0.12.2.md`, `_source/engine-releases-0.12.0.md`, `_source/engine-releases-0.11.0.md`, `_source/engine-releases-0.5.3.md`, `_source/desktop-releases-0.9.3.md`, `_source/desktop-releases-0.9.2.md`, `_source/desktop-releases-0.9.1.md`, `_source/desktop-releases-0.9.0.md`, `_source/desktop-releases-0.2.2.md`, `_source/desktop-releases-0.2.3.md`.

@@ -7,15 +7,16 @@ scraping.
 
 [![License: Apache-2.0](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](LICENSE)
 [![Status: pre-release](https://img.shields.io/badge/status-pre--release-orange.svg)](#public-status)
-[![Engine: lv24-seo 0.14.0](https://img.shields.io/badge/engine-lv24--seo%200.14.0-informational.svg)](docs/releases/0.9.2.md)
+[![Engine: lv24-seo 0.14.0](https://img.shields.io/badge/engine-lv24--seo%200.14.0-informational.svg)](docs/releases/0.9.3.md)
 
-> **0.9.2 released (2026-11-18).** `0.9.2` is the latest published line; `0.9.1`, `0.9.0`, `0.8.0`,
-> `0.7.0`, `0.6.0`, `0.5.0`, `0.4.0` and `0.3.0` remain available for rollback. Windows NSIS, macOS
-> `.app` and Linux AppImage can auto-update from `0.2.0` onward; deb, rpm, MSI and the portable ZIP
-> are manual-only. `0.1.0` has no updater and must be upgraded manually once. `0.9.2` bundles
-> `lv24-seo 0.14.0`, adds the read-only Indexing automation card, and raises `MIN_ENGINE_VERSION` to
-> `0.14.0`. Read [Public status](#public-status) before relying on anything here. Release notes:
-> [`docs/releases/0.9.2.md`](docs/releases/0.9.2.md).
+> **0.9.3 released (2026-11-18).** `0.9.3` is the latest published line; `0.9.2`, `0.9.1`, `0.9.0`,
+> `0.8.0`, `0.7.0`, `0.6.0`, `0.5.0`, `0.4.0` and `0.3.0` remain available for rollback. Windows
+> NSIS, macOS `.app` and Linux AppImage can auto-update from `0.2.0` onward; deb, rpm, MSI and the
+> portable ZIP are manual-only. `0.1.0` has no updater and must be upgraded manually once. `0.9.3`
+> keeps the bundled `lv24-seo 0.14.0`, the read-only Indexing automation card and
+> `MIN_ENGINE_VERSION` `0.14.0`, and shows OAuth readiness in the Connect card. Read
+> [Public status](#public-status) before relying on anything here. Release notes:
+> [`docs/releases/0.9.3.md`](docs/releases/0.9.3.md).
 
 ## Screenshot
 
@@ -145,17 +146,17 @@ The full inputs, outputs and limits are in the engine's
 ## Install
 
 Download from [Releases](https://github.com/LevapVeeskela/lv24-seo-optimizer-desktop/releases).
-The latest published line is `0.9.2`; full notes, install steps and limitations:
-[`docs/releases/0.9.2.md`](docs/releases/0.9.2.md) for the current release,
-[`docs/releases/0.9.1.md`](docs/releases/0.9.1.md) for the previous one and
-[`docs/releases/0.9.0.md`](docs/releases/0.9.0.md) for the one before that. `0.9.1`, `0.9.0`,
-`0.8.0`, `0.7.0`, `0.6.0`, `0.5.0` and `0.4.0` remain available for rollback.
+The latest published line is `0.9.3`; full notes, install steps and limitations:
+[`docs/releases/0.9.3.md`](docs/releases/0.9.3.md) for the current release,
+[`docs/releases/0.9.2.md`](docs/releases/0.9.2.md) for the previous one and
+[`docs/releases/0.9.1.md`](docs/releases/0.9.1.md) for the one before that. `0.9.2`, `0.9.1`,
+`0.9.0`, `0.8.0`, `0.7.0`, `0.6.0`, `0.5.0` and `0.4.0` remain available for rollback.
 
 | Platform | Assets | Auto-update |
 |---|---|---|
-| Windows 10/11 x64 | `LV24.SEO.Optimizer_0.9.2_x64-setup.exe` (+ `.exe.sig`), `LV24-SEO-Optimizer_0.9.2_x64-portable.zip` | NSIS only; portable ZIP is manual |
-| Linux x64 | `LV24.SEO.Optimizer_0.9.2_amd64.AppImage` (+ `.AppImage.sig`), `LV24.SEO.Optimizer_0.9.2_amd64.deb`, `LV24.SEO.Optimizer-0.9.2-1.x86_64.rpm` | AppImage only; deb/rpm are manual |
-| macOS 13+ arm64/x64 | `LV24.SEO.Optimizer_0.9.2_aarch64.dmg`, `LV24.SEO.Optimizer_0.9.2_x64.dmg`, `LV24.SEO.Optimizer_0.9.2_aarch64.app.tar.gz` and `LV24.SEO.Optimizer_0.9.2_x64.app.tar.gz` (+ `.sig`) | `.app` only; DMG is the first install |
+| Windows 10/11 x64 | `LV24.SEO.Optimizer_0.9.3_x64-setup.exe` (+ `.exe.sig`), `LV24-SEO-Optimizer_0.9.3_x64-portable.zip` | NSIS only; portable ZIP is manual |
+| Linux x64 | `LV24.SEO.Optimizer_0.9.3_amd64.AppImage` (+ `.AppImage.sig`), `LV24.SEO.Optimizer_0.9.3_amd64.deb`, `LV24.SEO.Optimizer-0.9.3-1.x86_64.rpm` | AppImage only; deb/rpm are manual |
+| macOS 13+ arm64/x64 | `LV24.SEO.Optimizer_0.9.3_aarch64.dmg`, `LV24.SEO.Optimizer_0.9.3_x64.dmg`, `LV24.SEO.Optimizer_0.9.3_aarch64.app.tar.gz` and `LV24.SEO.Optimizer_0.9.3_x64.app.tar.gz` (+ `.sig`) | `.app` only; DMG is the first install |
 
 The `0.2.x` through `0.9.x` releases also publish `latest.json` and `SHA256SUMS.txt`. Verify the
 checksum before running an installer. `SHA256SUMS.txt` covers every other published asset, including
@@ -233,7 +234,7 @@ assets.
 
 ### Upgrading from 0.1.0
 
-`0.1.0` has no updater, endpoint or public key. Install `0.9.2` manually once (NSIS installer or
+`0.1.0` has no updater, endpoint or public key. Install `0.9.3` manually once (NSIS installer or
 portable ZIP); auto-update works from `0.2.0` onward when the installed bundle is Windows NSIS, macOS
 `.app` or Linux AppImage.
 
@@ -392,6 +393,18 @@ The **Integrations** page starts with a **Provider connectors** card for Google 
 Yandex Webmaster and Yandex Metrika. Each row shows **Connected** / **Not connected** from
 `lv24-seo auth status --json` (`gsc_oauth`, `yandex_oauth`, `metrika_oauth`); a provider the engine
 did not report stays **Not checked** instead of being shown as missing.
+
+With engine `lv24-seo >= 0.14.0` each row also shows an OAuth readiness chip from the same answer's
+`data.oauth` (`gsc`, `yandex`, `metrika`). The eight engine states map to a localized short label:
+**Ready** (`oauth_ready`); a needs-action label for `oauth_client_missing`,
+`oauth_client_secret_missing`, `oauth_token_missing`, `oauth_scope_missing` and
+`oauth_redirect_invalid`; and a warning for `oauth_token_expired` (the engine `detail` says whether
+a refresh token can renew it) and `oauth_scope_unknown` (unknown scope coverage, not a failure).
+The row renders the engine's `detail` and `next_action` verbatim (English, URLs unchanged), the
+localized token expiry (`—` when the engine reports none), whether scopes were recorded, and the
+engine `limitations[]`. An engine without `data.oauth`, a provider the engine skipped, or an
+unrecognised state shows a neutral *Readiness unavailable* notice instead of a false **Ready**;
+the presence rows keep working. No token or secret value is read from the payload or rendered.
 
 - **Google Search Console:** **Connect** runs `lv24-seo auth login --provider gsc --json`. The
   engine opens the system browser, listens on a `127.0.0.1` loopback callback and returns a
@@ -639,15 +652,16 @@ build from source and sign it with your own certificate. See [`docs/release.md`]
 | Read-only Diagnostics screen (Google, Yandex, Bing, Metrika, Core Web Vitals) | implemented in `0.9.0`; requires engine `0.11.0`; 18 allow-listed read commands, no writes |
 | OAuth Connect card (Google Search Console, Yandex Webmaster, Metrika) | implemented in `0.9.1`; requires engine `0.13.1`; tokens stay in the OS keychain, no token is rendered |
 | Read-only Indexing automation card (queue, quotas, last run, day/provider history, host job state) | implemented in `0.9.2`; requires engine `0.13.1`; no write control, no confirm token |
+| OAuth readiness in the Connect card (eight states, next action, expiry, recorded scopes) | implemented in `0.9.3`; requires engine `0.14.0`; no token or secret is rendered |
 | Cancellable background runs (`run_cancel`, run banner) | implemented in `0.6.0` |
 | React screens (onboarding, dashboard, crawl, logs, tasks, portfolio, settings, configuration, reports, recommendations, integrations, diagnostics, backup) | implemented |
 | Bundled onedir sidecar | all four targets built in CI and by the release workflow; the Windows x64 pin records the reviewed `0.14.0` build, Linux/macOS reviewed pins remain `null` and are covered by rebuild-aware CI checksum reports |
-| Published installers | `0.9.2`: Windows x64, Linux x64, macOS arm64/x64; `0.9.1`, `0.9.0`, `0.8.0`, `0.7.0`, `0.6.0`, `0.5.0`, `0.4.0` and `0.3.0` remain available for rollback |
+| Published installers | `0.9.3`: Windows x64, Linux x64, macOS arm64/x64; `0.9.2`, `0.9.1`, `0.9.0`, `0.8.0`, `0.7.0`, `0.6.0`, `0.5.0`, `0.4.0` and `0.3.0` remain available for rollback |
 | Install checks | `0.2.2`: macOS 27.2 arm64 DMG installed and launched with engine `0.5.2`; deb and AppImage (FUSE mount and extract-and-run fallback) on Ubuntu 24.04 and rpm on Fedora 45 installed and launched with engine `0.5.2`; Linux updater signatures verified against the embedded key |
-| Auto-update | Windows NSIS, macOS `.app`, Linux AppImage; `0.2.0 → 0.2.1` through `0.8.0 → 0.9.0` verified end-to-end on Windows NSIS; `0.9.1 → 0.9.2` is the next in-app update; the macOS/Linux `0.9.2` update paths still need a re-run on a machine with the previous release installed; deb/rpm/MSI/portable ZIP are manual |
+| Auto-update | Windows NSIS, macOS `.app`, Linux AppImage; `0.2.0 → 0.2.1` through `0.8.0 → 0.9.0` verified end-to-end on Windows NSIS; `0.9.2 → 0.9.3` is the next in-app update; the macOS/Linux `0.9.3` update paths still need a re-run on a machine with the previous release installed; deb/rpm/MSI/portable ZIP are manual |
 | `lv24-seo stats --json` engine command | shipped since `lv24-seo 0.5.2`; bundled `0.14.0`; fixture committed |
 
-`0.1.0` remains available as a Windows-only preview. It has no updater; install `0.9.2` manually
+`0.1.0` remains available as a Windows-only preview. It has no updater; install `0.9.3` manually
 once. Follow the [issues](https://github.com/LevapVeeskela/lv24-seo-optimizer-desktop/issues) for
 progress, or read the implementation plan in the engine repository:
 [`docs/plans/2026-11-14-seo-desktop.md`](https://github.com/LevapVeeskela/lv24-seo-optimizer/blob/main/docs/plans/2026-11-14-seo-desktop.md).

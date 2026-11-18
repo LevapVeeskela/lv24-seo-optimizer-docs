@@ -140,7 +140,7 @@ with robots `Crawl-delay` pacing; `concurrency` is reserved and has no effect.
 
 Memory is bounded: page bodies are capped at 5 MB, retained page text at 20,000 characters, and the request budget is `1 + max_urls * (max_redirects + 1)`.
 `word_count` still uses the full visible text. If a crawl is too large or slow, lower `--max-urls` and crawl a section at a time. There is no resume or job
-queue in `0.9.2`; the desktop has a 600-second crawl timeout and a **Cancel** button in the window banner.
+queue in `0.9.3`; the desktop has a 600-second crawl timeout and a **Cancel** button in the window banner.
 
 ## `--days` limits
 
@@ -324,5 +324,5 @@ Report security problems through the private advisory described in `SECURITY.md`
 
 See [Security and privacy](/security/) for the write gates and [Releases and updates](/release/) for updater behaviour.
 
-Source: `_source/engine-troubleshooting.md`, `_source/engine-auth.md`, `_source/engine-auth-google.md`, `_source/engine-auth-yandex.md`, `_source/engine-releases-0.14.0.md`, `_source/engine-releases-0.13.1.md`, `_source/engine-releases-0.13.0.md`, `_source/engine-releases-0.12.2.md`, `_source/engine-releases-0.12.0.md`, `_source/engine-releases-0.11.0.md`, `_source/engine-releases-0.5.3.md`, `_source/desktop-releases-0.9.2.md`, `_source/desktop-releases-0.9.1.md`, `_source/desktop-releases-0.9.0.md`, `_source/desktop-releases-0.2.2.md`, `_source/desktop-releases-0.2.3.md`, `_source/desktop-releases-0.2.1.md`, `_source/desktop-releases-0.2.0.md`, `_source/desktop-security.md`,
+Source: `_source/engine-troubleshooting.md`, `_source/engine-auth.md`, `_source/engine-auth-google.md`, `_source/engine-auth-yandex.md`, `_source/engine-releases-0.14.0.md`, `_source/engine-releases-0.13.1.md`, `_source/engine-releases-0.13.0.md`, `_source/engine-releases-0.12.2.md`, `_source/engine-releases-0.12.0.md`, `_source/engine-releases-0.11.0.md`, `_source/engine-releases-0.5.3.md`, `_source/desktop-releases-0.9.3.md`, `_source/desktop-releases-0.9.2.md`, `_source/desktop-releases-0.9.1.md`, `_source/desktop-releases-0.9.0.md`, `_source/desktop-releases-0.2.2.md`, `_source/desktop-releases-0.2.3.md`, `_source/desktop-releases-0.2.1.md`, `_source/desktop-releases-0.2.0.md`, `_source/desktop-security.md`,
 `_source/desktop-architecture.md`.

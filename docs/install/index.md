@@ -82,15 +82,15 @@ GSC also accepts a service account. Set `providers.gsc.service_account_file` to 
 
 ## Desktop install matrix
 
-Desktop `0.9.2` is the current release and bundles `lv24-seo 0.14.0`; it requires engine `0.14.0` or newer, so an installed `0.13.x` engine is incompatible. Download the assets from the project's Releases page; `SHA256SUMS.txt` covers every published asset.
+Desktop `0.9.3` is the current release and bundles `lv24-seo 0.14.0`; it requires engine `0.14.0` or newer, so an installed `0.13.x` engine is incompatible. Download the assets from the project's Releases page; `SHA256SUMS.txt` covers every published asset.
 
 | Platform | Assets | Auto-update |
 |---|---|---|
-| Windows 10/11 x64 | NSIS `LV24.SEO.Optimizer_0.9.2_x64-setup.exe` (+ `.sig`), portable `LV24-SEO-Optimizer_0.9.2_x64-portable.zip` (+ `.zip.sha256`) | NSIS only; portable is manual |
-| Linux x64 | `LV24.SEO.Optimizer_0.9.2_amd64.AppImage` (+ `.AppImage.sig`), `LV24.SEO.Optimizer_0.9.2_amd64.deb`, `LV24.SEO.Optimizer-0.9.2-1.x86_64.rpm` | AppImage only; deb/rpm are manual |
-| macOS 13+ arm64/x64 | `LV24.SEO.Optimizer_0.9.2_aarch64.dmg` / `LV24.SEO.Optimizer_0.9.2_x64.dmg` for first install, `LV24.SEO.Optimizer_0.9.2_aarch64.app.tar.gz` / `LV24.SEO.Optimizer_0.9.2_x64.app.tar.gz` (+ `.sig`) for updates | `.app` only; DMG is the first install |
+| Windows 10/11 x64 | NSIS `LV24.SEO.Optimizer_0.9.3_x64-setup.exe` (+ `.sig`), portable `LV24-SEO-Optimizer_0.9.3_x64-portable.zip` (+ `.zip.sha256`) | NSIS only; portable is manual |
+| Linux x64 | `LV24.SEO.Optimizer_0.9.3_amd64.AppImage` (+ `.AppImage.sig`), `LV24.SEO.Optimizer_0.9.3_amd64.deb`, `LV24.SEO.Optimizer-0.9.3-1.x86_64.rpm` | AppImage only; deb/rpm are manual |
+| macOS 13+ arm64/x64 | `LV24.SEO.Optimizer_0.9.3_aarch64.dmg` / `LV24.SEO.Optimizer_0.9.3_x64.dmg` for first install, `LV24.SEO.Optimizer_0.9.3_aarch64.app.tar.gz` / `LV24.SEO.Optimizer_0.9.3_x64.app.tar.gz` (+ `.sig`) for updates | `.app` only; DMG is the first install |
 
-Engine `0.14.0` adds OAuth readiness diagnostics: an `oauth` object in `auth status`, `gsc_oauth`/`yandex_oauth`/`metrika_oauth` checks in `doctor` and eight stable codes, with recorded scopes. It keeps the 0.13.0 connectors, the 0.12.0 indexing automation, 25 CLI commands, 12 MCP tools and schema v5. The desktop `0.9.2` adds the read-only Indexing automation card, bundles engine `0.14.0` and raises `MIN_ENGINE_VERSION` to `0.14.0`. The [release notes](/release/) list the limits.
+Engine `0.14.0` adds OAuth readiness diagnostics: an `oauth` object in `auth status`, `gsc_oauth`/`yandex_oauth`/`metrika_oauth` checks in `doctor` and eight stable codes, with recorded scopes. It keeps the 0.13.0 connectors, the 0.12.0 indexing automation, 25 CLI commands, 12 MCP tools and schema v5. The desktop `0.9.3` adds OAuth readiness to the Connect card and keeps the read-only Indexing automation card, engine `0.14.0` and `MIN_ENGINE_VERSION` `0.14.0`. The [release notes](/release/) list the limits.
 
 ### Windows
 
@@ -115,7 +115,7 @@ Use the `aarch64` DMG on Apple silicon and the `x64` DMG on Intel. Open the DMG,
 
 ### Upgrading from desktop 0.1.0
 
-`0.1.0` was a Windows-only preview with no updater, endpoint or public key. Install `0.9.2` manually once (NSIS installer or portable ZIP). Auto-update works from `0.2.0` onward only for Windows NSIS, macOS `.app` and Linux AppImage.
+`0.1.0` was a Windows-only preview with no updater, endpoint or public key. Install `0.9.3` manually once (NSIS installer or portable ZIP). Auto-update works from `0.2.0` onward only for Windows NSIS, macOS `.app` and Linux AppImage.
 
 ## Unsigned builds
 
@@ -146,4 +146,4 @@ Uninstalling the tool does not delete your project. `seo.toml`, `data/`, SQLite 
 - [Config reference](/reference/config/) — every `seo.toml` key.
 - [Security and privacy](/security/) — token storage and write gates.
 
-Source: `_source/engine-README.md`, `_source/engine-cli.md`, `_source/engine-config.md`, `_source/engine-auth.md`, `_source/engine-releases-0.14.0.md`, `_source/engine-releases-0.13.1.md`, `_source/engine-releases-0.13.0.md`, `_source/desktop-README.md`, `_source/desktop-releases-0.9.2.md`, `_source/desktop-releases-0.9.1.md`, `_source/desktop-releases-0.8.0.md`, `_source/desktop-releases-0.7.0.md`, `_source/desktop-releases-0.6.0.md`, `_source/desktop-releases-0.5.0.md`, `_source/desktop-releases-0.4.0.md`, `_source/desktop-releases-0.3.0.md`, `_source/desktop-releases-0.2.3.md`, `_source/desktop-releases-0.2.2.md`, `_source/desktop-releases-0.2.0.md`.
+Source: `_source/engine-README.md`, `_source/engine-cli.md`, `_source/engine-config.md`, `_source/engine-auth.md`, `_source/engine-releases-0.14.0.md`, `_source/engine-releases-0.13.1.md`, `_source/engine-releases-0.13.0.md`, `_source/desktop-README.md`, `_source/desktop-releases-0.9.3.md`, `_source/desktop-releases-0.9.2.md`, `_source/desktop-releases-0.9.1.md`, `_source/desktop-releases-0.8.0.md`, `_source/desktop-releases-0.7.0.md`, `_source/desktop-releases-0.6.0.md`, `_source/desktop-releases-0.5.0.md`, `_source/desktop-releases-0.4.0.md`, `_source/desktop-releases-0.3.0.md`, `_source/desktop-releases-0.2.3.md`, `_source/desktop-releases-0.2.2.md`, `_source/desktop-releases-0.2.0.md`.
