@@ -1,6 +1,6 @@
 ---
 title: Releases and updates
-description: Engine 0.14.0 and desktop 0.9.2 releases, OAuth readiness diagnostics and the indexing card, the 0.13.0 OAuth connectors, 0.12.0 indexing automation, older history, signed auto-update matrix, release pipeline, version pinning and rollback.
+description: Engine 0.14.0 and desktop 0.9.3 releases, OAuth readiness diagnostics and the Connect-card readiness states, the indexing card, the 0.13.0 OAuth connectors, 0.12.0 indexing automation, older history, signed auto-update matrix, release pipeline, version pinning and rollback.
 ---
 
 # Releases and updates
